@@ -3,7 +3,6 @@ namespace PhysicsSimulator
 open FSharpPlus
 open MathNet.Numerics.LinearAlgebra
 
-
 type RotationMatrix3D =
     private
     | Value of Matrix<float>
@@ -15,20 +14,22 @@ type Vector3D =
     private
     | Value of Vector<float>
     member this.Get() =
-        function
+        match this with
         | Value v -> v
 
 
 module Vector3D =
+    let (|Vector3D|) (Value value) = value
     let create x y z = vector [ x; y; z ] |> Vector3D.Value
+    let fromVector vec = vec |> Value 
 
 module RotationMatrix3D =
+    open Vector3D
+
     let zero =
         Matrix<float>.Build.DenseIdentity 3
 
-    let (|Vector3D|) (Value value) = value
     let (|RotationMatrix3D|) (Value value) = value
-
 
     let fromAxisAndAngle (Vector3D axis) angle =
         if axis.L2Norm() <> 1.0 then

@@ -58,6 +58,7 @@
         <None Include="App.config" />
         <Compile Include="BaseTypes.fs" />
         <Content Include="packages.config" />
+        <Compile Include="Particle.fs" />
     </ItemGroup>
     <Import Project="$(FSharpTargetsPath)" Condition="Exists('$(FSharpTargetsPath)')" />
 </Project>
