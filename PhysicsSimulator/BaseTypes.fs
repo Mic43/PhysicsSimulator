@@ -3,7 +3,7 @@ namespace PhysicsSimulator
 open FSharpPlus
 open MathNet.Numerics.LinearAlgebra
 
-type RotationMatrix3D =
+type Matrix3 =
     private
     | Value of Matrix<float>
     member this.Get() =
@@ -19,17 +19,20 @@ type Vector3D =
 
 
 module Vector3D =
-    let (|Vector3D|) (Value value) = value
     let create x y z = vector [ x; y; z ] |> Vector3D.Value
-    let fromVector vec = vec |> Value 
+    let zero = create 0.0 0.0 0.0
+    let (|Vector3D|) (Value value) = value
+    let fromVector vec = vec |> Value
+
+module Matrix3 =
+    let (|Matrix3|) (Value value) = value
 
 module RotationMatrix3D =
     open Vector3D
 
     let zero =
         Matrix<float>.Build.DenseIdentity 3
-
-    let (|RotationMatrix3D|) (Value value) = value
+        |> Matrix3.Value
 
     let fromAxisAndAngle (Vector3D axis) angle =
         if axis.L2Norm() <> 1.0 then
@@ -53,4 +56,4 @@ module RotationMatrix3D =
                  [ uz * ux * cosInv - uy * sinA
                    uz * uy * cosA + ux * sinA
                    cosA + uz * uz * cosInv ] ]
-        |> RotationMatrix3D.Value
+        |> Matrix3.Value
