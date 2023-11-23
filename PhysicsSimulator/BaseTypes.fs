@@ -7,7 +7,7 @@ type Matrix3 =
     private
     | Value of Matrix<float>
     member this.Get() =
-        function
+        match this with
         | Value v -> v
 
 type Vector3D =
@@ -26,7 +26,7 @@ module Vector3D =
 
 module Matrix3 =
     let (|Matrix3|) (Value value) = value
-
+    let fromMatrix matrix = matrix |> Matrix3.Value
 module RotationMatrix3D =
     open Vector3D
 
