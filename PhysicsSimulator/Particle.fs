@@ -2,6 +2,8 @@ namespace PhysicsSimulator
 
 open System
 
+open FSharp.Data.UnitSystems.SI.UnitSymbols
+open MathNet.Numerics.LinearAlgebra
 type ParticleVariables =
     { Position: Vector3D
       Velocity: Vector3D }
@@ -30,3 +32,8 @@ module ParticleIntegrators =
                  + newVelocity * dt.TotalMilliseconds)
                 |> fromVector
               Velocity = newVelocity |> fromVector }
+module Motion =
+        
+    let applyImpulse particle (impulse:Vector<float<m>>) =
+        ()
+                

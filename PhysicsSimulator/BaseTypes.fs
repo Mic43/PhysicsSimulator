@@ -2,7 +2,8 @@ namespace PhysicsSimulator
 
 open FSharpPlus
 open MathNet.Numerics.LinearAlgebra
-
+open FSharp.Data.UnitSystems.SI.UnitSymbols
+open MathNet.Numerics.LinearAlgebra
 type Matrix3 =
     private
     | Value of Matrix<float>
@@ -17,16 +18,42 @@ type Vector3D =
         match this with
         | Value v -> v
 
+    member this.X =
+        match this with
+        | Value v -> v.At(0)
+
+    member this.Y =
+        match this with
+        | Value v -> v.At(1)
+
+    member this.Z =
+        match this with
+        | Value v -> v.At(2)
 
 module Vector3D =
     let create x y z = vector [ x; y; z ] |> Vector3D.Value
     let zero = create 0.0 0.0 0.0
     let (|Vector3D|) (Value value) = value
     let fromVector vec = vec |> Value
+    let toVector (vec3d : Vector3D) = vec3d.Get()
+    
+    let crossProduct (first: Vector3D) (second: Vector3D) =
+        let x =
+            (first.Y * second.Z) - (first.Z * second.Y)
+
+        let y =
+            (first.Z * second.X) - (first.X * second.Z)
+
+        let z =
+            (first.X * second.Y) - (first.Y * second.X)
+
+        (x, y, z) |||> create
+
 
 module Matrix3 =
     let (|Matrix3|) (Value value) = value
     let fromMatrix matrix = matrix |> Matrix3.Value
+
 module RotationMatrix3D =
     open Vector3D
 
