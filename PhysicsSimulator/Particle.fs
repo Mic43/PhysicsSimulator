@@ -4,6 +4,7 @@ open System
 
 open FSharp.Data.UnitSystems.SI.UnitSymbols
 open MathNet.Numerics.LinearAlgebra
+
 type ParticleVariables =
     { Position: Vector3D
       Velocity: Vector3D }
@@ -11,6 +12,9 @@ type ParticleVariables =
 type Particle =
     { ParticleVariables: ParticleVariables
       Mass: float }
+    member this.GetInverseMassMatrix() =
+         Matrix.Build.Diagonal(3, 3, 1.0 / this.Mass) |>  Matrix3.fromMatrix
+        
 
 type Acceleration = Vector3D
 type ParticleIntegrator = TimeSpan -> Acceleration -> ParticleVariables -> ParticleVariables
@@ -32,8 +36,14 @@ module ParticleIntegrators =
                  + newVelocity * dt.TotalMilliseconds)
                 |> fromVector
               Velocity = newVelocity |> fromVector }
-module Motion =
-        
-    let applyImpulse particle (impulse:Vector<float<m>>) =
-        ()
-                
+
+module ParticleMotion =
+
+    let applyImpulse particle (impulse: Vector3D) : Particle =
+        { particle with
+            ParticleVariables =
+                { particle.ParticleVariables with
+                    Velocity =
+                        particle.ParticleVariables.Velocity.Get()
+                        + impulse.Get() / particle.Mass
+                        |> Vector3D.fromVector } }

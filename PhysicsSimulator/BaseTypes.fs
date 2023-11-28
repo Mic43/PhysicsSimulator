@@ -4,6 +4,7 @@ open FSharpPlus
 open MathNet.Numerics.LinearAlgebra
 open FSharp.Data.UnitSystems.SI.UnitSymbols
 open MathNet.Numerics.LinearAlgebra
+
 type Matrix3 =
     private
     | Value of Matrix<float>
@@ -30,13 +31,20 @@ type Vector3D =
         match this with
         | Value v -> v.At(2)
 
+    member this.HatOperator() =
+        matrix [ [ 0.0; -this.Z; this.Y ]
+                 [ this.Z; 0.0; -this.X ]
+                 [ -this.Y; this.X; 0.0 ] ] |> Matrix3.Value
+
+    static member op_Implicit(v: Vector<float>) = v |> Vector3D.Value
+
 module Vector3D =
     let create x y z = vector [ x; y; z ] |> Vector3D.Value
     let zero = create 0.0 0.0 0.0
     let (|Vector3D|) (Value value) = value
     let fromVector vec = vec |> Value
-    let toVector (vec3d : Vector3D) = vec3d.Get()
-    
+    let toVector (vec3d: Vector3D) = vec3d.Get()
+
     let crossProduct (first: Vector3D) (second: Vector3D) =
         let x =
             (first.Y * second.Z) - (first.Z * second.Y)
@@ -49,10 +57,14 @@ module Vector3D =
 
         (x, y, z) |||> create
 
-
 module Matrix3 =
     let (|Matrix3|) (Value value) = value
-    let fromMatrix matrix = matrix |> Matrix3.Value
+
+    let fromMatrix (matrix: Matrix<float>) =
+        if matrix.RowCount <> 3 || matrix.ColumnCount <> 3 then
+            invalidArg "matrix" "matrix must be of size 3"
+
+        matrix |> Matrix3.Value
 
 module RotationMatrix3D =
     open Vector3D

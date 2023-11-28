@@ -60,6 +60,7 @@
         <Content Include="packages.config" />
         <Compile Include="Particle.fs" />
         <Compile Include="RigidBody.fs" />
+        <Compile Include="CollisionResponse.fs" />
     </ItemGroup>
     <Import Project="$(FSharpTargetsPath)" Condition="Exists('$(FSharpTargetsPath)')" />
 </Project>
