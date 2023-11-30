@@ -9,8 +9,7 @@ type RigidBodyVariables =
     { Orientation: Matrix3
       AngularMomentum: Vector3D }
 
-type RigidBody =
-    private
+type RigidBody =    
         { RigidBodyVariables: RigidBodyVariables
           MassCenter: Particle
           ElasticityCoeff:float
