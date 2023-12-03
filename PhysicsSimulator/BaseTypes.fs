@@ -34,7 +34,8 @@ type Vector3D =
     member this.HatOperator() =
         matrix [ [ 0.0; -this.Z; this.Y ]
                  [ this.Z; 0.0; -this.X ]
-                 [ -this.Y; this.X; 0.0 ] ] |> Matrix3.Value
+                 [ -this.Y; this.X; 0.0 ] ]
+        |> Matrix3.Value
 
     static member op_Implicit(v: Vector<float>) = v |> Vector3D.Value
 
@@ -74,7 +75,12 @@ module RotationMatrix3D =
         |> Matrix3.Value
 
     let fromAxisAndAngle (Vector3D axis) angle =
-        if axis.L2Norm() <> 1.0 then
+
+        let len = axis.Norm(3.0)
+
+        if axis <> Vector3D.zero.Get()
+           && len < 1.0 - 1e-14
+           && len > 1.0 + 1e-14 then
             invalidArg "axis" "axis must be unit vector"
 
         let ux = axis.Item(0)

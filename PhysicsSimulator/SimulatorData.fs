@@ -37,9 +37,9 @@ type SimulatorData =
 
 
 module SimulatorObject =
-    let createDefaultSphere radius position =
+    let createDefaultSphere radius mass position =
         { PhysicalObject =
-            (RigidBody.createDefaultSphere 1.0 1.0 radius position)
+            (RigidBody.createDefaultSphere 1.0 radius mass position)
             |> RigidBody
           Collider = () |> Box }
 
@@ -49,6 +49,8 @@ module SimulatorData =
 
     let private rigidBodyIntegrator =
         RigidBodyIntegrators.firstOrder
+
+    let private defaultForce = Vector3D.create 0.0 0.0 -0.000001
     
     let private updateObject dt (totalForce:Vector3D) totalTorque =
         function
@@ -67,7 +69,6 @@ module SimulatorData =
             rigidBody |> updater |> RigidBody
 
     let fromObjects (objects: SimulatorObject seq) =
-        let defaultForce = Vector3D.create 1000.0 5.0 0.5
         let identifiers =
             objects
             |> Seq.mapi (fun i _ -> (i |> PhysicalObjectIdentifier.fromInt))        

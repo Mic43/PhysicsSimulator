@@ -82,10 +82,10 @@ module RigidBodyIntegrators =
             let angularVelocity =
                 inertiaInverse.Get() * newAngMomentum
 
-            let angle = angularVelocity * milliseconds
+            let angle = (angularVelocity * milliseconds).Normalize(3.0)
 
             let newOrientation =
-                (RotationMatrix3D.fromAxisAndAngle (angle |> fromVector) (angle.L2Norm()))
+                (RotationMatrix3D.fromAxisAndAngle (angle |> fromVector) (angle.Norm(3.0)))
                     .Get()
                 * old.Orientation.Get()
 
@@ -124,7 +124,7 @@ module RigidBodyIntegrators =
                 (angAverage |> toVector) * milliseconds
 
             let newOrientation =
-                (RotationMatrix3D.fromAxisAndAngle (angle |> fromVector) (angle.L2Norm()))
+                (RotationMatrix3D.fromAxisAndAngle (angle |> fromVector) (angle.Norm(3.0)))
                     .Get()
                 * old.Orientation.Get()
 

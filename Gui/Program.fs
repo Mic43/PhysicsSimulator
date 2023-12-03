@@ -11,11 +11,13 @@ open PhysicsSimulator
 open FSharpPlus
 
 let radius = 0.5
+let mass = 1.0
 
 let prepareSimulator () =
 
-    [ SimulatorObject.createDefaultSphere radius Vector3D.zero
-      SimulatorObject.createDefaultSphere radius (Vector3D.create 1.0 1.0 1.0) ]
+    [
+      // SimulatorObject.createDefaultSphere radius Vector3D.zero
+      SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 1.0) ]
     |> Simulator
 
 let getObjectTransformation (simulator: SimulatorData ref) (id: PhysicalObjectIdentifier) =
@@ -23,6 +25,7 @@ let getObjectTransformation (simulator: SimulatorData ref) (id: PhysicalObjectId
 
     let toTranslation (v3d: Vector3D) =
         Trafo3d.Translation(v3d.X, v3d.Y, v3d.Z)
+
     // let toRotation (orientationMatrix:Matrix3) =
     //     let matrix = orientationMatrix.Get().
     //     Trafo3d(Rot3d.FromM33d
@@ -30,13 +33,15 @@ let getObjectTransformation (simulator: SimulatorData ref) (id: PhysicalObjectId
     let simObj =
         simulator.Value.GetObjects()[id]
 
-    let pos =
+    let linearComponent =
         (match simObj.PhysicalObject with
          | RigidBody rb -> rb.MassCenter.ParticleVariables
          | Particle p -> p.ParticleVariables)
-            .Position
+           
 
-    let transformation = pos |> toTranslation
+    linearComponent |> printfn "%A"
+    
+    let transformation = linearComponent.Position |> toTranslation
     transformation
 
 let toRenderable (simulator: SimulatorData ref) (id: PhysicalObjectIdentifier) =

@@ -18,10 +18,11 @@ type Simulator(simulatorObjects) =
         
     member private this.UpdateTask() =
            let interval = TimeSpan.FromMilliseconds(30.0)
-           let update = (SimulatorData.update simulatorData.Value )
+           //let update = (SimulatorData.update simulatorData)
            
            while true do                
-                simulatorData.Value  <- interval |> update
+                let newData = interval |> SimulatorData.update simulatorData.Value
+                simulatorData.Value  <- newData
                 //TODO: remove
                 Thread.Sleep(interval)
            ()
