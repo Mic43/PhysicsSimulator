@@ -9,12 +9,12 @@ type RigidBodyVariables =
     { Orientation: Matrix3
       AngularMomentum: Vector3D }
 
-type RigidBody =    
-        { RigidBodyVariables: RigidBodyVariables
-          MassCenter: Particle
-          ElasticityCoeff:float
-          PrincipalRotationalInertia: Matrix3
-          PrincipalRotationalInertiaInverse: Matrix3 }
+type RigidBody =
+    { RigidBodyVariables: RigidBodyVariables
+      MassCenter: Particle
+      ElasticityCoeff: float
+      PrincipalRotationalInertia: Matrix3
+      PrincipalRotationalInertiaInverse: Matrix3 }
 
 type Torque = Vector3D
 type RigidBodyIntegrator = TimeSpan -> Torque -> RotationalInertiaInverse -> RigidBodyVariables -> RigidBodyVariables
@@ -82,7 +82,8 @@ module RigidBodyIntegrators =
             let angularVelocity =
                 inertiaInverse.Get() * newAngMomentum
 
-            let angle = (angularVelocity * milliseconds).Normalize(3.0)
+            let angle =
+                (angularVelocity * milliseconds).Normalize(3.0)
 
             let newOrientation =
                 (RotationMatrix3D.fromAxisAndAngle (angle |> fromVector) (angle.Norm(3.0)))
@@ -175,7 +176,6 @@ module RigidBodyMotion =
 
         let newRotComponent =
             rigidBodyIntegrator dt totalTorque rotInInv rigidBody.RigidBodyVariables
-
 
         { rigidBody with
             RigidBodyVariables = newRotComponent

@@ -43,6 +43,12 @@ module SimulatorObject =
             |> RigidBody
           Collider = () |> Box }
 
+    let createDefaultCube size mass position =
+        { PhysicalObject =
+            (RigidBody.createDefaultBox 1.0 size size size mass position)
+            |> RigidBody
+          Collider = () |> Box }
+
 module SimulatorData =
     let private particleIntegrator =
         ParticleIntegrators.forwardEuler
@@ -50,9 +56,15 @@ module SimulatorData =
     let private rigidBodyIntegrator =
         RigidBodyIntegrators.firstOrder
 
-    let private defaultForce = Vector3D.create 0.0 0.0 -0.000001
-    
-    let private updateObject dt (totalForce:Vector3D) totalTorque =
+    let private defaultForce =
+        Vector3D.create 0.0 0.0 -0.000001
+
+    let private applyImpulseToObject impulse offset object =
+        (match object with
+         | RigidBody rigidBody -> RigidBodyMotion.applyImpulse rigidBody impulse offset)
+        |> RigidBody
+
+    let private updateObject dt (totalForce: Vector3D) totalTorque =
         function
         | Particle p ->
             let acceleration = totalForce.Get() / p.Mass
@@ -71,8 +83,8 @@ module SimulatorData =
     let fromObjects (objects: SimulatorObject seq) =
         let identifiers =
             objects
-            |> Seq.mapi (fun i _ -> (i |> PhysicalObjectIdentifier.fromInt))        
-        
+            |> Seq.mapi (fun i _ -> (i |> PhysicalObjectIdentifier.fromInt))
+
         { Objects = objects |> Seq.zip identifiers |> Map.ofSeq
           TotalForce =
             identifiers
@@ -83,12 +95,25 @@ module SimulatorData =
             |> Seq.map (fun i -> (i, Vector3D.zero))
             |> Map.ofSeq }
 
-    let update simulator (dt: TimeSpan) : SimulatorData =
-        { simulator with
+    let update simulatorData (dt: TimeSpan) : SimulatorData =
+        { simulatorData with
             Objects =
-                simulator.Objects
+                simulatorData.Objects
                 |> Map.map (fun ident simObj ->
                     { simObj with
                         PhysicalObject =
                             simObj.PhysicalObject
-                            |> updateObject dt simulator.TotalForce.[ident] simulator.TotalTorque.[ident] }) }
+                            |> updateObject dt simulatorData.TotalForce.[ident] simulatorData.TotalTorque.[ident] }) }
+
+    let applyImpulse simulatorData objectIdentifier impulse (offset: Vector3D) =
+        let applyImpulseToObject =
+            applyImpulseToObject impulse offset
+
+        { simulatorData with
+            Objects =
+                simulatorData.Objects.Change(
+                    objectIdentifier,
+                    fun simObj ->
+                        simObj
+                        |> Option.map (fun so -> { so with PhysicalObject = so.PhysicalObject |> applyImpulseToObject })
+                ) }

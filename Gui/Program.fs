@@ -15,9 +15,9 @@ let mass = 1.0
 
 let prepareSimulator () =
 
-    [
-      // SimulatorObject.createDefaultSphere radius Vector3D.zero
-      SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 1.0) ]
+    [ SimulatorObject.createDefaultCube (radius * 2.0) mass Vector3D.zero
+      // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 1.0)
+      ]
     |> Simulator
 
 let getObjectTransformation (simulator: SimulatorData ref) (id: PhysicalObjectIdentifier) =
@@ -26,9 +26,13 @@ let getObjectTransformation (simulator: SimulatorData ref) (id: PhysicalObjectId
     let toTranslation (v3d: Vector3D) =
         Trafo3d.Translation(v3d.X, v3d.Y, v3d.Z)
 
-    // let toRotation (orientationMatrix:Matrix3) =
-    //     let matrix = orientationMatrix.Get().
-    //     Trafo3d(Rot3d.FromM33d
+    let toRotation (orientationMatrix: Matrix3) =
+        let matrix = orientationMatrix.Get()
+
+        let m33d =
+            matrix.ToArray() |> M33d.op_Explicit
+
+        Trafo3d(Rot3d.FromM33d(m33d))
 
     let simObj =
         simulator.Value.GetObjects()[id]
@@ -37,12 +41,18 @@ let getObjectTransformation (simulator: SimulatorData ref) (id: PhysicalObjectId
         (match simObj.PhysicalObject with
          | RigidBody rb -> rb.MassCenter.ParticleVariables
          | Particle p -> p.ParticleVariables)
-           
+
+    let rotationalComponent =
+        match simObj.PhysicalObject with
+        | RigidBody rb -> rb.RigidBodyVariables.Orientation |> toRotation
+        | Particle _ -> Trafo3d(Rot3d.Identity)
 
     linearComponent |> printfn "%A"
-    
-    let transformation = linearComponent.Position |> toTranslation
-    transformation
+
+    let transformation =
+        linearComponent.Position |> toTranslation
+
+    transformation * rotationalComponent
 
 let toRenderable (simulator: SimulatorData ref) (id: PhysicalObjectIdentifier) =
     let physicalObj =
@@ -54,9 +64,27 @@ let toRenderable (simulator: SimulatorData ref) (id: PhysicalObjectIdentifier) =
     (match physicalObj with
      | RigidBody rb ->
          let color = C4b(100, 100, 100)
-         //Sg.box' color bounds
-         Sg.sphere' 5 color radius)
+
+         let bounds =
+             Box3d.FromCenterAndSize(V3d(0, 0, 0), V3d(radius * 2.0, radius * 2.0, radius * 2.0))
+
+         Sg.box' color bounds)
+    //Sg.sphere' 5 color radius)
     |> Sg.transform transformation
+
+let onKeyDown (simulator: SimulatorData ref) (key: Keys) =
+    match key with
+    | Keys.Space ->
+        transact (fun () ->
+            let physicalObjectIdentifier =
+                0 |> PhysicalObjectIdentifier.fromInt
+
+            simulator.Value <-
+                SimulatorData.applyImpulse
+                    simulator.Value
+                    physicalObjectIdentifier
+                    (Vector3D.create 0.0 0.00 0.002)
+                    (Vector3D.create 0.0 0.00000001 0.0))
 
 
 [<EntryPoint>]
@@ -85,9 +113,9 @@ let main _ =
         |> Map.map (fun key _ -> toRenderable simData key)
 
     sim.StartUpdateThread()
-    
+
     let getObjectTransformation =
-        getObjectTransformation simData 
+        getObjectTransformation simData
 
     let sg =
         renderablesDict
@@ -106,10 +134,13 @@ let main _ =
         |> Sg.viewTrafo (cameraView |> AVal.map CameraView.viewTrafo)
         |> Sg.projTrafo (frustum |> AVal.map Frustum.projTrafo)
 
-
     let renderTask =
         app.Runtime.CompileRender(win.FramebufferSignature, sg)
 
     win.RenderTask <- renderTask
+
+    (onKeyDown simData)
+    |> win.Keyboard.Down.Values.Add
+
     win.Run()
     0
