@@ -10,8 +10,10 @@ open Aardvark.Application.Slim
 open PhysicsSimulator
 open FSharpPlus
 
-let radius = 0.5
+let radius = 2.0
 let mass = 1.0
+let impulseValue = Vector3D.create 0.0 0.00 10
+let impulseOffset = Vector3D.create 0.5 0.0 0.0
 
 let prepareSimulator () =
 
@@ -29,37 +31,32 @@ let getObjectTransformation (simulator: SimulatorData ref) (id: PhysicalObjectId
     let toRotation (orientationMatrix: Matrix3) =
         let matrix = orientationMatrix.Get()
 
-        let m33d =
-            matrix.ToArray() |> M33d.op_Explicit
+        let m33d = matrix.ToArray() |> M33d.op_Explicit
 
         Trafo3d(Rot3d.FromM33d(m33d))
 
-    let simObj =
-        simulator.Value.GetObjects()[id]
+    let simObj = simulator.Value.GetObjects()[id]
 
-    let linearComponent =
-        (match simObj.PhysicalObject with
-         | RigidBody rb -> rb.MassCenter.ParticleVariables
-         | Particle p -> p.ParticleVariables)
+    let linearComponent = simObj.PhysicalObject.AsParticle().ParticleVariables
 
     let rotationalComponent =
         match simObj.PhysicalObject with
-        | RigidBody rb -> rb.RigidBodyVariables.Orientation |> toRotation
+        | RigidBody rb ->
+            rb.RigidBodyVariables |> printfn "%A"
+            rb.RigidBodyVariables.Orientation |> toRotation
         | Particle _ -> Trafo3d(Rot3d.Identity)
 
     linearComponent |> printfn "%A"
 
-    let transformation =
-        linearComponent.Position |> toTranslation
 
-    transformation * rotationalComponent
+    let transformation = linearComponent.Position |> toTranslation
+
+    rotationalComponent * transformation
 
 let toRenderable (simulator: SimulatorData ref) (id: PhysicalObjectIdentifier) =
-    let physicalObj =
-        (simulator.Value.GetObjects()[id]).PhysicalObject
+    let physicalObj = (simulator.Value.GetObjects()[id]).PhysicalObject
 
-    let transformation =
-        getObjectTransformation simulator id
+    let transformation = getObjectTransformation simulator id
 
     (match physicalObj with
      | RigidBody rb ->
@@ -76,16 +73,12 @@ let onKeyDown (simulator: SimulatorData ref) (key: Keys) =
     match key with
     | Keys.Space ->
         transact (fun () ->
-            let physicalObjectIdentifier =
-                0 |> PhysicalObjectIdentifier.fromInt
+            let physicalObjectIdentifier = 0 |> PhysicalObjectIdentifier.fromInt
 
             simulator.Value <-
-                SimulatorData.applyImpulse
-                    simulator.Value
-                    physicalObjectIdentifier
-                    (Vector3D.create 0.0 0.00 0.002)
-                    (Vector3D.create 0.0 0.00000001 0.0))
+                SimulatorData.applyImpulse simulator.Value physicalObjectIdentifier impulseValue impulseOffset)
 
+    | _ -> ()
 
 [<EntryPoint>]
 let main _ =
@@ -95,8 +88,7 @@ let main _ =
     use app = new OpenGlApplication()
     let win = app.CreateGameWindow(samples = 8)
 
-    let initialView =
-        CameraView.LookAt(V3d(2.0, 2.0, 2.0), V3d.Zero, V3d.OOI)
+    let initialView = CameraView.LookAt(V3d(2.0, 2.0, 2.0), V3d.Zero, V3d.OOI)
 
     let frustum =
         win.Sizes
@@ -109,38 +101,32 @@ let main _ =
     let simData = sim.SimulatorData
 
     let renderablesDict =
-        simData.Value.GetObjects()
-        |> Map.map (fun key _ -> toRenderable simData key)
+        simData.Value.GetObjects() |> Map.map (fun key _ -> toRenderable simData key)
 
     sim.StartUpdateThread()
 
-    let getObjectTransformation =
-        getObjectTransformation simData
+    let getObjectTransformation = getObjectTransformation simData
 
     let sg =
         renderablesDict
         |> Map.map (fun id renderable ->
             renderable
-            |> Sg.trafo (
-                win.Time
-                |> AVal.map (fun _ -> getObjectTransformation id)
-            ))
+            |> Sg.trafo (win.Time |> AVal.map (fun _ -> getObjectTransformation id)))
         |> Map.values
         |> Sg.ofSeq
-        |> Sg.effect [ DefaultSurfaces.trafo |> toEffect
-                       DefaultSurfaces.constantColor C4f.Red |> toEffect
-                       //  DefaultSurfaces.vertexColor |> toEffect
-                       DefaultSurfaces.simpleLighting |> toEffect ]
+        |> Sg.effect
+            [ DefaultSurfaces.trafo |> toEffect
+              DefaultSurfaces.constantColor C4f.Red |> toEffect
+              //  DefaultSurfaces.vertexColor |> toEffect
+              DefaultSurfaces.simpleLighting |> toEffect ]
         |> Sg.viewTrafo (cameraView |> AVal.map CameraView.viewTrafo)
         |> Sg.projTrafo (frustum |> AVal.map Frustum.projTrafo)
 
-    let renderTask =
-        app.Runtime.CompileRender(win.FramebufferSignature, sg)
+    let renderTask = app.Runtime.CompileRender(win.FramebufferSignature, sg)
 
     win.RenderTask <- renderTask
 
-    (onKeyDown simData)
-    |> win.Keyboard.Down.Values.Add
+    (onKeyDown simData) |> win.Keyboard.Down.Values.Add
 
     win.Run()
     0

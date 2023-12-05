@@ -71,10 +71,10 @@ module RigidBodyIntegrators =
 
     let (firstOrder: RigidBodyIntegrator) =
         fun dt (Vector3D torque) inertiaInverse old ->
-            let milliseconds = dt.TotalMilliseconds
+            let totalSeconds = dt.TotalSeconds
 
             let angMomentumChange =
-                torque * milliseconds
+                torque * totalSeconds
 
             let newAngMomentum =
                 old.AngularMomentum.Get() + angMomentumChange
@@ -82,11 +82,13 @@ module RigidBodyIntegrators =
             let angularVelocity =
                 inertiaInverse.Get() * newAngMomentum
 
-            let angle =
-                (angularVelocity * milliseconds).Normalize(3.0)
+            let axis =
+                (angularVelocity * totalSeconds)
 
+            let angle = axis.Norm(3.0)
+            
             let newOrientation =
-                (RotationMatrix3D.fromAxisAndAngle (angle |> fromVector) (angle.Norm(3.0)))
+                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(3.0) |> fromVector) angle)
                     .Get()
                 * old.Orientation.Get()
 
@@ -95,7 +97,7 @@ module RigidBodyIntegrators =
 
     let (augmentedSecondOrder: RigidBodyIntegrator) =
         fun dt (Vector3D torque) inertiaInverse old ->
-            let milliseconds = dt.TotalMilliseconds
+            let milliseconds = dt.TotalSeconds
 
             let angMomentumChange =
                 torque * milliseconds
