@@ -29,7 +29,7 @@ type Vector3D =
 
     member this.Z =
         match this with
-        | Value v -> v.At(2)
+        | Value v -> v.At(2) 
 
     member this.HatOperator() =
         matrix [ [ 0.0; -this.Z; this.Y ]

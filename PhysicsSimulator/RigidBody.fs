@@ -97,10 +97,10 @@ module RigidBodyIntegrators =
 
     let (augmentedSecondOrder: RigidBodyIntegrator) =
         fun dt (Vector3D torque) inertiaInverse old ->
-            let milliseconds = dt.TotalSeconds
+            let totalSeconds = dt.TotalSeconds
 
             let angMomentumChange =
-                torque * milliseconds
+                torque * totalSeconds
 
             let oldAngMomentum =
                 old.AngularMomentum.Get()
@@ -108,26 +108,30 @@ module RigidBodyIntegrators =
             let angularVelocity =
                 inertiaInverse.Get() * oldAngMomentum
 
+            let v = 
+                oldAngMomentum
+                  |> fromVector
+                  |> crossProduct (angularVelocity |> fromVector)
+                  |> toVector
+            
             let deriv =
                 inertiaInverse.Get()
-                * (torque - oldAngMomentum
-                   |> fromVector
-                   |> crossProduct (angularVelocity |> fromVector)
-                   |> toVector)
+                * (torque - v)
 
-            let angAverage =
+            let comp1 = angularVelocity |> fromVector |> crossProduct (deriv |> fromVector) |> toVector
+            
+            let axisAverage =
                 angularVelocity
-                + milliseconds * 0.5 * deriv
-                + milliseconds * milliseconds / 12.0
-                  * angularVelocity
-                |> fromVector
-                |> crossProduct (deriv |> fromVector)
+                + totalSeconds * 0.5 * deriv
+                + (totalSeconds * totalSeconds / 12.0) * comp1
 
-            let angle =
-                (angAverage |> toVector) * milliseconds
+            let axis =
+                axisAverage * totalSeconds
 
+            let angle = axis.Norm(3.0)
+            
             let newOrientation =
-                (RotationMatrix3D.fromAxisAndAngle (angle |> fromVector) (angle.Norm(3.0)))
+                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(3.0) |> fromVector) angle)
                     .Get()
                 * old.Orientation.Get()
 

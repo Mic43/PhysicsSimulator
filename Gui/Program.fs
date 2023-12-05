@@ -12,8 +12,9 @@ open FSharpPlus
 
 let radius = 2.0
 let mass = 1.0
-let impulseValue = Vector3D.create 0.0 0.00 10
-let impulseOffset = Vector3D.create 0.5 0.0 0.0
+let impulseValue = Vector3D.create 0.1 0 1
+let impulseOffset = Vector3D.create 1 1 0.0
+let epislon = 1.0
 
 let prepareSimulator () =
 
@@ -33,7 +34,8 @@ let getObjectTransformation (simulator: SimulatorData ref) (id: PhysicalObjectId
 
         let m33d = matrix.ToArray() |> M33d.op_Explicit
 
-        Trafo3d(Rot3d.FromM33d(m33d))
+       
+        Trafo3d(Rot3d.FromM33d(m33d,epislon))
 
     let simObj = simulator.Value.GetObjects()[id]
 

@@ -58,12 +58,15 @@ module SimulatorData =
 
     let private rigidBodyIntegrator = RigidBodyIntegrators.firstOrder
 
-    let private gAcceleration = Vector3D.create 0.0 0.0 -9.81
+    let private earthGAcceleration = Vector3D.create 0.0 0.0 -9.81
 
-    let private calculateForce (objects: Map<PhysicalObjectIdentifier, SimulatorObject>) identifier =
-        objects.[identifier].PhysicalObject.AsParticle().Mass * gAcceleration.Get()
+    let private gravityForce (objects: Map<PhysicalObjectIdentifier, SimulatorObject>) identifier =
+        objects.[identifier].PhysicalObject.AsParticle().Mass * earthGAcceleration.Get()
             |> Vector3D.fromVector
-    // Vector3D.zero
+    
+    let private calculateForce (objects: Map<PhysicalObjectIdentifier, SimulatorObject>) identifier =
+//        gravityForce
+        Vector3D.zero
 
     let private applyImpulseToObject impulse offset object =
         (match object with
