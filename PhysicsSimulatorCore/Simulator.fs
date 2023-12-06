@@ -9,7 +9,6 @@ open MathNet.Numerics.LinearAlgebra
 
 type Simulator(simulatorObjects) =
 
-
     let objectsLocker = Object()
     let mutable updateTask: Task = null
 

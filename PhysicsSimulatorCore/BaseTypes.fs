@@ -111,7 +111,6 @@ module Matrix3 =
         let y = m.Get().Row(1)
 
         let error = x.DotProduct(y)
-
         
         let xORt = x - (error / 2.0) * y
         let yOrt = y - (error / 2.0) * x

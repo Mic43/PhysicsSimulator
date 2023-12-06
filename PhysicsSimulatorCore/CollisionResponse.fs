@@ -18,8 +18,8 @@ type ContactPointData =
 module CollisionResponse =
     let calculateImpulse (targetBody: RigidBody) (otherBody: RigidBody) (contactPoint: ContactPointData) =
         let relativeVelocity =
-            targetBody.MassCenter.ParticleVariables.Velocity.Get()
-            - otherBody.MassCenter.ParticleVariables.Velocity.Get()
+            targetBody.MassCenter.Variables.Velocity.Get()
+            - otherBody.MassCenter.Variables.Velocity.Get()
 
         let (normal: Vector<double>) =
             contactPoint.Normal |> Vector3D.toVector
@@ -30,7 +30,7 @@ module CollisionResponse =
         let vOffset =
             relativeVelocity + offset
             |> Vector3D.fromVector
-            |> Vector3D.crossProduct targetBody.RigidBodyVariables.AngularMomentum
+            |> Vector3D.crossProduct targetBody.Variables.AngularMomentum
             |> Vector3D.toVector
 
         let vNorm =
@@ -43,7 +43,7 @@ module CollisionResponse =
 
         let inverseRotInertia =
             targetBody.PrincipalRotationalInertiaInverse
-            |> RigidBodyMotion.calcFullRotationalInertia targetBody.RigidBodyVariables.Orientation
+            |> RigidBodyMotion.calcFullRotationalInertia targetBody.Variables.Orientation
 
         let offsetMatrix =
             contactPoint.OffsetFirstBody.HatOperator()

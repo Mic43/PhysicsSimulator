@@ -17,7 +17,7 @@ type PhysicalObjectIdentifier =
             invalidArg "i" "must be positive"
 
         i |> Value
-        
+
     static member op_Implicit(i) = i |> PhysicalObjectIdentifier.fromInt
 
 type PhysicalObject =
@@ -64,16 +64,16 @@ module SimulatorState =
 
     let private gravityForce (objects: Map<PhysicalObjectIdentifier, SimulatorObject>) identifier =
         objects.[identifier].PhysicalObject.AsParticle().Mass * earthGAcceleration.Get()
-            |> Vector3D.fromVector
-    
+        |> Vector3D.fromVector
+
     let private calculateForce (objects: Map<PhysicalObjectIdentifier, SimulatorObject>) identifier =
-//        gravityForce
-        Vector3D.zero
+        gravityForce objects identifier
+    //Vector3D.zero
 
     let private applyImpulseToObject impulse offset object =
-        (match object with
-         | RigidBody rigidBody -> RigidBodyMotion.applyImpulse rigidBody impulse offset)
-        |> RigidBody
+        match object with
+        | RigidBody rigidBody -> RigidBodyMotion.applyImpulse rigidBody impulse offset |> RigidBody
+        | Particle particle -> impulse |> ParticleMotion.applyImpulse particle |> Particle
 
     let private updateObject dt (totalForce: Vector3D) totalTorque =
         function
@@ -83,7 +83,7 @@ module SimulatorState =
             let particleIntegrator = particleIntegrator dt (acceleration |> Vector3D.fromVector)
 
             { p with
-                ParticleVariables = p.ParticleVariables |> particleIntegrator }
+                Variables = p.Variables |> particleIntegrator }
             |> Particle
         | RigidBody rigidBody ->
             let updater =
@@ -113,7 +113,7 @@ module SimulatorState =
                     { simObj with
                         PhysicalObject =
                             simObj.PhysicalObject
-                            |> updateObject dt simulatorData.TotalForce.[ident] simulatorData.TotalTorque.[ident] }) }
+                            |> updateObject dt simulatorData.TotalForce[ident] simulatorData.TotalTorque[ident] }) }
 
     let applyImpulse simulatorState objectIdentifier impulse (offset: Vector3D) =
         let applyImpulseToObject = applyImpulseToObject impulse offset

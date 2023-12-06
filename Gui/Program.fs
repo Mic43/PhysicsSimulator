@@ -12,14 +12,12 @@ open FSharpPlus
 
 let radius = 2.0
 let mass = 1.0
-let impulseValue = Vector3D.create 3 2 2
-let impulseOffset = Vector3D.create 0.0 0.3 0.0
-let epsilon = 0.1
+let impulseValue = Vector3D.create 1 1 25
+let impulseOffset = Vector3D.create 0.2 0.5 0.0
+let epsilon = 0.001
 
 let prepareSimulator () =
 
-    
-    
     [ SimulatorObject.createDefaultCube (radius * 2.0) mass Vector3D.zero
       // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 1.0)
       ]
@@ -32,23 +30,23 @@ let getObjectTransformation (simulator: Simulator) (id: PhysicalObjectIdentifier
         Trafo3d.Translation(v3d.X, v3d.Y, v3d.Z)
 
     let toRotation (orientationMatrix: Matrix3) =
-        
+
         let matrix = orientationMatrix.Get()
-        let tmp =  matrix.ToArray()
+        let tmp = matrix.ToArray()
 
         let mutable m33d = tmp |> M33d.op_Explicit
 
-        Trafo3d(Rot3d.FromM33d(m33d,epsilon))
+        Trafo3d(Rot3d.FromM33d(m33d, epsilon))
 
     let simObj = simulator.PhysicalObject id
 
-    let linearComponent = simObj.AsParticle().ParticleVariables
+    let linearComponent = simObj.AsParticle().Variables
 
     let rotationalComponent =
         match simObj with
         | RigidBody rb ->
             //rb.RigidBodyVariables |> printfn "%A"
-            rb.RigidBodyVariables.Orientation |> toRotation
+            rb.Variables.Orientation |> toRotation
         | Particle _ -> Trafo3d(Rot3d.Identity)
 
     //linearComponent |> printfn "%A"
@@ -95,7 +93,7 @@ let main _ =
 
     let frustum =
         win.Sizes
-        |> AVal.map (fun s -> Frustum.perspective 60.0 0.1 50.0 (float s.X / float s.Y))
+        |> AVal.map (fun s -> Frustum.perspective 60.0 0.1 150.0 (float s.X / float s.Y))
 
     let cameraView =
         DefaultCameraController.control win.Mouse win.Keyboard win.Time initialView
