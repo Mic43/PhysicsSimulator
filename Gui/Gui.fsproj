@@ -19,7 +19,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\PhysicsSimulator\PhysicsSimulator.fsproj" />
+      <ProjectReference Include="..\PhysicsSimulatorCore\PhysicsSimulatorCore.fsproj" />
     </ItemGroup>
 
 </Project>

@@ -35,7 +35,7 @@ type SimulatorObject =
     { PhysicalObject: PhysicalObject
       Collider: Collider }
 
-type SimulatorData =
+type SimulatorState =
     private
         { Objects: Map<PhysicalObjectIdentifier, SimulatorObject>
           TotalForce: Map<PhysicalObjectIdentifier, Vector3D>
@@ -53,7 +53,7 @@ module SimulatorObject =
         { PhysicalObject = (RigidBody.createDefaultBox 1.0 size size size mass position) |> RigidBody
           Collider = () |> Box }
 
-module SimulatorData =
+module SimulatorState =
     let private particleIntegrator = ParticleIntegrators.forwardEuler
 
     let private rigidBodyIntegrator = RigidBodyIntegrators.firstOrder
@@ -103,7 +103,7 @@ module SimulatorData =
             |> Map.ofSeq
           TotalTorque = identifiers |> Seq.map (fun i -> (i, Vector3D.zero)) |> Map.ofSeq }
 
-    let update simulatorData (dt: TimeSpan) : SimulatorData =
+    let update simulatorData (dt: TimeSpan) : SimulatorState =
         { simulatorData with
             Objects =
                 simulatorData.Objects

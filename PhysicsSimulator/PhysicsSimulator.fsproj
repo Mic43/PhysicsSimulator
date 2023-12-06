@@ -11,7 +11,7 @@
         <AssemblyName>PhysicsSimulator</AssemblyName>
         <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
         <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-        <LangVersion>6.0</LangVersion>
+        <LangVersion>7.0</LangVersion>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
         <DebugSymbols>true</DebugSymbols>
@@ -62,7 +62,7 @@
         <Compile Include="Particle.fs" />
         <Compile Include="RigidBody.fs" />
         <Compile Include="CollisionResponse.fs" />
-        <Compile Include="SimulatorData.fs" />
+        <Compile Include="SimulatorState.fs" />
         <Compile Include="Simulator.fs" />
     </ItemGroup>
     <Import Project="$(FSharpTargetsPath)" Condition="Exists('$(FSharpTargetsPath)')" />

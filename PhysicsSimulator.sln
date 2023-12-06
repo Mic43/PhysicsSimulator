@@ -4,6 +4,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "PhysicsSimulator", "Physics
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Gui", "Gui\Gui.fsproj", "{094286F2-3439-498B-89AC-9C372B9F8CCF}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "PhysicsSimulatorCore", "PhysicsSimulatorCore\PhysicsSimulatorCore.fsproj", "{0A968E61-24F1-47DB-A9C0-AEE22A280615}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{094286F2-3439-498B-89AC-9C372B9F8CCF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{094286F2-3439-498B-89AC-9C372B9F8CCF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{094286F2-3439-498B-89AC-9C372B9F8CCF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0A968E61-24F1-47DB-A9C0-AEE22A280615}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A968E61-24F1-47DB-A9C0-AEE22A280615}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A968E61-24F1-47DB-A9C0-AEE22A280615}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A968E61-24F1-47DB-A9C0-AEE22A280615}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

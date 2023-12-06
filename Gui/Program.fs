@@ -12,9 +12,9 @@ open FSharpPlus
 
 let radius = 2.0
 let mass = 1.0
-let impulseValue = Vector3D.create 0.1 0 1
-let impulseOffset = Vector3D.create 1 1 0.0
-let epislon = 1.0
+let impulseValue = Vector3D.create 3 2 2
+let impulseOffset = Vector3D.create 0.0 0.3 0.0
+let epsilon = 0.1
 
 let prepareSimulator () =
 
@@ -23,26 +23,30 @@ let prepareSimulator () =
       ]
     |> Simulator
 
-let getObjectTransformation (simulator: SimulatorData ref) (id: PhysicalObjectIdentifier) =
+let getObjectTransformation (simulator: Simulator) (id: PhysicalObjectIdentifier) =
     // let startTime = System.DateTime.Now
 
     let toTranslation (v3d: Vector3D) =
         Trafo3d.Translation(v3d.X, v3d.Y, v3d.Z)
 
     let toRotation (orientationMatrix: Matrix3) =
+        
         let matrix = orientationMatrix.Get()
+        let tmp =  matrix.ToArray()
+        // printfn "%A" matrix
+        let mutable m33d = tmp |> M33d.op_Explicit
+        // printfn "%A" m33d
+        if (m33d.IsOrthonormal(epsilon) |> not) then
+             m33d.Orthonormalize()
 
-        let m33d = matrix.ToArray() |> M33d.op_Explicit
+        Trafo3d(Rot3d.FromM33d(m33d,epsilon))
 
-       
-        Trafo3d(Rot3d.FromM33d(m33d,epislon))
+    let simObj = simulator.PhysicalObject id
 
-    let simObj = simulator.Value.GetObjects()[id]
-
-    let linearComponent = simObj.PhysicalObject.AsParticle().ParticleVariables
+    let linearComponent = simObj.AsParticle().ParticleVariables
 
     let rotationalComponent =
-        match simObj.PhysicalObject with
+        match simObj with
         | RigidBody rb ->
             rb.RigidBodyVariables |> printfn "%A"
             rb.RigidBodyVariables.Orientation |> toRotation
@@ -55,8 +59,8 @@ let getObjectTransformation (simulator: SimulatorData ref) (id: PhysicalObjectId
 
     rotationalComponent * transformation
 
-let toRenderable (simulator: SimulatorData ref) (id: PhysicalObjectIdentifier) =
-    let physicalObj = (simulator.Value.GetObjects()[id]).PhysicalObject
+let toRenderable (simulator: Simulator) (id: PhysicalObjectIdentifier) =
+    let physicalObj = simulator.PhysicalObject id
 
     let transformation = getObjectTransformation simulator id
 
@@ -71,14 +75,12 @@ let toRenderable (simulator: SimulatorData ref) (id: PhysicalObjectIdentifier) =
     //Sg.sphere' 5 color radius)
     |> Sg.transform transformation
 
-let onKeyDown (simulator: SimulatorData ref) (key: Keys) =
+let onKeyDown (simulator: Simulator) (key: Keys) =
     match key with
     | Keys.Space ->
         transact (fun () ->
             let physicalObjectIdentifier = 0 |> PhysicalObjectIdentifier.fromInt
-
-            simulator.Value <-
-                SimulatorData.applyImpulse simulator.Value physicalObjectIdentifier impulseValue impulseOffset)
+            simulator.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset)
 
     | _ -> ()
 
@@ -100,14 +102,16 @@ let main _ =
         DefaultCameraController.control win.Mouse win.Keyboard win.Time initialView
 
     let sim = prepareSimulator ()
-    let simData = sim.SimulatorData
 
     let renderablesDict =
-        simData.Value.GetObjects() |> Map.map (fun key _ -> toRenderable simData key)
+        sim.ObjectIdentifiers
+        |> Set.toSeq
+        |> Seq.map (fun key -> (key, toRenderable sim key))
+        |> Map.ofSeq
 
     sim.StartUpdateThread()
 
-    let getObjectTransformation = getObjectTransformation simData
+    let getObjectTransformation = getObjectTransformation sim
 
     let sg =
         renderablesDict
@@ -128,7 +132,7 @@ let main _ =
 
     win.RenderTask <- renderTask
 
-    (onKeyDown simData) |> win.Keyboard.Down.Values.Add
+    (onKeyDown sim) |> win.Keyboard.Down.Values.Add
 
     win.Run()
     0
