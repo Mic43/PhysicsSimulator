@@ -11,7 +11,7 @@ type ParticleVariables =
 
 type Particle =
     { ParticleVariables: ParticleVariables
-      Mass: float }
+      Mass: double }
     member this.GetInverseMassMatrix() =
          Matrix.Build.Diagonal(3, 3, 1.0 / this.Mass) |>  Matrix3.fromMatrix
         

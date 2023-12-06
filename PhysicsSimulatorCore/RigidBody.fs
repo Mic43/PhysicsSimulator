@@ -12,7 +12,7 @@ type RigidBodyVariables =
 type RigidBody =
     { RigidBodyVariables: RigidBodyVariables
       MassCenter: Particle
-      ElasticityCoeff: float
+      ElasticityCoeff: double
       PrincipalRotationalInertia: Matrix3
       PrincipalRotationalInertiaInverse: Matrix3 }
 
@@ -41,7 +41,7 @@ module RigidBody =
         let c2 = sizeZ * sizeY
 
         let mat =
-            Matrix<float>.Build.Diagonal [| m * (b2 + c2); m * (a2 + c2); m * (a2 + b2) |]
+            Matrix<double>.Build.Diagonal [| m * (b2 + c2); m * (a2 + c2); m * (a2 + b2) |]
             |> Matrix3.fromMatrix
 
         create initialOrientation initialVelocity elasticityCoeff mass position mat
@@ -51,7 +51,7 @@ module RigidBody =
     let createSphere initialOrientation initialVelocity elasticityCoeff radius mass position =
         let I = 2.0 * mass * radius * radius / 5.0
 
-        let mat = Matrix<float>.Build.Diagonal(3, 3, I) |> Matrix3.fromMatrix
+        let mat = Matrix<double>.Build.Diagonal(3, 3, I) |> Matrix3.fromMatrix
 
         create initialOrientation initialVelocity elasticityCoeff mass position mat
 
@@ -60,22 +60,7 @@ module RigidBody =
 module RigidBodyIntegrators =
     open Vector3D
     open Matrix3
-
-    let reorthoganalize (m: Matrix3) =
-        let x = m.Get().Row(0)
-        let y = m.Get().Row(1)
-        let z = m.Get().Row(2)
-
-        let error = x.DotProduct(y)
-
-        let xORt = x - (error / 2.0) * y
-        let yOrt = y - (error / 2.0) * x
-        let zORt = yOrt |> fromVector |> crossProduct (xORt |> fromVector) |> toVector
-
-        Matrix<float>.Build
-            .DenseOfRowVectors(xORt.Normalize(3.0), yOrt.Normalize(3.0), zORt.Normalize(3.0))
-        |> Matrix3.fromMatrix
-
+   
     let (firstOrder: RigidBodyIntegrator) =
         fun dt (Vector3D torque) inertiaInverse old ->
             let totalSeconds = dt.TotalSeconds
@@ -88,15 +73,15 @@ module RigidBodyIntegrators =
 
             let axis = (angularVelocity * totalSeconds)
 
-            let angle = axis.Norm(3.0)
+            let angle = axis.Norm(2.0)
 
             //TODO: Orthonormalize here??
             let newOrientation =
-                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(3.0) |> fromVector) angle)
+                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> fromVector) angle)
                     .Get()
                 * old.Orientation.Get()
 
-            { Orientation = newOrientation |> fromMatrix |> orthonormalize 
+            { Orientation = newOrientation |> fromMatrix  |> orthonormalize 
               AngularMomentum = newAngMomentum |> fromVector }
 
     let (augmentedSecondOrder: RigidBodyIntegrator) =
@@ -127,10 +112,10 @@ module RigidBodyIntegrators =
 
             let axis = axisAverage * totalSeconds
 
-            let angle = axis.Norm(3.0)
+            let angle = axis.Norm(2.0)
 
             let newOrientation =
-                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(3.0) |> fromVector) angle)
+                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> fromVector) angle)
                     .Get()
                 * old.Orientation.Get()
 

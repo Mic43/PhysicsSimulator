@@ -21,7 +21,7 @@ module CollisionResponse =
             targetBody.MassCenter.ParticleVariables.Velocity.Get()
             - otherBody.MassCenter.ParticleVariables.Velocity.Get()
 
-        let (normal: Vector<float>) =
+        let (normal: Vector<double>) =
             contactPoint.Normal |> Vector3D.toVector
 
         let offset =

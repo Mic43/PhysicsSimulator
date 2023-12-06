@@ -18,6 +18,8 @@ let epsilon = 0.1
 
 let prepareSimulator () =
 
+    
+    
     [ SimulatorObject.createDefaultCube (radius * 2.0) mass Vector3D.zero
       // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 1.0)
       ]
@@ -33,11 +35,8 @@ let getObjectTransformation (simulator: Simulator) (id: PhysicalObjectIdentifier
         
         let matrix = orientationMatrix.Get()
         let tmp =  matrix.ToArray()
-        // printfn "%A" matrix
+
         let mutable m33d = tmp |> M33d.op_Explicit
-        // printfn "%A" m33d
-        if (m33d.IsOrthonormal(epsilon) |> not) then
-             m33d.Orthonormalize()
 
         Trafo3d(Rot3d.FromM33d(m33d,epsilon))
 
@@ -48,11 +47,11 @@ let getObjectTransformation (simulator: Simulator) (id: PhysicalObjectIdentifier
     let rotationalComponent =
         match simObj with
         | RigidBody rb ->
-            rb.RigidBodyVariables |> printfn "%A"
+            //rb.RigidBodyVariables |> printfn "%A"
             rb.RigidBodyVariables.Orientation |> toRotation
         | Particle _ -> Trafo3d(Rot3d.Identity)
 
-    linearComponent |> printfn "%A"
+    //linearComponent |> printfn "%A"
 
 
     let transformation = linearComponent.Position |> toTranslation

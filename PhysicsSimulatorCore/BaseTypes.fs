@@ -7,7 +7,7 @@ open MathNet.Numerics.LinearAlgebra
 
 type Matrix3 =
     private
-    | Value of Matrix<float>
+    | Value of Matrix<double>
 
     member this.Get() =
         match this with
@@ -15,7 +15,7 @@ type Matrix3 =
 
 type Vector3D =
     private
-    | Value of Vector<float>
+    | Value of Vector<double>
 
     member this.Get() =
         match this with
@@ -37,7 +37,7 @@ type Vector3D =
         matrix [ [ 0.0; -this.Z; this.Y ]; [ this.Z; 0.0; -this.X ]; [ -this.Y; this.X; 0.0 ] ]
         |> Matrix3.Value
 
-    static member op_Implicit(v: Vector<float>) = v |> Vector3D.Value
+    static member op_Implicit(v: Vector<double>) = v |> Vector3D.Value
 
 module Vector3D =
     let create x y z = vector [ x; y; z ] |> Vector3D.Value
@@ -64,7 +64,7 @@ module Matrix3 =
     open Vector3D
     let (|Matrix3|) (Value value) = value
 
-    let fromMatrix (matrix: Matrix<float>) =
+    let fromMatrix (matrix: Matrix<double>) =
         if matrix.RowCount <> 3 || matrix.ColumnCount <> 3 then
             invalidArg "matrix" "matrix must be of size 3"
 
@@ -73,27 +73,25 @@ module Matrix3 =
     let orthonormalize (matrix: Matrix3) =
             
         let matrix = matrix.Get()
-        printf "Before normalization %A" matrix
+        // printfn "Before normalization %A" matrix
                          
-        let deltaCol (c1: Vector<float>) c2 = c1.DotProduct(c2) / c1.DotProduct(c1) * c1
+        let deltaCol (c1: Vector<double>) c2 = c1.DotProduct(c2) / c1.DotProduct(c1) * c1
                 
-        let col0 = matrix.Column(0).Normalize(3.0)                 
+        let col0 = matrix.Column(0).Normalize(2.0)                 
         let mutable col1 = matrix.Column(1)
         let mutable col2 = matrix.Column(2)
                      
         col1 <- col1 - deltaCol col0 col1
         col1 <- col1 - deltaCol col0 col1
-        col1 <- col1.Normalize(3.0)
+        col1 <- col1.Normalize(2.0)
                         
         col2 <- col2 -  deltaCol col0 col2
         col2 <- col2 -  deltaCol col1 col2
         col2 <- col2 -  deltaCol col0 col2
         col2 <- col2 -  deltaCol col1 col2
-        col2 <- col2.Normalize(3.0)
+        col2 <- col2.Normalize(2.0)
 
-        let ret = Matrix.Build.DenseOfColumns([col0;col1;col2]) |> fromMatrix
-        printf $"After normalization %A{ret}"
-        ret
+        Matrix.Build.DenseOfColumns([col0;col1;col2]) |> fromMatrix                
 
     let reorthogonalise2 (m: Matrix3) =
         let x = m.Get().Row(0)
@@ -104,8 +102,8 @@ module Matrix3 =
         let yOrt = (crossProductV z x)
         let zORt = z
 
-        Matrix<float>.Build
-            .DenseOfRowVectors(xORt.Normalize(3.0), yOrt.Normalize(3.0), zORt.Normalize(3.0))
+        Matrix<double>.Build
+            .DenseOfRowVectors(xORt.Normalize(2.0), yOrt.Normalize(2.0), zORt.Normalize(2.0))
         |> fromMatrix
 
     let reorthogonalise (m: Matrix3) =
@@ -114,25 +112,23 @@ module Matrix3 =
 
         let error = x.DotProduct(y)
 
-        // if abs(error) <= 0.001 then
-        //     m
-        // else
+        
         let xORt = x - (error / 2.0) * y
         let yOrt = y - (error / 2.0) * x
         let zORt = yOrt |> fromVector |> crossProduct (xORt |> fromVector) |> toVector
 
-        Matrix<float>.Build
-            .DenseOfRowVectors(xORt.Normalize(3.0), yOrt.Normalize(3.0), zORt.Normalize(3.0))
+        Matrix<double>.Build
+            .DenseOfRowVectors(xORt.Normalize(2.0), yOrt.Normalize(2.0), zORt.Normalize(2.0))
         |> fromMatrix
 
 module RotationMatrix3D =
     open Vector3D
 
-    let zero = Matrix<float>.Build.DenseIdentity 3 |> Matrix3.Value
+    let zero = Matrix<double>.Build.DenseIdentity 3 |> Matrix3.Value
 
     let fromAxisAndAngle (Vector3D axis) angle =
 
-        let len = axis.Norm(3.0)
+        let len = axis.Norm(2.0)
 
         if axis <> Vector3D.zero.Get() && len < 1.0 - 1e-14 && len > 1.0 + 1e-14 then
             invalidArg "axis" "axis must be unit vector"

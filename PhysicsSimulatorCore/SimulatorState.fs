@@ -17,6 +17,8 @@ type PhysicalObjectIdentifier =
             invalidArg "i" "must be positive"
 
         i |> Value
+        
+    static member op_Implicit(i) = i |> PhysicalObjectIdentifier.fromInt
 
 type PhysicalObject =
     | Particle of Particle
@@ -113,12 +115,12 @@ module SimulatorState =
                             simObj.PhysicalObject
                             |> updateObject dt simulatorData.TotalForce.[ident] simulatorData.TotalTorque.[ident] }) }
 
-    let applyImpulse simulatorData objectIdentifier impulse (offset: Vector3D) =
+    let applyImpulse simulatorState objectIdentifier impulse (offset: Vector3D) =
         let applyImpulseToObject = applyImpulseToObject impulse offset
 
-        { simulatorData with
+        { simulatorState with
             Objects =
-                simulatorData.Objects.Change(
+                simulatorState.Objects.Change(
                     objectIdentifier,
                     fun simObj ->
                         simObj
