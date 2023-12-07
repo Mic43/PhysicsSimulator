@@ -12,7 +12,7 @@ type RigidBodyVariables =
 type RigidBody =
     { Variables: RigidBodyVariables
       MassCenter: Particle
-      ElasticityCoeff: double
+      ElasticityCoeff: float
       PrincipalRotationalInertia: Matrix3
       PrincipalRotationalInertiaInverse: Matrix3 }
 
@@ -41,7 +41,7 @@ module RigidBody =
         let c2 = sizeZ * sizeY
 
         let mat =
-            Matrix<double>.Build.Diagonal [| m * (b2 + c2); m * (a2 + c2); m * (a2 + b2) |]
+            Matrix<float>.Build.Diagonal [| m * (b2 + c2); m * (a2 + c2); m * (a2 + b2) |]
             |> Matrix3.fromMatrix
 
         create initialOrientation initialVelocity elasticityCoeff mass position mat
@@ -51,7 +51,7 @@ module RigidBody =
     let createSphere initialOrientation initialVelocity elasticityCoeff radius mass position =
         let I = 2.0 * mass * radius * radius / 5.0
 
-        let mat = Matrix<double>.Build.Diagonal(3, 3, I) |> Matrix3.fromMatrix
+        let mat = Matrix<float>.Build.Diagonal(3, 3, I) |> Matrix3.fromMatrix
 
         create initialOrientation initialVelocity elasticityCoeff mass position mat
 

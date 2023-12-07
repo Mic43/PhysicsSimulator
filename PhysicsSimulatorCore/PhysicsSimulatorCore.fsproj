@@ -15,6 +15,7 @@
       <Compile Include="BaseTypes.fs" />
       <Compile Include="Particle.fs" />
       <Compile Include="RigidBody.fs" />
+      <Compile Include="Collider.fs" />
       <Compile Include="CollisionResponse.fs" />
       <Compile Include="SimulatorState.fs" />
       <Compile Include="Simulator.fs" />

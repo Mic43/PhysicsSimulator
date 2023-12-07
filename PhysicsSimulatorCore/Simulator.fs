@@ -17,10 +17,12 @@ type Simulator(simulatorObjects) =
 
     member this.ObjectIdentifiers = simulatorState.Value.Objects.Keys |> set
 
+
+    member this.SimulatorObject
+        with get identifier = (fun _ -> simulatorState.Value.Objects.[identifier]) |> lock objectsLocker
+
     member this.PhysicalObject
-        with get identifier =
-            (fun _ -> simulatorState.Value.Objects.[identifier].PhysicalObject)
-            |> lock objectsLocker
+        with get identifier = this.SimulatorObject(identifier).PhysicalObject
 
     member this.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset =
         (fun _ ->
@@ -30,24 +32,25 @@ type Simulator(simulatorObjects) =
 
     member private this.UpdateTask() =
         let interval = TimeSpan.FromMilliseconds(30.0)
-        
+
         while true do
-           // let simulatorObject() = simulatorState.Value.Objects[0 |> PhysicalObjectIdentifier.fromInt].PhysicalObject
-            
+            // let simulatorObject() = simulatorState.Value.Objects[0 |> PhysicalObjectIdentifier.fromInt].PhysicalObject
+
             // match simulatorObject() with
             //     | RigidBody rb -> printfn $"Before %A{rb.RigidBodyVariables}"
-            
+
             let newData = interval |> SimulatorState.update simulatorState.Value
             (fun _ -> simulatorState.Value <- newData) |> lock objectsLocker
-            
+
             // match simulatorObject() with
             //     | RigidBody rb -> printfn $"After %A{rb.RigidBodyVariables}"
             //TODO: remove
             Thread.Sleep(interval)
+
         ()
 
     member this.StartUpdateThread() =
-                   
+
         updateTask <- Task.Run(this.UpdateTask)
         ()
 

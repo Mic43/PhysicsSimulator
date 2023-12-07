@@ -3,7 +3,6 @@ namespace PhysicsSimulator
 open System
 open FSharpPlus
 
-//TODO: make possible to use as key in dictionary
 type PhysicalObjectIdentifier =
     private
     | Value of int
@@ -30,9 +29,6 @@ type PhysicalObject =
         | RigidBody rigidBody -> rigidBody.MassCenter
 
 
-//type Box = unit
-type Collider = Box of unit
-
 type SimulatorObject =
     { PhysicalObject: PhysicalObject
       Collider: Collider }
@@ -49,17 +45,15 @@ type SimulatorState =
 module SimulatorObject =
     let createDefaultSphere radius mass position =
         { PhysicalObject = (RigidBody.createDefaultSphere 1.0 radius mass position) |> RigidBody
-          Collider = () |> Box }
+          Collider = radius |> Collider.createSphere }
 
     let createDefaultCube size mass position =
         { PhysicalObject = (RigidBody.createDefaultBox 1.0 size size size mass position) |> RigidBody
-          Collider = () |> Box }
+          Collider = (size, size, size) |||> Collider.createBox }
 
 module SimulatorState =
     let private particleIntegrator = ParticleIntegrators.forwardEuler
-
     let private rigidBodyIntegrator = RigidBodyIntegrators.firstOrder
-
     let private earthGAcceleration = Vector3D.create 0.0 0.0 -9.81
 
     let private gravityForce (objects: Map<PhysicalObjectIdentifier, SimulatorObject>) identifier =
@@ -69,7 +63,6 @@ module SimulatorState =
     let private calculateForce (objects: Map<PhysicalObjectIdentifier, SimulatorObject>) identifier =
         gravityForce objects identifier
     //Vector3D.zero
-
     let private applyImpulseToObject impulse offset object =
         match object with
         | RigidBody rigidBody -> RigidBodyMotion.applyImpulse rigidBody impulse offset |> RigidBody

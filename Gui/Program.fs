@@ -1,31 +1,28 @@
 ﻿// For more information see https://aka.ms/fsharp-console-apps
 open System
+open PhysicsSimulator
 open Aardvark.Base
-open Aardvark.Glfw
 open Aardvark.Rendering
 open FSharp.Data.Adaptive
 open Aardvark.SceneGraph
 open Aardvark.Application
 open Aardvark.Application.Slim
-open PhysicsSimulator
 open FSharpPlus
 
 let radius = 2.0
 let mass = 1.0
-let impulseValue = Vector3D.create 1 1 25
+let impulseValue = Vector3D.create 0 0 25
 let impulseOffset = Vector3D.create 0.2 0.5 0.0
 let epsilon = 0.001
 
 let prepareSimulator () =
 
     [ SimulatorObject.createDefaultCube (radius * 2.0) mass Vector3D.zero
-      // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 1.0)
+      SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 1.0)
       ]
     |> Simulator
 
-let getObjectTransformation (simulator: Simulator) (id: PhysicalObjectIdentifier) =
-    // let startTime = System.DateTime.Now
-
+let getObjectTransformation (simulator: Simulator) (id: PhysicalObjectIdentifier) =   
     let toTranslation (v3d: Vector3D) =
         Trafo3d.Translation(v3d.X, v3d.Y, v3d.Z)
 
@@ -57,20 +54,20 @@ let getObjectTransformation (simulator: Simulator) (id: PhysicalObjectIdentifier
     rotationalComponent * transformation
 
 let toRenderable (simulator: Simulator) (id: PhysicalObjectIdentifier) =
-    let physicalObj = simulator.PhysicalObject id
+    let physicalObj = (simulator.SimulatorObject id)
 
     let transformation = getObjectTransformation simulator id
+    let color = C4b(100, 100, 100)
 
-    (match physicalObj with
-     | RigidBody rb ->
-         let color = C4b(100, 100, 100)
+    (match physicalObj.Collider with
+     | PhysicsSimulator.Sphere s -> Sg.sphere' 5 color s.Radius
+     | PhysicsSimulator.Box b ->
+         let position = physicalObj.PhysicalObject.AsParticle().Variables.Position
 
          let bounds =
-             Box3d.FromCenterAndSize(V3d(0, 0, 0), V3d(radius * 2.0, radius * 2.0, radius * 2.0))
+             Box3d.FromCenterAndSize(V3d(position.X, position.Y, position.Z), V3d(b.XSize, b.YSize, b.ZSize))
 
          Sg.box' color bounds)
-    //Sg.sphere' 5 color radius)
-    |> Sg.transform transformation
 
 let onKeyDown (simulator: Simulator) (key: Keys) =
     match key with

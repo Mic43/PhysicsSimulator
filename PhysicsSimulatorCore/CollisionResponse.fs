@@ -11,7 +11,7 @@ type ContactPointData =
         if normal |> Vector3D.toVector |> Vector.norm <> 1.0 then
             invalidArg "normal" "normal vector must me normalized"
 
-        { ContactPointData.Normal = normal
+        { Normal = normal
           OffsetFirstBody = offset1
           OffsetSecondBody = offset2 }
 
@@ -21,7 +21,7 @@ module CollisionResponse =
             targetBody.MassCenter.Variables.Velocity.Get()
             - otherBody.MassCenter.Variables.Velocity.Get()
 
-        let (normal: Vector<double>) =
+        let (normal: Vector<float>) =
             contactPoint.Normal |> Vector3D.toVector
 
         let offset =
