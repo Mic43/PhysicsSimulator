@@ -10,13 +10,26 @@ open MathNet.Numerics.LinearAlgebra
 type Simulator(simulatorObjects) =
 
     let objectsLocker = Object()
-    let mutable updateTask: Task = null
 
     let simulatorState: SimulatorState ref =
         simulatorObjects |> SimulatorState.fromObjects |> ref
 
-    member this.ObjectIdentifiers = simulatorState.Value.Objects.Keys |> set
+    let interval = TimeSpan.FromMilliseconds(30.0)
 
+    let updateSimulation =
+        async {
+
+            let tempState =
+                interval |> SimulatorState.withCollisionResponse (0, 1) simulatorState.Value
+
+            let newState = interval |> SimulatorState.update tempState
+            newState |> printf "%A"
+            (fun _ -> simulatorState.Value <- newState) |> lock objectsLocker
+        }
+
+    let cancellationTokenSource = new CancellationTokenSource()
+
+    member this.ObjectIdentifiers = simulatorState.Value.Objects.Keys |> set
 
     member this.SimulatorObject
         with get identifier = (fun _ -> simulatorState.Value.Objects.[identifier]) |> lock objectsLocker
@@ -27,31 +40,20 @@ type Simulator(simulatorObjects) =
     member this.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset =
         (fun _ ->
             simulatorState.Value <-
-                SimulatorState.applyImpulse simulatorState.Value physicalObjectIdentifier impulseValue impulseOffset)
+                simulatorState.Value
+                |> SimulatorState.applyImpulse physicalObjectIdentifier impulseValue impulseOffset)
         |> lock objectsLocker
 
-    member private this.UpdateTask() =
-        let interval = TimeSpan.FromMilliseconds(30.0)
-
-        while true do
-            // let simulatorObject() = simulatorState.Value.Objects[0 |> PhysicalObjectIdentifier.fromInt].PhysicalObject
-
-            // match simulatorObject() with
-            //     | RigidBody rb -> printfn $"Before %A{rb.RigidBodyVariables}"
-
-            let newData = interval |> SimulatorState.update simulatorState.Value
-            (fun _ -> simulatorState.Value <- newData) |> lock objectsLocker
-
-            // match simulatorObject() with
-            //     | RigidBody rb -> printfn $"After %A{rb.RigidBodyVariables}"
-            //TODO: remove
-            Thread.Sleep(interval)
-
-        ()
-
+    //TODO: prevent multiple calls
     member this.StartUpdateThread() =
+        let rec updateSingleFrame () =
+            async {
+                do! updateSimulation
+                do! interval |> Async.Sleep
 
-        updateTask <- Task.Run(this.UpdateTask)
-        ()
+                return! updateSingleFrame ()
+            }
 
-    member this.PauseUpdateThread() = ()
+        Async.Start(updateSingleFrame (), cancellationTokenSource.Token)
+
+    member this.PauseUpdateThread() = cancellationTokenSource.Cancel()

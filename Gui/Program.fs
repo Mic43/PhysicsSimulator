@@ -9,16 +9,19 @@ open Aardvark.Application
 open Aardvark.Application.Slim
 open FSharpPlus
 
-let radius = 2.0
+let radius = 1.0
 let mass = 1.0
-let impulseValue = Vector3D.create 0 0 25
-let impulseOffset = Vector3D.create 0.2 0.5 0.0
+let impulseValue = Vector3D.create 2 0 0
+let impulseOffset = Vector3D.create 0.0 0.0 0.0
 let epsilon = 0.001
 
 let prepareSimulator () =
 
-    [ SimulatorObject.createDefaultCube (radius * 2.0) mass Vector3D.zero
+    [
+      // SimulatorObject.createDefaultCube (radius * 2.0) mass Vector3D.zero
       SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 1.0)
+      SimulatorObject.createDefaultSphere radius mass (Vector3D.create 4.0 2.0 2.0)
+
       ]
     |> Simulator
 

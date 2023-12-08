@@ -5,6 +5,12 @@ open MathNet.Numerics.LinearAlgebra
 open FSharp.Data.UnitSystems.SI.UnitSymbols
 open MathNet.Numerics.LinearAlgebra
 
+// type SetOf2<'T when 'T: comparison> =
+//     private Content of Set<'T>
+//     
+//     
+//     member 
+
 type Matrix3 =
     private
     | Value of Matrix<float>

@@ -3,6 +3,7 @@
     <PropertyGroup>
         <TargetFramework>net7.0</TargetFramework>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <RootNamespace>PhysicsSimulator</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
@@ -16,6 +17,8 @@
       <Compile Include="Particle.fs" />
       <Compile Include="RigidBody.fs" />
       <Compile Include="Collider.fs" />
+      <Compile Include="SimulatorObject.fs" />
+      <Compile Include="CollisionDetection.fs" />
       <Compile Include="CollisionResponse.fs" />
       <Compile Include="SimulatorState.fs" />
       <Compile Include="Simulator.fs" />
