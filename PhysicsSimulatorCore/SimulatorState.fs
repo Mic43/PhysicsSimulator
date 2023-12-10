@@ -18,7 +18,7 @@ module SimulatorState =
 
     let private gravityForce (objects: Map<PhysicalObjectIdentifier, SimulatorObject>) identifier =
         objects.[identifier].PhysicalObject.AsParticle().Mass * earthGAcceleration.Get()
-        |> Vector3D.fromVector
+        |> Vector3D.ofVector
 
     let private calculateForce (objects: Map<PhysicalObjectIdentifier, SimulatorObject>) identifier =
         // gravityForce objects identifier
@@ -34,7 +34,7 @@ module SimulatorState =
         | Particle p ->
             let acceleration = totalForce.Get() / p.Mass
 
-            let particleIntegrator = particleIntegrator dt (acceleration |> Vector3D.fromVector)
+            let particleIntegrator = particleIntegrator dt (acceleration |> Vector3D.ofVector)
 
             { p with
                 Variables = p.Variables |> particleIntegrator }

@@ -22,7 +22,7 @@ module CollisionDetection =
         // let handleSphereSphere (firstSphere, firstPos) (secondSphere, secondPos) =
         //     let dist = (firstPos.Get() - secondPos.Get()).L2Norm()
         //     None
-                                                                    
+
         match (first.Collider, second.Collider) with
         | Sphere sphere, Sphere sphere2 ->
             let firstPos = first.PhysicalObject.MassCenterPosition()
@@ -40,7 +40,7 @@ module CollisionDetection =
                 let contactPoint2 = secondPos.Get() + normal * sphere2.Radius
 
                 { CollisionData.Normal = normal
-                  ContactPoint = contactPoint1 + (contactPoint2 - contactPoint1) / 2.0 |> Vector3D.fromVector }
+                  ContactPoint = contactPoint1 + (contactPoint2 - contactPoint1) / 2.0 |> Vector3D.ofVector }
                 |> Some
 
         | Sphere sphere, Box box -> failwith "todo"

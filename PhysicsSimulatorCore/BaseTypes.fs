@@ -7,9 +7,9 @@ open MathNet.Numerics.LinearAlgebra
 
 // type SetOf2<'T when 'T: comparison> =
 //     private Content of Set<'T>
-//     
-//     
-//     member 
+//
+//
+//     member
 
 type Matrix3 =
     private
@@ -49,8 +49,13 @@ module Vector3D =
     let create x y z = vector [ x; y; z ] |> Vector3D.Value
     let zero = create 0.0 0.0 0.0
     let (|Vector3D|) (Value value) = value
-    let fromVector vec = vec |> Value
+    let ofVector vec = vec |> Value
     let toVector (vec3d: Vector3D) = vec3d.Get()
+
+    let apply (f: Vector<float> -> Vector<float>) (v: Vector3D)  = v |> toVector |> f |> ofVector
+
+    let apply2 (f: Vector<float> -> Vector<float> -> Vector<float>) (v: Vector3D) (v2: Vector3D)  =
+        (v |> toVector, v2 |> toVector) ||> f |> ofVector
 
     let crossProduct (first: Vector3D) (second: Vector3D) =
         let x = (first.Y * second.Z) - (first.Z * second.Y)
@@ -60,7 +65,7 @@ module Vector3D =
         (x, y, z) |||> create
 
     let crossProductV (first) (second) =
-        second |> fromVector |> crossProduct (first |> fromVector) |> toVector
+        second |> ofVector |> crossProduct (first |> ofVector) |> toVector
 
 module Matrix3 =
     open Vector3D
@@ -117,7 +122,7 @@ module Matrix3 =
 
         let xORt = x - (error / 2.0) * y
         let yOrt = y - (error / 2.0) * x
-        let zORt = yOrt |> fromVector |> crossProduct (xORt |> fromVector) |> toVector
+        let zORt = yOrt |> ofVector |> crossProduct (xORt |> ofVector) |> toVector
 
         Matrix<float>.Build
             .DenseOfRowVectors(xORt.Normalize(2.0), yOrt.Normalize(2.0), zORt.Normalize(2.0))

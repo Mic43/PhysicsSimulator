@@ -19,23 +19,23 @@ module CollisionResponse =
 
                 let vOffset =
                     relativeVelocity + (offset
-                    |> Vector3D.fromVector
+                    |> Vector3D.ofVector
                     |> Vector3D.crossProduct targetBody.Variables.AngularMomentum
                     |> Vector3D.toVector)
 
                 let vNorm = vOffset.DotProduct(normal) * normal
-                //TODO: elasticity callculation probalby wrong
-                let vNormAfterCol = -targetBody.ElasticityCoeff * otherBody.ElasticityCoeff * vNorm
+                
+                let vNormAfterCol = -(min targetBody.ElasticityCoeff otherBody.ElasticityCoeff) * vNorm
 
                 let inverseRotInertia =
                     targetBody.PrincipalRotationalInertiaInverse
                     |> RigidBodyMotion.calcFullRotationalInertia targetBody.Variables.Orientation
 
-                let offsetMatrix = (offset |> Vector3D.fromVector).HatOperator()
+                let offsetMatrix = (offset |> Vector3D.ofVector).HatOperator()
 
                 let massMatrix =
                     targetBody.MassCenter.GetInverseMassMatrix().Get()
                     - offsetMatrix.Get() * inverseRotInertia.Get() * offsetMatrix.Get()
                     |> Matrix.inverse
 
-                massMatrix * (vNormAfterCol - vNorm) |> Vector3D.fromVector
+                massMatrix * (vNormAfterCol - vNorm) |> Vector3D.ofVector

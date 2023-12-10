@@ -76,12 +76,12 @@ module RigidBodyIntegrators =
             let angle = axis.Norm(2.0)
 
             let newOrientation =
-                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> fromVector) angle)
+                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> ofVector) angle)
                     .Get()
                 * old.Orientation.Get()
 
             { Orientation = newOrientation |> fromMatrix |> orthonormalize
-              AngularMomentum = newAngMomentum |> fromVector }
+              AngularMomentum = newAngMomentum |> ofVector }
 
     let (augmentedSecondOrder: RigidBodyIntegrator) =
         fun dt (Vector3D torque) inertiaInverse old ->
@@ -93,16 +93,11 @@ module RigidBodyIntegrators =
 
             let angularVelocity = inertiaInverse.Get() * oldAngMomentum
 
-            let v =
-                oldAngMomentum
-                |> fromVector
-                |> crossProduct (angularVelocity |> fromVector)
-                |> toVector
+            let v = oldAngMomentum |> crossProductV angularVelocity
 
             let deriv = inertiaInverse.Get() * (torque - v)
 
-            let comp1 =
-                angularVelocity |> fromVector |> crossProduct (deriv |> fromVector) |> toVector
+            let comp1 = angularVelocity |> crossProductV deriv
 
             let axisAverage =
                 angularVelocity
@@ -114,12 +109,12 @@ module RigidBodyIntegrators =
             let angle = axis.Norm(2.0)
 
             let newOrientation =
-                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> fromVector) angle)
+                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> ofVector) angle)
                     .Get()
                 * old.Orientation.Get()
 
             { Orientation = newOrientation |> fromMatrix |> orthonormalize
-              AngularMomentum = old.AngularMomentum.Get() + angMomentumChange |> fromVector }
+              AngularMomentum = (old.AngularMomentum, angMomentumChange |> ofVector) ||> apply2 (+) }
 
 module RigidBodyMotion =
 
@@ -133,7 +128,12 @@ module RigidBodyMotion =
 
         { rigidBody with
             MassCenter = impulse |> ParticleMotion.applyImpulse rigidBody.MassCenter
-            Variables.AngularMomentum = impulse |> Vector3D.crossProduct offset }
+            Variables.AngularMomentum =
+                (rigidBody.Variables.AngularMomentum, impulse |> Vector3D.crossProduct offset)
+                ||> Vector3D.apply2 (+) }
+    // (rigidBody.Variables.AngularMomentum.Get()
+    //  + (impulse |> Vector3D.crossProduct offset).Get())
+    // |> Vector3D.ofVector }
 
     let update
         (particleIntegrator: ParticleIntegrator)
@@ -145,7 +145,7 @@ module RigidBodyMotion =
         =
         let acceleration =
             (totalForce |> Vector3D.toVector) / rigidBody.MassCenter.Mass
-            |> Vector3D.fromVector
+            |> Vector3D.ofVector
 
         let rotInInv =
             rigidBody.PrincipalRotationalInertiaInverse
