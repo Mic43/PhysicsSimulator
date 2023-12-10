@@ -25,7 +25,7 @@ let prepareSimulator () =
       ]
     |> Simulator
 
-let getObjectTransformation (simulator: Simulator) (id: PhysicalObjectIdentifier) =   
+let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifier) =   
     let toTranslation (v3d: Vector3D) =
         Trafo3d.Translation(v3d.X, v3d.Y, v3d.Z)
 
@@ -50,13 +50,11 @@ let getObjectTransformation (simulator: Simulator) (id: PhysicalObjectIdentifier
         | Particle _ -> Trafo3d(Rot3d.Identity)
 
     //linearComponent |> printfn "%A"
-
-
     let transformation = linearComponent.Position |> toTranslation
 
     rotationalComponent * transformation
 
-let toRenderable (simulator: Simulator) (id: PhysicalObjectIdentifier) =
+let toRenderable (simulator: Simulator) (id: SimulatorObjectIdentifier) =
     let physicalObj = (simulator.SimulatorObject id)
 
     let transformation = getObjectTransformation simulator id
@@ -76,7 +74,7 @@ let onKeyDown (simulator: Simulator) (key: Keys) =
     match key with
     | Keys.Space ->
         transact (fun () ->
-            let physicalObjectIdentifier = 0 |> PhysicalObjectIdentifier.fromInt
+            let physicalObjectIdentifier = 0 |> SimulatorObjectIdentifier.fromInt
             simulator.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset)
 
     | _ -> ()

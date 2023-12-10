@@ -5,9 +5,9 @@ open FSharpPlus
 
 type SimulatorState =
     private
-        { Objects: Map<PhysicalObjectIdentifier, SimulatorObject>
-          TotalForce: Map<PhysicalObjectIdentifier, Vector3D>
-          TotalTorque: Map<PhysicalObjectIdentifier, Vector3D> }
+        { Objects: Map<SimulatorObjectIdentifier, SimulatorObject>
+          TotalForce: Map<SimulatorObjectIdentifier, Vector3D>
+          TotalTorque: Map<SimulatorObjectIdentifier, Vector3D> }
 
     member this.GetObjects() = this.Objects
 
@@ -16,11 +16,11 @@ module SimulatorState =
     let private rigidBodyIntegrator = RigidBodyIntegrators.firstOrder
     let private earthGAcceleration = Vector3D.create 0.0 0.0 -9.81
 
-    let private gravityForce (objects: Map<PhysicalObjectIdentifier, SimulatorObject>) identifier =
+    let private gravityForce (objects: Map<SimulatorObjectIdentifier, SimulatorObject>) identifier =
         objects.[identifier].PhysicalObject.AsParticle().Mass * earthGAcceleration.Get()
         |> Vector3D.ofVector
 
-    let private calculateForce (objects: Map<PhysicalObjectIdentifier, SimulatorObject>) identifier =
+    let private calculateForce (objects: Map<SimulatorObjectIdentifier, SimulatorObject>) identifier =
         // gravityForce objects identifier
         Vector3D.zero
 
@@ -54,9 +54,9 @@ module SimulatorState =
 
     let fromObjects (objects: SimulatorObject seq) =
         let identifiers =
-            objects |> Seq.mapi (fun i _ -> (i |> PhysicalObjectIdentifier.fromInt))
+            objects |> Seq.mapi (fun i _ -> (i |> SimulatorObjectIdentifier.fromInt))
 
-        let objectMap: Map<PhysicalObjectIdentifier, SimulatorObject> =
+        let objectMap: Map<SimulatorObjectIdentifier, SimulatorObject> =
             objects |> Seq.zip identifiers |> Map.ofSeq
 
         { Objects = objectMap
@@ -66,7 +66,7 @@ module SimulatorState =
             |> Map.ofSeq
           TotalTorque = identifiers |> Seq.map (fun i -> (i, Vector3D.zero)) |> Map.ofSeq }
 
-    let update simulatorState (dt: TimeSpan) : SimulatorState =
+    let update (dt: TimeSpan) simulatorState : SimulatorState =
         { simulatorState with
             Objects =
                 simulatorState.Objects
@@ -90,8 +90,7 @@ module SimulatorState =
                                 PhysicalObject = so.PhysicalObject |> applyImpulseToObject })
                 ) }
 
-
-    let private handleCollision (obj1NextState, obj2NextState) (id1, id2) (curSimulationState: SimulatorState) =
+    let private tryHandleCollision (obj1NextState, obj2NextState) (id1, id2) (curSimulationState: SimulatorState) =
         (obj1NextState, obj2NextState)
         ||> CollisionDetection.areColliding
         |> Option.bind (fun cd ->
@@ -112,7 +111,7 @@ module SimulatorState =
             |> applyImpulse id2 impulse2 offset2
             |> Some)
 
-    let withCollisionResponse (id1, id2) (curSimulationState: SimulatorState) dt =
+    let private withCollisionResponse dt (curSimulationState: SimulatorState) (id1, id2) =
         let obj1NextState =
             { curSimulationState.Objects[id1] with
                 PhysicalObject = id1 |> updateObjectById curSimulationState dt }
@@ -121,5 +120,22 @@ module SimulatorState =
             { curSimulationState.Objects[id2] with
                 PhysicalObject = id2 |> updateObjectById curSimulationState dt }
 
-        handleCollision (obj1NextState, obj2NextState) (id1, id2) curSimulationState
+        tryHandleCollision (obj1NextState, obj2NextState) (id1, id2) curSimulationState
         |> Option.defaultValue curSimulationState
+
+    let withCollisionResponseGlobal
+        dt
+        (collidingObjectsCandidates: SimulatorObjectIdentifier Set)
+        (curSimulationState: SimulatorState)
+        =
+        let setOf2ToPair set =
+            match (set |> Set.toList) with
+            | [ v1; v2 ] -> (v1, v2)
+            | _ -> invalidArg "set" "set must be set of two "
+
+        let withCollisionResponse simulatorState objectIdentifiers =
+            objectIdentifiers |> setOf2ToPair |> withCollisionResponse dt simulatorState
+
+        collidingObjectsCandidates
+        |> Utils.subSetsOf2Tail
+        |> Set.fold withCollisionResponse curSimulationState

@@ -18,11 +18,7 @@ type CollisionData =
 module CollisionDetection =
 
     let areColliding first second : CollisionData option =
-
-        // let handleSphereSphere (firstSphere, firstPos) (secondSphere, secondPos) =
-        //     let dist = (firstPos.Get() - secondPos.Get()).L2Norm()
-        //     None
-
+     
         match (first.Collider, second.Collider) with
         | Sphere sphere, Sphere sphere2 ->
             let firstPos = first.PhysicalObject.MassCenterPosition()

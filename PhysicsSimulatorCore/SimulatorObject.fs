@@ -1,6 +1,6 @@
 namespace PhysicsSimulator
 
-type PhysicalObjectIdentifier =
+type SimulatorObjectIdentifier =
     private
     | Value of int
 
@@ -14,7 +14,7 @@ type PhysicalObjectIdentifier =
 
         i |> Value
 
-    static member op_Implicit(i) = i |> PhysicalObjectIdentifier.fromInt
+    static member op_Implicit(i) = i |> SimulatorObjectIdentifier.fromInt
 
 type PhysicalObject =
     | Particle of Particle

@@ -52,9 +52,9 @@ module Vector3D =
     let ofVector vec = vec |> Value
     let toVector (vec3d: Vector3D) = vec3d.Get()
 
-    let apply (f: Vector<float> -> Vector<float>) (v: Vector3D)  = v |> toVector |> f |> ofVector
+    let apply (f: Vector<float> -> Vector<float>) (v: Vector3D) = v |> toVector |> f |> ofVector
 
-    let apply2 (f: Vector<float> -> Vector<float> -> Vector<float>) (v: Vector3D) (v2: Vector3D)  =
+    let apply2 (f: Vector<float> -> Vector<float> -> Vector<float>) (v: Vector3D) (v2: Vector3D) =
         (v |> toVector, v2 |> toVector) ||> f |> ofVector
 
     let crossProduct (first: Vector3D) (second: Vector3D) =
@@ -160,3 +160,31 @@ module RotationMatrix3D =
                 uz * uy * cosA + ux * sinA
                 cosA + uz * uz * cosInv ] ]
         |> Matrix3.Value
+
+module Utils =
+    let rec subSetsOf2<'t when 't: comparison> (set: 't Set) =
+        if (set.Count < 2) then
+            Set.empty
+        elif (set.Count = 2) then
+            set |> Set.singleton
+        else
+            let maximumElement = set |> Set.toSeq |> Seq.head
+            let subset = set |> Set.remove maximumElement
+
+            subset
+            |> subSetsOf2
+            |> Set.union (subset |> Set.map (fun el -> [ el; maximumElement ] |> Set.ofList))
+
+    [<TailCall>]
+    let rec private subSetsOf2Ag<'t when 't: comparison> (processed: 't Set) rest accumulator =
+        if rest |> Set.count = 0 then
+            accumulator
+        else
+            let maximumElement = rest |> Set.toSeq |> Seq.head
+
+            subSetsOf2Ag
+                (processed |> Set.add maximumElement)
+                (rest |> Set.remove maximumElement)
+                accumulator |> Set.union (processed |> Set.map (fun el -> [ el; maximumElement ] |> Set.ofList))
+
+    let subSetsOf2Tail set = subSetsOf2Ag Set.empty set Set.empty

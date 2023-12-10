@@ -18,12 +18,16 @@ type Simulator(simulatorObjects) =
 
     let updateSimulation =
         async {
+            let collidingObjectsCandidates =
+                (simulatorState.Value.Objects |> Map.keys |> Set.ofSeq)
 
-            let tempState =
-                interval |> SimulatorState.withCollisionResponse (0, 1) simulatorState.Value
+            let newState =
+                simulatorState.Value
+                //      |> SimulatorState.withCollisionResponse interval (0, 1)
+                |> SimulatorState.withCollisionResponseGlobal interval collidingObjectsCandidates
+                |> SimulatorState.update interval
 
-            let newState = interval |> SimulatorState.update tempState
-            newState |> printf "%A"
+            //newState |> printf "%A"
             (fun _ -> simulatorState.Value <- newState) |> lock objectsLocker
         }
 
