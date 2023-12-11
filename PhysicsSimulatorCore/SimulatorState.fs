@@ -95,21 +95,28 @@ module SimulatorState =
         ||> CollisionDetection.areColliding
         |> Option.bind (fun cd ->
             "Collision detected " |> printfn "%A"
-            let calcImpulse = cd |> CollisionResponse.calculateImpulse
+          //  let calcImpulse = cd |> CollisionResponse.calculateImpulse
+            let cd2 = { cd with Normal = cd.Normal |> Vector3D.apply (~-) }
 
             let physicalObject1 = obj1NextState.PhysicalObject
             let physicalObject2 = obj2NextState.PhysicalObject
 
-            let impulse1 = calcImpulse physicalObject1 physicalObject2
-            let offset1 = (cd.ContactPoint.Get() - physicalObject1.MassCenterPosition().Get())
+            let impulse1 = CollisionResponse.calculateImpulse cd physicalObject1 physicalObject2
+            let offset1 = cd.ContactPoint.Get() - physicalObject1.MassCenterPosition().Get()
 
-            let impulse2 = calcImpulse physicalObject2 physicalObject1
-            let offset2 = (cd.ContactPoint.Get() - physicalObject2.MassCenterPosition().Get())
+            let impulse2 = CollisionResponse.calculateImpulse cd2 physicalObject2 physicalObject1
+            let offset2 = cd.ContactPoint.Get() - physicalObject2.MassCenterPosition().Get()
 
-            curSimulationState
-            |> applyImpulse id1 impulse1 offset1
-            |> applyImpulse id2 impulse2 offset2
-            |> Some)
+            let nextSimulationState =
+                curSimulationState
+                |> applyImpulse id1 impulse1 offset1
+                |> applyImpulse id2 impulse2 offset2
+            
+            printfn "State after collision: "
+            printfn $"%A{nextSimulationState.Objects[id1].PhysicalObject}"
+            printfn $"%A{nextSimulationState.Objects[id2].PhysicalObject}"
+
+            nextSimulationState |> Some)
 
     let private withCollisionResponse dt (curSimulationState: SimulatorState) (id1, id2) =
         let obj1NextState =

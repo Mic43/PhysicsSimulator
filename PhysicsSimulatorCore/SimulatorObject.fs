@@ -32,10 +32,17 @@ type SimulatorObject =
       Collider: Collider }
 
 module SimulatorObject =
+    let defaultElasticityCoeff = 0.9
+    let defaultFrictionCoeff = 0.5
+
     let createDefaultSphere radius mass position =
-        { PhysicalObject = (RigidBody.createDefaultSphere 1.0 radius mass position) |> RigidBody
+        { PhysicalObject =
+            (RigidBody.createDefaultSphere defaultElasticityCoeff defaultFrictionCoeff radius mass position)
+            |> RigidBody
           Collider = radius |> Collider.createSphere }
 
     let createDefaultCube size mass position =
-        { PhysicalObject = (RigidBody.createDefaultBox 1.0 size size size mass position) |> RigidBody
+        { PhysicalObject =
+            (RigidBody.createDefaultBox defaultElasticityCoeff defaultFrictionCoeff size size size mass position)
+            |> RigidBody
           Collider = (size, size, size) |||> Collider.createBox }

@@ -36,7 +36,7 @@ type Simulator(simulatorObjects) =
     member this.ObjectIdentifiers = simulatorState.Value.Objects.Keys |> set
 
     member this.SimulatorObject
-        with get identifier = (fun _ -> simulatorState.Value.Objects.[identifier]) |> lock objectsLocker
+        with get identifier = (fun _ -> simulatorState.Value.Objects[identifier]) |> lock objectsLocker
 
     member this.PhysicalObject
         with get identifier = this.SimulatorObject(identifier).PhysicalObject

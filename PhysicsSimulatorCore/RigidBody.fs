@@ -13,6 +13,7 @@ type RigidBody =
     { Variables: RigidBodyVariables
       MassCenter: Particle
       ElasticityCoeff: float
+      FrictionCoeff: float 
       PrincipalRotationalInertia: Matrix3
       PrincipalRotationalInertiaInverse: Matrix3 }
 
@@ -21,7 +22,13 @@ type Torque = Vector3D
 type RigidBodyIntegrator = TimeSpan -> Torque -> RotationalInertiaInverse -> RigidBodyVariables -> RigidBodyVariables
 
 module RigidBody =
-    let create initialOrientation initialVelocity elasticityCoeff mass position principalRotationalInertia =
+    let create initialOrientation initialVelocity elasticityCoeff frictionCoeff mass position principalRotationalInertia =
+        if elasticityCoeff < 0.0 || elasticityCoeff > 1.0 then
+            "Invalid value " |> invalidArg (nameof elasticityCoeff)
+            
+        if frictionCoeff < 0.0 || frictionCoeff > 1.0 then
+            "Invalid value " |> invalidArg (nameof frictionCoeff)
+
         { Variables =
             { Orientation = initialOrientation
               AngularMomentum = Vector3D.zero }
@@ -32,9 +39,10 @@ module RigidBody =
               Particle.Mass = mass }
           PrincipalRotationalInertia = principalRotationalInertia
           PrincipalRotationalInertiaInverse = principalRotationalInertia.Get().Inverse() |> Matrix3.fromMatrix
-          ElasticityCoeff = elasticityCoeff }
+          ElasticityCoeff = elasticityCoeff
+          FrictionCoeff = frictionCoeff }
 
-    let createBox initialOrientation initialVelocity elasticityCoeff sizeX sizeY sizeZ mass position =
+    let createBox initialOrientation initialVelocity elasticityCoeff frictionCoeff sizeX sizeY sizeZ mass position =
         let m = mass / 12.0
         let a2 = sizeX * sizeX
         let b2 = sizeY * sizeY
@@ -44,16 +52,16 @@ module RigidBody =
             Matrix<float>.Build.Diagonal [| m * (b2 + c2); m * (a2 + c2); m * (a2 + b2) |]
             |> Matrix3.fromMatrix
 
-        create initialOrientation initialVelocity elasticityCoeff mass position mat
+        create initialOrientation initialVelocity elasticityCoeff frictionCoeff mass position mat
 
     let createDefaultBox = createBox RotationMatrix3D.zero Vector3D.zero
 
-    let createSphere initialOrientation initialVelocity elasticityCoeff radius mass position =
+    let createSphere initialOrientation initialVelocity elasticityCoeff frictionCoeff radius mass position =
         let I = 2.0 * mass * radius * radius / 5.0
 
         let mat = Matrix<float>.Build.Diagonal(3, 3, I) |> Matrix3.fromMatrix
 
-        create initialOrientation initialVelocity elasticityCoeff mass position mat
+        create initialOrientation initialVelocity elasticityCoeff frictionCoeff mass position mat
 
     let createDefaultSphere = createSphere RotationMatrix3D.zero Vector3D.zero
 
