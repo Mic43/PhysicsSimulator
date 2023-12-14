@@ -11,27 +11,47 @@ open FSharpPlus
 
 let radius = 1.0
 let mass = 1.0
-let impulseValue = Vector3D.create 0 0 -3
+let impulseValue = Vector3D.create 3 0 0
 let impulseOffset = Vector3D.create 0.0 0.0 0.0
 let epsilon = 0.001
+
+
+let prepareSimulator2 () =
+    [ SimulatorObject.createDefaultSphere radius mass (Vector3D.create -2.0 1.0 1.0) ]
+    @ ([ 1..4 ]
+       |> List.map (fun i ->
+           SimulatorObject.createDefaultSphere
+               radius
+               mass
+               (Vector3D.create (1.0 + (radius + 0.05) * 2.0 * (i |> float)) 1.0 1.0)))
+    |> Simulator
+// [
+//
+//   SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 7.0)
+//   SimulatorObject.createDefaultSphere radius mass (Vector3D.create -0.9 1.0 3.0)
+//   // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 -1.0)
+//
+//   ]
+// |> Simulator
+
 
 let prepareSimulator () =
 
     [
-      //SimulatorObject.createDefaultCube (radius * 2.0) mass Vector3D.zero
-      SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 7.0)
-      SimulatorObject.createDefaultSphere radius mass (Vector3D.create -0.9 1.0 3.0)
+      SimulatorObject.createDefaultCube (radius * 2.0) mass Vector3D.zero
+      SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 3.0 0.0 0.0)
+    //  SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 7.0)
+     // SimulatorObject.createDefaultSphere radius mass (Vector3D.create -0.95 1.0 3.0)
       // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 -1.0)
 
       ]
     |> Simulator
 
-let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifier) =   
+let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifier) =
     let toTranslation (v3d: Vector3D) =
         Trafo3d.Translation(v3d.X, v3d.Y, v3d.Z)
 
     let toRotation (orientationMatrix: Matrix3) =
-
         let matrix = orientationMatrix.Get()
         let tmp = matrix.ToArray()
 

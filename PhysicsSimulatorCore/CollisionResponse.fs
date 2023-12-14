@@ -10,8 +10,12 @@ module CollisionResponse =
         let impulse = impulse.Get()
         let normal = collisionNormal.Get()
 
-        (impulse - impulse.DotProduct(normal) * normal).L2Norm()
-        <= frictionCoeff * impulse.DotProduct(normal)
+        let impulseNormal = normal.DotProduct(impulse) * normal
+        let impulseTg = impulse - impulseNormal
+        //let temp = impulse.DotProduct(normal)
+        //   (impulse - temp * normal).L2Norm() <= frictionCoeff * impulse.DotProduct(normal)
+        let tmp = impulse.DotProduct(normal)
+        tmp > 0 && impulseTg.L2Norm() <= frictionCoeff * tmp
 
     let private calculateSlidingFrictionImpulse
         massMatrix
@@ -44,7 +48,8 @@ module CollisionResponse =
             let normal = collisionData.Normal.Get()
 
             let offset =
-                targetBody.MassCenter.Variables.Position.Get() - collisionData.ContactPoint.Get()
+                targetBody.MassCenter.Variables.Position.Get()
+                - collisionData.ContactPoint.Get()
 
             let vOffset = // velocity of colliding point before collision
                 relativeVelocity
@@ -69,5 +74,5 @@ module CollisionResponse =
 
             if impulse |> isImpulseInFrictionCone normal compoundFriction then
                 impulse
-            else       
-                 (calculateSlidingFrictionImpulse massMatrix compoundElasticity compoundFriction normal vOffset)
+            else
+                (calculateSlidingFrictionImpulse massMatrix compoundElasticity compoundFriction normal vOffset)

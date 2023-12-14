@@ -14,7 +14,7 @@ type Simulator(simulatorObjects) =
     let simulatorState: SimulatorState ref =
         simulatorObjects |> SimulatorState.fromObjects |> ref
 
-    let interval = TimeSpan.FromMilliseconds(30.0)
+    let interval = TimeSpan.FromMilliseconds(20.0)
 
     let updateSimulation =
         async {

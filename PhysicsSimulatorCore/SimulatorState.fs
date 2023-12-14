@@ -95,7 +95,7 @@ module SimulatorState =
         ||> CollisionDetection.areColliding
         |> Option.bind (fun cd ->
             "Collision detected " |> printfn "%A"
-          //  let calcImpulse = cd |> CollisionResponse.calculateImpulse
+          
             let cd2 = { cd with Normal = cd.Normal |> Vector3D.apply (~-) }
 
             let physicalObject1 = obj1NextState.PhysicalObject
