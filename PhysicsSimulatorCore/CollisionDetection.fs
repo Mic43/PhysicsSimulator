@@ -32,13 +32,13 @@ module CollisionDetection =
         let firstPos = first.PhysicalObject.MassCenterPosition()
         let secondPos = second.PhysicalObject.MassCenterPosition()
 
-        let normal = firstPos.Get() - secondPos.Get()
-        let dist = normal.L2Norm()
-
         match (first.PhysicalObject, second.PhysicalObject) with
         | RigidBody body1, RigidBody body2 ->
             match (first.Collider, second.Collider) with
             | Sphere sphere, Sphere sphere2 ->
+                let normal = firstPos.Get() - secondPos.Get()
+                let dist = normal.L2Norm()
+
                 if dist > sphere.Radius + sphere2.Radius then
                     None
                 else
@@ -51,27 +51,9 @@ module CollisionDetection =
                         (contactPoint1 + (contactPoint2 - contactPoint1) / 2.0 |> Vector3D.ofVector)
 
                     CollisionData.Create 0.0 normal contactPoint |> Some
-            | Sphere sphere, Box box -> failwith "todo"
-            | Box box, Sphere sphere -> failwith "todo"
+            | Sphere sphere, Box box ->  None
+            | Box box, Sphere sphere -> None
             | Box box1, Box box2 ->
-
-                let orients = [ body1; body2 ] |> List.map _.Variables.Orientation 
-                let a = orients |> Seq.map (_.Get().Column(0))
-                let b = orients |> Seq.map (_.Get().Column(1))
-                let c = orients |> Seq.map (_.Get().Column(2))
-
-                let l = orients[0].Get().EnumerateColumns()
-                let r = orients[1].Get().EnumerateColumns()
-                let edgesAxes = r |> Seq.apply (l |> Seq.map crossProductV)
-
-                let axes =
-                    seq {
-                        a
-                        b
-                        c
-                        edgesAxes
-                    }
-                    >>= id
 
                 let getCollisionDataForAxis
                     (vertices1: Vector<float> seq)
@@ -87,28 +69,46 @@ module CollisionDetection =
                     let minMax =
                         [ v1; v2 ]
                         |> List.map (fun s ->
-                            {| Min = s |> Seq.minBy (fun (_, proj) -> proj)
-                               Max = s |> Seq.maxBy (fun (_, proj) -> proj) |})
+                            {| Min = s |> Seq.minBy snd
+                               Max = s |> Seq.maxBy snd |})
 
                     let min1, a = minMax[0].Min
                     let max1, b = minMax[0].Max
                     let min2, c = minMax[1].Min
                     let max2, d = minMax[1].Max
 
-                    let normal = axis
-
                     if a <= c && b >= c then
-                        let penetration = c - b
+                        let penetration = b - c // ??
+                        let normal = axis
 
                         CollisionData.Create penetration normal (max1 + normal * penetration |> ofVector)
                         |> Some
                     elif c <= a && d >= a then
-                        let penetration = a - d
+                        let penetration = d - a // ??
+                        let normal = -axis
 
                         CollisionData.Create penetration normal (min1 + normal * penetration |> ofVector)
                         |> Some
                     else
                         None
+
+                let facesAxes =
+                    [ body1; body2 ]
+                    |> List.map _.Variables.Orientation
+                    |> List.map _.Get().EnumerateColumns()
+
+                let edgesAxes =
+                    facesAxes[1]
+                    |> Seq.apply (facesAxes[0] |> Seq.map crossProductV)
+                    |> Seq.map _.Normalize(2.0)
+
+                let axes =
+                    seq {
+                        facesAxes |> Seq.bind id
+                        edgesAxes
+                    }
+                    >>= id
+                    |> Seq.filter (fun v -> v <> vector [ 0.0; 0.0; 0.0 ])
 
                 let vertices1 = getVertices box1 body1
                 let vertices2 = getVertices box2 body2

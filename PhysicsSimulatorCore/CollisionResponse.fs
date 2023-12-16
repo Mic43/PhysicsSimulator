@@ -15,10 +15,10 @@ module CollisionResponse =
         //let temp = impulse.DotProduct(normal)
         //   (impulse - temp * normal).L2Norm() <= frictionCoeff * impulse.DotProduct(normal)
         let tmp = impulse.DotProduct(normal)
-        tmp > 0 && impulseTg.L2Norm() <= frictionCoeff * tmp
+        impulseTg.L2Norm() <= frictionCoeff * tmp
 
     let private calculateSlidingFrictionImpulse
-        massMatrix
+        (massMatrix:Matrix<float>)
         elasticityCoeff
         frictionCoeff
         collisionNormal
@@ -26,14 +26,17 @@ module CollisionResponse =
         =
         let vNorm = vOffset.DotProduct(collisionNormal)
         let vTan = vOffset - vNorm * collisionNormal
+        
+        //TODO: vTan is zero sometimes!
         let t = vTan / vTan.L2Norm()
-
+    
         let jn =
             -(elasticityCoeff + 1.0) * vNorm
             / (collisionNormal * massMatrix * (collisionNormal - frictionCoeff * t))
-
+    
         jn * collisionNormal - frictionCoeff * jn * t |> Vector3D.ofVector
 
+       
     let calculateImpulse (collisionData: CollisionData) (target: PhysicalObject) (other: PhysicalObject) =
 
         match (target, other) with
@@ -71,8 +74,9 @@ module CollisionResponse =
                 |> Matrix.inverse
 
             let impulse = massMatrix * (vNormAfterCol - vNorm) |> Vector3D.ofVector
+            impulse
 
-            if impulse |> isImpulseInFrictionCone normal compoundFriction then
-                impulse
-            else
-                (calculateSlidingFrictionImpulse massMatrix compoundElasticity compoundFriction normal vOffset)
+            // if impulse |> isImpulseInFrictionCone normal compoundFriction then
+            //      impulse
+            // else
+            //      (calculateSlidingFrictionImpulse massMatrix compoundElasticity compoundFriction normal vOffset)

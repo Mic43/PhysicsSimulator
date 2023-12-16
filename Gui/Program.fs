@@ -11,7 +11,7 @@ open FSharpPlus
 
 let radius = 1.0
 let mass = 1.0
-let impulseValue = Vector3D.create 3 0 0
+let impulseValue = Vector3D.create 0 0 -3
 let impulseOffset = Vector3D.create 0.0 0.0 0.0
 let epsilon = 0.001
 
@@ -37,11 +37,12 @@ let prepareSimulator2 () =
 
 let prepareSimulator () =
 
-    [
-      SimulatorObject.createDefaultCube (radius * 2.0) mass Vector3D.zero
-      SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 3.0 0.0 0.0)
-    //  SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 7.0)
-     // SimulatorObject.createDefaultSphere radius mass (Vector3D.create -0.95 1.0 3.0)
+    [ SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 0 0.0 0.0)
+      SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 0 0.0 -4.0)
+
+      //SimulatorObject.createDefaultSphere (radius) mass (Vector3D.create 4 0.0 0)
+      // SimulatorObject.createDefaultSphere radius mass Vector3D.zero
+      // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 2.1 0.0 0.0)
       // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 -1.0)
 
       ]
@@ -78,16 +79,14 @@ let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifie
 let toRenderable (simulator: Simulator) (id: SimulatorObjectIdentifier) =
     let physicalObj = (simulator.SimulatorObject id)
 
-    let transformation = getObjectTransformation simulator id
+    //  let transformation = getObjectTransformation simulator id
     let color = C4b(100, 100, 100)
 
     (match physicalObj.Collider with
      | PhysicsSimulator.Sphere s -> Sg.sphere' 5 color s.Radius
      | PhysicsSimulator.Box b ->
          let position = physicalObj.PhysicalObject.AsParticle().Variables.Position
-
-         let bounds =
-             Box3d.FromCenterAndSize(V3d(position.X, position.Y, position.Z), V3d(b.XSize, b.YSize, b.ZSize))
+         let bounds = Box3d.FromCenterAndSize(V3d(0, 0, 0), V3d(b.XSize, b.YSize, b.ZSize))
 
          Sg.box' color bounds)
 
@@ -96,7 +95,9 @@ let onKeyDown (simulator: Simulator) (key: Keys) =
     | Keys.Space ->
         transact (fun () ->
             let physicalObjectIdentifier = 0 |> SimulatorObjectIdentifier.fromInt
-            simulator.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset)
+            simulator.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset
+           // simulator.ApplyImpulse (1 |> SimulatorObjectIdentifier.fromInt) impulseValue impulseOffset
+        )
 
     | _ -> ()
 
@@ -108,7 +109,7 @@ let main _ =
     use app = new OpenGlApplication()
     let win = app.CreateGameWindow(samples = 8)
 
-    let initialView = CameraView.LookAt(V3d(2.0, 2.0, 2.0), V3d.Zero, V3d.OOI)
+    let initialView = CameraView.LookAt(V3d(0.0, -2.0, 2.0), V3d.Zero, V3d.OOI)
 
     let frustum =
         win.Sizes

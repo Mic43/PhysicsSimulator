@@ -78,7 +78,7 @@ module SimulatorState =
 
     let applyImpulse objectIdentifier impulse (offset: Vector3D) simulatorState =
         let applyImpulseToObject = applyImpulseToObject impulse offset
-
+        
         { simulatorState with
             Objects =
                 simulatorState.Objects.Change(
@@ -95,6 +95,7 @@ module SimulatorState =
         ||> CollisionDetection.areColliding
         |> Option.bind (fun cd ->
             "Collision detected " |> printfn "%A"
+            cd |> printfn "%A"
           
             let cd2 = { cd with Normal = cd.Normal |> Vector3D.apply (~-) }
 
@@ -112,9 +113,13 @@ module SimulatorState =
                 |> applyImpulse id1 impulse1 offset1
                 |> applyImpulse id2 impulse2 offset2
             
-            printfn "State after collision: "
-            printfn $"%A{nextSimulationState.Objects[id1].PhysicalObject}"
-            printfn $"%A{nextSimulationState.Objects[id2].PhysicalObject}"
+            printfn "Applying impulses:"
+            printfn $"Object1: Id {id1}: %A{impulse1} at offset %A{offset1}"
+            printfn $"Object1: Id {id2}: %A{impulse2} at offset %A{offset2}"
+              
+//            printfn "State after collision: "
+          //  printfn $"%A{nextSimulationState.Objects[id1].PhysicalObject}"
+  //          printfn $"%A{nextSimulationState.Objects[id2].PhysicalObject}"
 
             nextSimulationState |> Some)
 
