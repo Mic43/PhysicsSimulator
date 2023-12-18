@@ -46,3 +46,5 @@ module SimulatorObject =
             (RigidBody.createDefaultBox defaultElasticityCoeff defaultFrictionCoeff size size size mass position)
             |> RigidBody
           Collider = (size, size, size) |||> Collider.createBox }
+    // let withGravity (simulatorObject:SimulatorObject) =
+    //     { simulatorObject with PhysicalObject. }

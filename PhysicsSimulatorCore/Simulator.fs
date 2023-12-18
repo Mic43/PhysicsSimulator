@@ -27,8 +27,8 @@ type Simulator(simulatorObjects) =
                 |> SimulatorState.withCollisionResponseGlobal interval collidingObjectsCandidates
                 |> SimulatorState.update interval
 
-            if newState <> simulatorState.Value then
-                newState |> printf "%A"
+            // if newState <> simulatorState.Value then
+            //     newState |> printf "%A"
                 
             (fun _ -> simulatorState.Value <- newState) |> lock objectsLocker
         }

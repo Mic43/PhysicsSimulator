@@ -3,13 +3,26 @@ namespace PhysicsSimulator
 open System
 open FSharpPlus
 
+type ValueSupplier<'T> =
+    | Zero
+    | Constant of 'T
+    | Variable of (unit -> 'T)
+
 type SimulatorState =
     private
         { Objects: Map<SimulatorObjectIdentifier, SimulatorObject>
-          TotalForce: Map<SimulatorObjectIdentifier, Vector3D>
-          TotalTorque: Map<SimulatorObjectIdentifier, Vector3D> }
+          ExternalForces: Map<SimulatorObjectIdentifier, Vector3D ValueSupplier>
+          ExternalTorque: Map<SimulatorObjectIdentifier, Vector3D> }
 
     member this.GetObjects() = this.Objects
+
+    member this.CalculateTotalForce objId =
+        let valueSupplier = this.ExternalForces[objId]
+
+        match valueSupplier with
+        | Zero -> Vector3D.zero
+        | Constant vector3D -> vector3D
+        | Variable unitFunc -> unitFunc ()
 
 module SimulatorState =
     let private particleIntegrator = ParticleIntegrators.forwardEuler
@@ -45,11 +58,11 @@ module SimulatorState =
 
             rigidBody |> updater |> RigidBody
 
-    let private updateObjectById simulatorState dt id =
+    let private updateObjectById (simulatorState: SimulatorState) dt id =
         updateObject
             dt
-            simulatorState.TotalForce[id]
-            simulatorState.TotalTorque[id]
+            (id |> simulatorState.CalculateTotalForce)
+            simulatorState.ExternalTorque[id]
             simulatorState.Objects[id].PhysicalObject
 
     let fromObjects (objects: SimulatorObject seq) =
@@ -60,11 +73,11 @@ module SimulatorState =
             objects |> Seq.zip identifiers |> Map.ofSeq
 
         { Objects = objectMap
-          TotalForce =
+          ExternalForces =
             identifiers
-            |> Seq.map (fun i -> (i, i |> calculateForce objectMap))
+            |> Seq.map (fun i -> (i, i |> calculateForce objectMap |> ValueSupplier.Constant))
             |> Map.ofSeq
-          TotalTorque = identifiers |> Seq.map (fun i -> (i, Vector3D.zero)) |> Map.ofSeq }
+          ExternalTorque = identifiers |> Seq.map (fun i -> (i, Vector3D.zero)) |> Map.ofSeq }
 
     let update (dt: TimeSpan) simulatorState : SimulatorState =
         { simulatorState with
@@ -74,11 +87,14 @@ module SimulatorState =
                     { simObj with
                         PhysicalObject =
                             simObj.PhysicalObject
-                            |> updateObject dt simulatorState.TotalForce[ident] simulatorState.TotalTorque[ident] }) }
+                            |> updateObject
+                                dt
+                                (ident |> simulatorState.CalculateTotalForce)
+                                simulatorState.ExternalTorque[ident] }) }
 
     let applyImpulse objectIdentifier impulse (offset: Vector3D) simulatorState =
         let applyImpulseToObject = applyImpulseToObject impulse offset
-        
+
         { simulatorState with
             Objects =
                 simulatorState.Objects.Change(
@@ -96,30 +112,35 @@ module SimulatorState =
         |> Option.bind (fun cd ->
             "Collision detected " |> printfn "%A"
             cd |> printfn "%A"
-          
-            let cd2 = { cd with Normal = cd.Normal |> Vector3D.apply (~-) }
+
+            let cd2 =
+                { cd with
+                    Normal = cd.Normal |> Vector3D.apply (~-) }
 
             let physicalObject1 = obj1NextState.PhysicalObject
             let physicalObject2 = obj2NextState.PhysicalObject
 
             let impulse1 = CollisionResponse.calculateImpulse cd physicalObject1 physicalObject2
-            let offset1 = cd.ContactPoint.Get() - physicalObject1.MassCenterPosition().Get()
+            let contactPoint = (cd.ContactPoints |> Seq.head).Get()
+            let offset1 = contactPoint - physicalObject1.MassCenterPosition().Get()
 
-            let impulse2 = CollisionResponse.calculateImpulse cd2 physicalObject2 physicalObject1
-            let offset2 = cd.ContactPoint.Get() - physicalObject2.MassCenterPosition().Get()
+            let impulse2 =
+                CollisionResponse.calculateImpulse cd2 physicalObject2 physicalObject1
+
+            let offset2 = contactPoint - physicalObject2.MassCenterPosition().Get()
 
             let nextSimulationState =
                 curSimulationState
                 |> applyImpulse id1 impulse1 offset1
                 |> applyImpulse id2 impulse2 offset2
-            
+
             printfn "Applying impulses:"
             printfn $"Object1: Id {id1}: %A{impulse1} at offset %A{offset1}"
             printfn $"Object1: Id {id2}: %A{impulse2} at offset %A{offset2}"
-              
-//            printfn "State after collision: "
-          //  printfn $"%A{nextSimulationState.Objects[id1].PhysicalObject}"
-  //          printfn $"%A{nextSimulationState.Objects[id2].PhysicalObject}"
+
+            //            printfn "State after collision: "
+            //  printfn $"%A{nextSimulationState.Objects[id1].PhysicalObject}"
+            //          printfn $"%A{nextSimulationState.Objects[id2].PhysicalObject}"
 
             nextSimulationState |> Some)
 

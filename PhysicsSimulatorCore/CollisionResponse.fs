@@ -50,9 +50,10 @@ module CollisionResponse =
 
             let normal = collisionData.Normal.Get()
 
+            //TODO: fix for many contact points
             let offset =
                 targetBody.MassCenter.Variables.Position.Get()
-                - collisionData.ContactPoint.Get()
+                - (collisionData.ContactPoints |> Seq.head).Get()
 
             let vOffset = // velocity of colliding point before collision
                 relativeVelocity

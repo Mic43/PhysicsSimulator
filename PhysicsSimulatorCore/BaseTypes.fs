@@ -5,12 +5,6 @@ open MathNet.Numerics.LinearAlgebra
 open FSharp.Data.UnitSystems.SI.UnitSymbols
 open MathNet.Numerics.LinearAlgebra
 
-// type SetOf2<'T when 'T: comparison> =
-//     private Content of Set<'T>
-//
-//
-//     member
-
 type Matrix3 =
     private
     | Value of Matrix<float>
@@ -45,9 +39,15 @@ type Vector3D =
 
     static member op_Implicit(v: Vector<float>) = v |> Vector3D.Value
 
+type Plane =
+    private
+        { Normal: Vector3D
+          DistanceFromOrigin: float }
+
 module Vector3D =
     let create x y z = vector [ x; y; z ] |> Vector3D.Value
     let zero = create 0.0 0.0 0.0
+    let isZero v = v = zero
     let (|Vector3D|) (Value value) = value
     let ofVector vec = vec |> Value
     let toVector (vec3d: Vector3D) = vec3d.Get()
@@ -161,30 +161,12 @@ module RotationMatrix3D =
                 cosA + uz * uz * cosInv ] ]
         |> Matrix3.Value
 
-module Utils =
-    let rec subSetsOf2<'t when 't: comparison> (set: 't Set) =
-        if (set.Count < 2) then
-            Set.empty
-        elif (set.Count = 2) then
-            set |> Set.singleton
-        else
-            let maximumElement = set |> Set.toSeq |> Seq.head
-            let subset = set |> Set.remove maximumElement
+module Plane =
+    let create distance normal =
+        let eps = 0.00001
 
-            subset
-            |> subSetsOf2
-            |> Set.union (subset |> Set.map (fun el -> [ el; maximumElement ] |> Set.ofList))
+        if (normal |> Vector3D.toVector |> Vector.norm) - 1.0 > eps then
+            invalidArg "normal" "normal vector must me normalized"
 
-    [<TailCall>]
-    let rec private subSetsOf2Ag<'t when 't: comparison> (processed: 't Set) rest accumulator =
-        if rest |> Set.count = 0 then
-            accumulator
-        else
-            let maximumElement = rest |> Set.toSeq |> Seq.head
-
-            subSetsOf2Ag
-                (processed |> Set.add maximumElement)
-                (rest |> Set.remove maximumElement)
-                accumulator |> Set.union (processed |> Set.map (fun el -> [ el; maximumElement ] |> Set.ofList))
-
-    let subSetsOf2Tail set = subSetsOf2Ag Set.empty set Set.empty
+        { Normal = normal
+          DistanceFromOrigin = distance }

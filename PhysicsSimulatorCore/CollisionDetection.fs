@@ -7,7 +7,7 @@ open FSharpPlus.Data
 type CollisionData =
     private
         { Normal: Vector3D
-          ContactPoint: Vector3D
+          ContactPoints: Vector3D seq 
           Penetration: float }
 
     static member Create penetration normal contactPoint =
@@ -17,7 +17,7 @@ type CollisionData =
             invalidArg "normal" "normal vector must me normalized"
 
         { Normal = normal
-          ContactPoint = contactPoint
+          ContactPoints = contactPoint
           Penetration = penetration }
 
 module CollisionDetection =
@@ -50,11 +50,10 @@ module CollisionDetection =
                     let contactPoint =
                         (contactPoint1 + (contactPoint2 - contactPoint1) / 2.0 |> Vector3D.ofVector)
 
-                    CollisionData.Create 0.0 normal contactPoint |> Some
+                    CollisionData.Create 0.0 normal [contactPoint] |> Some
             | Sphere sphere, Box box ->  None
             | Box box, Sphere sphere -> None
             | Box box1, Box box2 ->
-
                 let getCollisionDataForAxis
                     (vertices1: Vector<float> seq)
                     (vertices2: Vector<float> seq)
@@ -81,13 +80,13 @@ module CollisionDetection =
                         let penetration = b - c // ??
                         let normal = axis
 
-                        CollisionData.Create penetration normal (max1 + normal * penetration |> ofVector)
+                        CollisionData.Create penetration normal [max1 + normal * penetration |> ofVector]
                         |> Some
                     elif c <= a && d >= a then
                         let penetration = d - a // ??
                         let normal = -axis
 
-                        CollisionData.Create penetration normal (min1 + normal * penetration |> ofVector)
+                        CollisionData.Create penetration normal [min1 + normal * penetration |> ofVector]
                         |> Some
                     else
                         None
@@ -96,19 +95,17 @@ module CollisionDetection =
                     [ body1; body2 ]
                     |> List.map _.Variables.Orientation
                     |> List.map _.Get().EnumerateColumns()
-
                 let edgesAxes =
                     facesAxes[1]
                     |> Seq.apply (facesAxes[0] |> Seq.map crossProductV)
                     |> Seq.map _.Normalize(2.0)
-
                 let axes =
                     seq {
                         facesAxes |> Seq.bind id
                         edgesAxes
                     }
                     >>= id
-                    |> Seq.filter (fun v -> v <> vector [ 0.0; 0.0; 0.0 ])
+                    |> Seq.filter (ofVector >> isZero)
 
                 let vertices1 = getVertices box1 body1
                 let vertices2 = getVertices box2 body2

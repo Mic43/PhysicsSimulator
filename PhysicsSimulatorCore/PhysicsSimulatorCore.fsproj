@@ -14,6 +14,7 @@
 
     <ItemGroup>
       <Compile Include="BaseTypes.fs" />
+      <Compile Include="Utils.fs" />
       <Compile Include="Particle.fs" />
       <Compile Include="RigidBody.fs" />
       <Compile Include="Collider.fs" />
