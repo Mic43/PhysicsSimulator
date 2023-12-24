@@ -7,8 +7,8 @@ module CollisionResponse =
 
     let private isImpulseInFrictionCone (collisionNormal: Vector3D) (frictionCoeff: float) (impulse: Vector3D) =
 
-        let impulse = impulse.Get()
-        let normal = collisionNormal.Get()
+        let impulse = impulse.Get
+        let normal = collisionNormal.Get
 
         let impulseNormal = normal.DotProduct(impulse) * normal
         let impulseTg = impulse - impulseNormal
@@ -42,22 +42,22 @@ module CollisionResponse =
         match (target, other) with
         | RigidBody targetBody, RigidBody otherBody ->
             let relativeVelocity =
-                targetBody.MassCenter.Variables.Velocity.Get()
-                - otherBody.MassCenter.Variables.Velocity.Get()
+                targetBody.MassCenter.Variables.Velocity.Get
+                - otherBody.MassCenter.Variables.Velocity.Get
 
             let compoundFriction = max targetBody.FrictionCoeff otherBody.FrictionCoeff
             let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
 
-            let normal = collisionData.Normal.Get()
+            let normal = collisionData.Normal.Get
 
             //TODO: fix for many contact points
             let offset =
-                targetBody.MassCenter.Variables.Position.Get()
-                - (collisionData.ContactPoints |> Seq.head).Get()
+                targetBody.MassCenter.Variables.Position.Get
+                - (collisionData.ContactPoints |> Seq.head).Get
 
             let vOffset = // velocity of colliding point before collision
                 relativeVelocity
-                + (offset |> Vector3D.crossProductV (targetBody.Variables.AngularMomentum.Get()))
+                + (offset |> Vector3D.crossProductV (targetBody.Variables.AngularMomentum.Get))
 
             let vNorm = vOffset.DotProduct(normal) * normal // normal component of velocity before collision
 
@@ -70,8 +70,8 @@ module CollisionResponse =
             let offsetMatrix = (offset |> Vector3D.ofVector).HatOperator()
 
             let massMatrix =
-                targetBody.MassCenter.GetInverseMassMatrix().Get()
-                - offsetMatrix.Get() * inverseRotInertia.Get() * offsetMatrix.Get()
+                targetBody.MassCenter.GetInverseMassMatrix().Get
+                - offsetMatrix.Get * inverseRotInertia.Get * offsetMatrix.Get
                 |> Matrix.inverse
 
             let impulse = massMatrix * (vNormAfterCol - vNorm) |> Vector3D.ofVector

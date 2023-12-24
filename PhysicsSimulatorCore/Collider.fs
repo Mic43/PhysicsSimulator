@@ -1,5 +1,6 @@
 namespace PhysicsSimulator
 
+open Constants
 type Sphere = { Radius: float }
 
 type Box =
@@ -11,7 +12,43 @@ type Collider =
     | Sphere of Sphere
     | Box of Box
 
+type Face =
+    { Vertices: Vector3D seq
+      Normal: Vector3D }
+
+module Face =
+    let toPlane face =
+        face.Normal
+        |> Plane.create ((face.Vertices |> Seq.head).Get.DotProduct(face.Normal.Get))
+
 module Collider =
+    let private vertices =
+        [ (-1.0, -1.0, -1.0) |||> Vector3D.create
+          (-1.0, 1.0, -1.0) |||> Vector3D.create
+          (1.0, 1.0, -1.0) |||> Vector3D.create
+          (1.0, -1.0, -1.0) |||> Vector3D.create
+          (-1.0, -1.0, 1.0) |||> Vector3D.create
+          (-1.0, 1.0, 1.0) |||> Vector3D.create
+          (1.0, 1.0, 1.0) |||> Vector3D.create
+          (1.0, -1.0, 1.0) |||> Vector3D.create ]
+
+    let private faces =
+        [ [ 0; 1; 2; 3 ]
+          [ 7; 6; 5; 4 ]
+          [ 5; 6; 2; 1 ]
+          [ 0; 3; 7; 4 ]
+          [ 6; 7; 3; 2 ]
+          [ 4; 5; 1; 0 ] ]
+
+    let private normals =
+        [ (0.0, 0.0, -1.0)
+          (0.0, 0.0, 1.0)
+          (0.0, 1.0, 0.0)
+          (0.0, -1.0, 0.0)
+          (1.0, 0.0, 0.0)
+          (-1.0, 0.0, 0.0) ]
+        |> List.map (fun v -> v |||> Vector3D.create)
+
     let private throwIfNegative value name =
         if value < 0.0 then
             "Must be positive" |> invalidArg name
@@ -29,9 +66,8 @@ module Collider =
         { XSize = xSize
           YSize = ySize
           ZSize = zSize }
-        |> Box
 
-    let getVertices (box: Box) =                
+    let getVertices (box: Box) =
         let t =
             [ box.XSize; box.YSize; box.ZSize ]
             |> List.map (fun v -> v / 2.0)
@@ -41,5 +77,26 @@ module Collider =
             for x in t[0] do
                 for y in t[1] do
                     for z in t[2] do
-                        yield Vector3D.create x  y  z
+                        yield Vector3D.create x y z
         }
+
+    let getFaces (box: Box) : Face seq =
+        let scaleVector =
+            (box.XSize / 2.0, box.YSize / 2.0, box.ZSize / 2.0)
+            |||> Vector3D.create
+            |> Vector3D.toVector
+
+        normals
+        |> List.mapi (fun i normal ->
+            { Vertices =
+                faces[i]
+                |> List.map ((fun i -> vertices[i].Get) >> (_.PointwiseMultiply(scaleVector)))
+              Normal = normal })
+        |> List.toSeq
+
+    let findFaceByNormal normal faces =
+        faces |> Seq.find (fun face -> face.Normal = normal)
+
+    let findAdjacentFaces boxFaces targetFace =
+        boxFaces
+        |> Seq.filter (fun face -> (face.Normal.Get.DotProduct(targetFace.Normal.Get) |> abs) > epsilon)

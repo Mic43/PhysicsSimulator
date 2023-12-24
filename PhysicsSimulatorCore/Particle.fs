@@ -27,9 +27,9 @@ module ParticleIntegrators =
 
     let (forwardEuler: ParticleIntegrator) =
         fun dt (Vector3D acceleration) old ->
-            let newVelocity = old.Velocity.Get() + acceleration * dt.TotalSeconds
+            let newVelocity = old.Velocity.Get + acceleration * dt.TotalSeconds
 
-            { Position = (old.Position.Get() + newVelocity * dt.TotalSeconds) |> ofVector
+            { Position = (old.Position.Get + newVelocity * dt.TotalSeconds) |> ofVector
               Velocity = newVelocity |> ofVector }
 
 module ParticleMotion =
@@ -37,5 +37,5 @@ module ParticleMotion =
     let applyImpulse particle (impulse: Vector3D) : Particle =
         { particle with
             Variables.Velocity =
-                particle.Variables.Velocity.Get() + impulse.Get() / particle.Mass
+                particle.Variables.Velocity.Get + impulse.Get / particle.Mass
                 |> Vector3D.ofVector }

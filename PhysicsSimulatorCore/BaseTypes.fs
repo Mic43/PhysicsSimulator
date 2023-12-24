@@ -9,7 +9,7 @@ type Matrix3 =
     private
     | Value of Matrix<float>
 
-    member this.Get() =
+    member this.Get =
         match this with
         | Value v -> v
 
@@ -17,7 +17,7 @@ type Vector3D =
     private
     | Value of Vector<float>
 
-    member this.Get() =
+    member this.Get =
         match this with
         | Value v -> v
 
@@ -40,9 +40,10 @@ type Vector3D =
     static member op_Implicit(v: Vector<float>) = v |> Vector3D.Value
 
 type Plane =
-    private
-        { Normal: Vector3D
-          DistanceFromOrigin: float }
+    { Normal: Vector3D
+      DistanceFromOrigin: float }
+module Constants =
+    let epsilon = 0.000001
 
 module Vector3D =
     let create x y z = vector [ x; y; z ] |> Vector3D.Value
@@ -50,7 +51,7 @@ module Vector3D =
     let isZero v = v = zero
     let (|Vector3D|) (Value value) = value
     let ofVector vec = vec |> Value
-    let toVector (vec3d: Vector3D) = vec3d.Get()
+    let toVector (vec3d: Vector3D) = vec3d.Get
 
     let apply (f: Vector<float> -> Vector<float>) (v: Vector3D) = v |> toVector |> f |> ofVector
 
@@ -67,8 +68,14 @@ module Vector3D =
     let crossProductV (first) (second) =
         second |> ofVector |> crossProduct (first |> ofVector) |> toVector
 
+    let getOriented  (rotationMatrix: Matrix3) (translationVector: Vector3D) (v: Vector3D) =
+        v
+        |> ((fun v -> v.Get * rotationMatrix.Get) >> (fun v -> v + translationVector.Get))
+        |> ofVector
+
 module Matrix3 =
-    open Vector3D
+    open Vector3D    
+    open Constants
     let (|Matrix3|) (Value value) = value
 
     let fromMatrix (matrix: Matrix<float>) =
@@ -79,7 +86,7 @@ module Matrix3 =
 
     let orthonormalize (matrix: Matrix3) =
 
-        let matrix = matrix.Get()
+        let matrix = matrix.Get
         // printfn "Before normalization %A" matrix
 
         let deltaCol (c1: Vector<float>) c2 =
@@ -102,9 +109,9 @@ module Matrix3 =
         Matrix.Build.DenseOfColumns([ col0; col1; col2 ]) |> fromMatrix
 
     let reorthogonalise2 (m: Matrix3) =
-        let x = m.Get().Row(0)
-        let y = m.Get().Row(1)
-        let z = m.Get().Row(2)
+        let x = m.Get.Row(0)
+        let y = m.Get.Row(1)
+        let z = m.Get.Row(2)
 
         let xORt = (crossProductV y z)
         let yOrt = (crossProductV z x)
@@ -115,8 +122,8 @@ module Matrix3 =
         |> fromMatrix
 
     let reorthogonalise (m: Matrix3) =
-        let x = m.Get().Row(0)
-        let y = m.Get().Row(1)
+        let x = m.Get.Row(0)
+        let y = m.Get.Row(1)
 
         let error = x.DotProduct(y)
 
@@ -130,14 +137,14 @@ module Matrix3 =
 
 module RotationMatrix3D =
     open Vector3D
-
+    open Constants
     let zero = Matrix<float>.Build.DenseIdentity 3 |> Matrix3.Value
 
     let fromAxisAndAngle (Vector3D axis) angle =
 
         let len = axis.Norm(2.0)
 
-        if axis <> Vector3D.zero.Get() && len < 1.0 - 1e-14 && len > 1.0 + 1e-14 then
+        if axis <> Vector3D.zero.Get && len < 1.0 - 1e-14 && len > 1.0 + 1e-14 then
             invalidArg "axis" "axis must be unit vector"
 
         let ux = axis.Item(0)
@@ -162,11 +169,15 @@ module RotationMatrix3D =
         |> Matrix3.Value
 
 module Plane =
+    open Constants
     let create distance normal =
-        let eps = 0.00001
+       // let eps = 0.00001
 
-        if (normal |> Vector3D.toVector |> Vector.norm) - 1.0 > eps then
+        if (normal |> Vector3D.toVector |> Vector.norm) - 1.0 > epsilon then
             invalidArg "normal" "normal vector must me normalized"
 
         { Normal = normal
           DistanceFromOrigin = distance }
+        
+    let invertNormal (plane:Plane) =
+        { plane with Normal = plane.Normal |> Vector3D.apply (~-)   }

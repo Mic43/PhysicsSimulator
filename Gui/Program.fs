@@ -53,7 +53,7 @@ let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifie
         Trafo3d.Translation(v3d.X, v3d.Y, v3d.Z)
 
     let toRotation (orientationMatrix: Matrix3) =
-        let matrix = orientationMatrix.Get()
+        let matrix = orientationMatrix.Get
         let tmp = matrix.ToArray()
 
         let mutable m33d = tmp |> M33d.op_Explicit

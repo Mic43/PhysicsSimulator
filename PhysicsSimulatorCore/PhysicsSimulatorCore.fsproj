@@ -23,6 +23,7 @@
       <Compile Include="CollisionResponse.fs" />
       <Compile Include="SimulatorState.fs" />
       <Compile Include="Simulator.fs" />
+      <None Include="references.fsx" />
     </ItemGroup>
 
 </Project>

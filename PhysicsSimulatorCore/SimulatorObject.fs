@@ -4,7 +4,7 @@ type SimulatorObjectIdentifier =
     private
     | Value of int
 
-    member this.Get() =
+    member this.Get =
         match this with
         | Value i -> i
 
@@ -45,6 +45,6 @@ module SimulatorObject =
         { PhysicalObject =
             (RigidBody.createDefaultBox defaultElasticityCoeff defaultFrictionCoeff size size size mass position)
             |> RigidBody
-          Collider = (size, size, size) |||> Collider.createBox }
+          Collider = (size, size, size) |||> Collider.createBox |> Box}
     // let withGravity (simulatorObject:SimulatorObject) =
     //     { simulatorObject with PhysicalObject. }

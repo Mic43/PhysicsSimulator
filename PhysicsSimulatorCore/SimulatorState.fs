@@ -14,10 +14,13 @@ type SimulatorState =
           ExternalForces: Map<SimulatorObjectIdentifier, Vector3D ValueSupplier>
           ExternalTorque: Map<SimulatorObjectIdentifier, Vector3D> }
 
-    member this.GetObjects() = this.Objects
+    member this.GetObjects = this.Objects
+    member this.GetExternalForces = this.ExternalForces
+    member this.GetExternalTorque = this.ExternalTorque
 
+    
     member this.CalculateTotalForce objId =
-        let valueSupplier = this.ExternalForces[objId]
+        let valueSupplier = this.GetExternalForces[objId]
 
         match valueSupplier with
         | Zero -> Vector3D.zero
@@ -30,7 +33,7 @@ module SimulatorState =
     let private earthGAcceleration = Vector3D.create 0.0 0.0 -9.81
 
     let private gravityForce (objects: Map<SimulatorObjectIdentifier, SimulatorObject>) identifier =
-        objects.[identifier].PhysicalObject.AsParticle().Mass * earthGAcceleration.Get()
+        objects.[identifier].PhysicalObject.AsParticle().Mass * earthGAcceleration.Get
         |> Vector3D.ofVector
 
     let private calculateForce (objects: Map<SimulatorObjectIdentifier, SimulatorObject>) identifier =
@@ -45,7 +48,7 @@ module SimulatorState =
     let private updateObject dt (totalForce: Vector3D) totalTorque =
         function
         | Particle p ->
-            let acceleration = totalForce.Get() / p.Mass
+            let acceleration = totalForce.Get / p.Mass
 
             let particleIntegrator = particleIntegrator dt (acceleration |> Vector3D.ofVector)
 
@@ -121,13 +124,13 @@ module SimulatorState =
             let physicalObject2 = obj2NextState.PhysicalObject
 
             let impulse1 = CollisionResponse.calculateImpulse cd physicalObject1 physicalObject2
-            let contactPoint = (cd.ContactPoints |> Seq.head).Get()
-            let offset1 = contactPoint - physicalObject1.MassCenterPosition().Get()
+            let contactPoint = (cd.ContactPoints |> Seq.head).Get
+            let offset1 = contactPoint - physicalObject1.MassCenterPosition().Get
 
             let impulse2 =
                 CollisionResponse.calculateImpulse cd2 physicalObject2 physicalObject1
 
-            let offset2 = contactPoint - physicalObject2.MassCenterPosition().Get()
+            let offset2 = contactPoint - physicalObject2.MassCenterPosition().Get
 
             let nextSimulationState =
                 curSimulationState

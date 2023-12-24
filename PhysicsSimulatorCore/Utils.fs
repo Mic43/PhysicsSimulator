@@ -30,38 +30,38 @@ module Utils =
     let subSetsOf2Tail set = subSetsOf2Ag Set.empty set Set.empty
 
 module GraphicsUtils =
-
+    open Constants
     // Performs a plane/edge collision test, if an intersection does occur then
     //    it will return the point on the line where it intersected the given plane.
-    let tryGetPlaneEdgeIntersection (plane: Plane) (startPoint: Vector3D) (endPoint: Vector3D) : Vector3D option =
-        let eps = 1e-6f |> float
-        let ab = endPoint.Get() - startPoint.Get()
+    let tryGetPlaneEdgeIntersection (plane: Plane) (startPoint: Vector3D) (endPoint: Vector3D) : Vector3D option =       
+        let ab = endPoint.Get - startPoint.Get
         //Check that the edge and plane are not parallel and thus never intersect
         // We do this by projecting the line (start - A, End - B) ab along the plane
-        let ab_p = plane.Normal.Get().DotProduct(ab)
+        let ab_p = plane.Normal.Get.DotProduct(ab)
 
-        if abs (ab_p) > eps then
+        if abs ab_p > epsilon then
             //Generate a random point on the plane (any point on the plane will suffice)
-            let p_co = plane.Normal.Get() * (-plane.DistanceFromOrigin)
-            let fac = -(plane.Normal.Get().DotProduct(startPoint.Get() - p_co)) / ab_p
+            let p_co = plane.Normal.Get * (-plane.DistanceFromOrigin)
+            let fac = -(plane.Normal.Get.DotProduct(startPoint.Get - p_co)) / ab_p
 
             //Stop any large floating point divide issues with almost parallel planes
             let fac = min (max fac 0.0) 1.0
 
             //Return point on edge
-            startPoint.Get() + ab * fac |> Vector3D.ofVector |> Some
+            startPoint.Get + ab * fac |> Vector3D.ofVector |> Some
         else
             None
 
     let isPointInPlane plane (point: Vector3D) =
-        point.Get().DotProduct(plane.Normal.Get()) + plane.DistanceFromOrigin >= 0.0
+        point.Get.DotProduct(plane.Normal.Get) + plane.DistanceFromOrigin >= 0.0
 
+    /// Planes normals must point to polygon parts that should be left after clipping 
     let SutherlandHodgmanClipping
-        (inputPolygon: Vector3D list)
         (clipPlanes: Plane list)
-        (removeNotClipToPlane: bool)
+        (inputPolygon: Vector3D list)      
+        //(removeNotClipToPlane: bool)
         : Vector3D list =
-
+            
         let rec loop (inputPolygon: Vector3D list) (planes: Plane list) =
             match planes with
             | [] -> inputPolygon
@@ -93,8 +93,6 @@ module GraphicsUtils =
                     }
                     |> Seq.toList
 
-                loop clippedPolygon planesTail
-
-        if inputPolygon.Length < 3 then
-            "polygon has less than 3 vertices" |> invalidArg (nameof (inputPolygon))
-        loop inputPolygon clipPlanes
+                loop clippedPolygon planesTail  
+        
+        loop inputPolygon clipPlanes |> List.distinct

@@ -19,7 +19,7 @@ type Simulator(simulatorObjects) =
     let updateSimulation =
         async {
             let collidingObjectsCandidates =
-                (simulatorState.Value.Objects |> Map.keys |> Set.ofSeq)
+                (simulatorState.Value.GetObjects |> Map.keys |> Set.ofSeq)
 
             let newState =
                 simulatorState.Value
@@ -35,10 +35,10 @@ type Simulator(simulatorObjects) =
 
     let cancellationTokenSource = new CancellationTokenSource()
 
-    member this.ObjectIdentifiers = simulatorState.Value.Objects.Keys |> set
+    member this.ObjectIdentifiers = simulatorState.Value.GetObjects.Keys |> set
 
     member this.SimulatorObject
-        with get identifier = (fun _ -> simulatorState.Value.Objects[identifier]) |> lock objectsLocker
+        with get identifier = (fun _ -> simulatorState.Value.GetObjects[identifier]) |> lock objectsLocker
 
     member this.PhysicalObject
         with get identifier = this.SimulatorObject(identifier).PhysicalObject
@@ -59,6 +59,7 @@ type Simulator(simulatorObjects) =
 
                 return! updateSingleFrame ()
             }
+            
 
         Async.Start(updateSingleFrame (), cancellationTokenSource.Token)
 

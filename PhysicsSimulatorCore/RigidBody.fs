@@ -38,7 +38,7 @@ module RigidBody =
                   Velocity = initialVelocity }
               Particle.Mass = mass }
           PrincipalRotationalInertia = principalRotationalInertia
-          PrincipalRotationalInertiaInverse = principalRotationalInertia.Get().Inverse() |> Matrix3.fromMatrix
+          PrincipalRotationalInertiaInverse = principalRotationalInertia.Get.Inverse() |> Matrix3.fromMatrix
           ElasticityCoeff = elasticityCoeff
           FrictionCoeff = frictionCoeff }
 
@@ -75,9 +75,9 @@ module RigidBodyIntegrators =
 
             let angMomentumChange = torque * totalSeconds
 
-            let newAngMomentum = old.AngularMomentum.Get() + angMomentumChange
+            let newAngMomentum = old.AngularMomentum.Get + angMomentumChange
 
-            let angularVelocity = inertiaInverse.Get() * newAngMomentum
+            let angularVelocity = inertiaInverse.Get * newAngMomentum
 
             let axis = (angularVelocity * totalSeconds)
 
@@ -85,8 +85,8 @@ module RigidBodyIntegrators =
 
             let newOrientation =
                 (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> ofVector) angle)
-                    .Get()
-                * old.Orientation.Get()
+                    .Get
+                * old.Orientation.Get
 
             { Orientation = newOrientation |> fromMatrix |> orthonormalize
               AngularMomentum = newAngMomentum |> ofVector }
@@ -97,13 +97,13 @@ module RigidBodyIntegrators =
 
             let angMomentumChange = torque * totalSeconds
 
-            let oldAngMomentum = old.AngularMomentum.Get()
+            let oldAngMomentum = old.AngularMomentum.Get
 
-            let angularVelocity = inertiaInverse.Get() * oldAngMomentum
+            let angularVelocity = inertiaInverse.Get * oldAngMomentum
 
             let v = oldAngMomentum |> crossProductV angularVelocity
 
-            let deriv = inertiaInverse.Get() * (torque - v)
+            let deriv = inertiaInverse.Get * (torque - v)
 
             let comp1 = angularVelocity |> crossProductV deriv
 
@@ -118,8 +118,8 @@ module RigidBodyIntegrators =
 
             let newOrientation =
                 (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> ofVector) angle)
-                    .Get()
-                * old.Orientation.Get()
+                    .Get
+                * old.Orientation.Get
 
             { Orientation = newOrientation |> fromMatrix |> orthonormalize
               AngularMomentum = (old.AngularMomentum, angMomentumChange |> ofVector) ||> apply2 (+) }
@@ -127,9 +127,9 @@ module RigidBodyIntegrators =
 module RigidBodyMotion =
 
     let calcFullRotationalInertia (orientation: Matrix3) (inertiaMatrix: Matrix3) =
-        let orientation = orientation.Get()
+        let orientation = orientation.Get
 
-        orientation * inertiaMatrix.Get() * orientation.Transpose()
+        orientation * inertiaMatrix.Get * orientation.Transpose()
         |> Matrix3.fromMatrix
 
     let applyImpulse rigidBody impulse (offset: Vector3D) =
@@ -139,8 +139,8 @@ module RigidBodyMotion =
             Variables.AngularMomentum =
                 (rigidBody.Variables.AngularMomentum, impulse |> Vector3D.crossProduct offset)
                 ||> Vector3D.apply2 (+) }
-    // (rigidBody.Variables.AngularMomentum.Get()
-    //  + (impulse |> Vector3D.crossProduct offset).Get())
+    // (rigidBody.Variables.AngularMomentum.Get
+    //  + (impulse |> Vector3D.crossProduct offset).Get)
     // |> Vector3D.ofVector }
 
     let update
