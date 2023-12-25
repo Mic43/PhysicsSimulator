@@ -18,7 +18,7 @@ module CollisionResponse =
         impulseTg.L2Norm() <= frictionCoeff * tmp
 
     let private calculateSlidingFrictionImpulse
-        (massMatrix:Matrix<float>)
+        (massMatrix: Matrix<float>)
         elasticityCoeff
         frictionCoeff
         collisionNormal
@@ -26,34 +26,27 @@ module CollisionResponse =
         =
         let vNorm = vOffset.DotProduct(collisionNormal)
         let vTan = vOffset - vNorm * collisionNormal
-        
+
         //TODO: vTan is zero sometimes!
         let t = vTan / vTan.L2Norm()
-    
+
         let jn =
             -(elasticityCoeff + 1.0) * vNorm
             / (collisionNormal * massMatrix * (collisionNormal - frictionCoeff * t))
-    
+
         jn * collisionNormal - frictionCoeff * jn * t |> Vector3D.ofVector
 
-       
-    let calculateImpulse (collisionData: CollisionData) (target: PhysicalObject) (other: PhysicalObject) =
+    let private calculateRigidBodyImpulses targetBody otherBody collisionData =
+        let relativeVelocity =
+            targetBody.MassCenter.Variables.Velocity.Get
+            - otherBody.MassCenter.Variables.Velocity.Get
 
-        match (target, other) with
-        | RigidBody targetBody, RigidBody otherBody ->
-            let relativeVelocity =
-                targetBody.MassCenter.Variables.Velocity.Get
-                - otherBody.MassCenter.Variables.Velocity.Get
+        let compoundFriction = max targetBody.FrictionCoeff otherBody.FrictionCoeff
+        let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
+        let normal = collisionData.Normal.Get
 
-            let compoundFriction = max targetBody.FrictionCoeff otherBody.FrictionCoeff
-            let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
-
-            let normal = collisionData.Normal.Get
-
-            //TODO: fix for many contact points
-            let offset =
-                targetBody.MassCenter.Variables.Position.Get
-                - (collisionData.ContactPoints |> Seq.head).Get
+        let calculateSingleImpulse (contactPoint: Vector3D) =
+            let offset = targetBody.MassCenter.Variables.Position.Get - contactPoint.Get
 
             let vOffset = // velocity of colliding point before collision
                 relativeVelocity
@@ -81,3 +74,9 @@ module CollisionResponse =
             //      impulse
             // else
             //      (calculateSlidingFrictionImpulse massMatrix compoundElasticity compoundFriction normal vOffset)
+
+        collisionData.ContactPoints |> Seq.map calculateSingleImpulse
+
+    let calculateImpulses (collisionData: CollisionData) (target: PhysicalObject) (other: PhysicalObject) =
+        match (target, other) with
+        | RigidBody targetBody, RigidBody otherBody -> calculateRigidBodyImpulses targetBody otherBody collisionData

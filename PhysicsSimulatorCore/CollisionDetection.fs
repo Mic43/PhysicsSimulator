@@ -48,7 +48,7 @@ module CollisionDetection =
             |> Collider.getFaces
             |> Seq.map (fun face ->
                 { Vertices = face.Vertices |> Seq.map getOrientedVertex
-                  Face.Normal = face.Normal |> getOrientedVertex })
+                  Face.Normal = face.Normal.Get * rigidBody.Variables.Orientation.Get |> ofVector })
 
         let tryGetCollisionDataForAxis vertices1 vertices2 (axis: Vector<float>) : PossibleCollisionData option =
             let withProjection (vertices: Vector<float> seq) =
@@ -103,7 +103,11 @@ module CollisionDetection =
             |> Seq.map _.Normalize(2.0)
 
         let axes =
-            [ Faces1, facesAxes[0]; Faces2, facesAxes[1]; Edges, edgesAxes ] |> Map.ofList
+            [ Faces1, facesAxes[0]
+              Faces2, facesAxes[1]
+              // Edges, edgesAxes
+              ]
+            |> Map.ofList
 
         let bestAxes =
             axes
