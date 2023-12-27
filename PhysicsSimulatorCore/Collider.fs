@@ -99,4 +99,9 @@ module Collider =
 
     let findAdjacentFaces boxFaces targetFace =
         boxFaces
-        |> Seq.filter (fun face -> (face.Normal.Get.DotProduct(targetFace.Normal.Get) |> abs) > epsilon)
+        |> Seq.filter (fun f -> ((f.Normal.Get - targetFace.Normal.Get).L2Norm() |> abs) >= epsilon)
+        |> Seq.filter (fun face ->
+            face.Vertices
+            |> Seq.allPairs targetFace.Vertices
+            |> Seq.exists (fun (v1, v2) -> ((v1.Get - v2.Get).L2Norm() |> abs) <= epsilon))
+//face.Normal |> Vector3D.crossProduct targetFace.Normal |> abs > epsilon)

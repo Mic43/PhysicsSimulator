@@ -43,7 +43,7 @@ type Plane =
     { Normal: Vector3D
       DistanceFromOrigin: float }
 module Constants =
-    let epsilon = 0.000001
+    let epsilon = 0.00001
 
 module Vector3D =
     let create x y z = vector [ x; y; z ] |> Vector3D.Value

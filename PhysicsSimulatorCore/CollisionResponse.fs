@@ -36,14 +36,14 @@ module CollisionResponse =
 
         jn * collisionNormal - frictionCoeff * jn * t |> Vector3D.ofVector
 
-    let private calculateRigidBodyImpulses targetBody otherBody collisionData =
+    let private calculateRigidBodyImpulse otherBody targetBody (contactPoint: ContactPoint) =
         let relativeVelocity =
             targetBody.MassCenter.Variables.Velocity.Get
             - otherBody.MassCenter.Variables.Velocity.Get
 
         let compoundFriction = max targetBody.FrictionCoeff otherBody.FrictionCoeff
         let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
-        let normal = collisionData.Normal.Get
+        let normal = contactPoint.Normal.Get
 
         let calculateSingleImpulse (contactPoint: Vector3D) =
             let offset = targetBody.MassCenter.Variables.Position.Get - contactPoint.Get
@@ -70,13 +70,13 @@ module CollisionResponse =
             let impulse = massMatrix * (vNormAfterCol - vNorm) |> Vector3D.ofVector
             impulse
 
-            // if impulse |> isImpulseInFrictionCone normal compoundFriction then
-            //      impulse
-            // else
-            //      (calculateSlidingFrictionImpulse massMatrix compoundElasticity compoundFriction normal vOffset)
+        // if impulse |> isImpulseInFrictionCone normal compoundFriction then
+        //      impulse
+        // else
+        //      (calculateSlidingFrictionImpulse massMatrix compoundElasticity compoundFriction normal vOffset)
 
-        collisionData.ContactPoints |> Seq.map calculateSingleImpulse
+        contactPoint.Position |> calculateSingleImpulse
 
-    let calculateImpulses (collisionData: CollisionData) (target: PhysicalObject) (other: PhysicalObject) =
+    let calculateImpulse (contactPoint: ContactPoint)  (other: PhysicalObject) (target: PhysicalObject) =
         match (target, other) with
-        | RigidBody targetBody, RigidBody otherBody -> calculateRigidBodyImpulses targetBody otherBody collisionData
+        | RigidBody targetBody, RigidBody otherBody -> calculateRigidBodyImpulse otherBody targetBody contactPoint

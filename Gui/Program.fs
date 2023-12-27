@@ -11,7 +11,7 @@ open FSharpPlus
 
 let radius = 1.0
 let mass = 1.0
-let impulseValue = Vector3D.create 0 0 -3
+let impulseValue = Vector3D.create 1 0 0
 let impulseOffset = Vector3D.create 0.0 0.0 0.0
 let epsilon = 0.001
 
@@ -37,8 +37,8 @@ let prepareSimulator2 () =
 
 let prepareSimulator () =
 
-    [ SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 0 0.0 0.0)
-      SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 0 0.0 -4.0)
+    [ SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create -3 0.0 0)
+      SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 0 0.0 0)
 
       //SimulatorObject.createDefaultSphere (radius) mass (Vector3D.create 4 0.0 0)
       // SimulatorObject.createDefaultSphere radius mass Vector3D.zero

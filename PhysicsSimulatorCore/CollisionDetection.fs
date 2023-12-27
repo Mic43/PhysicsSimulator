@@ -5,19 +5,28 @@ open FSharpPlus
 open FSharpPlus.Data
 open Constants
 
-type CollisionData =
+type ContactPoint =
     { Normal: Vector3D
-      ContactPoints: Vector3D seq
+      Position: Vector3D
       Penetration: float }
 
-    static member Create penetration normal contactPoint =
-
+    static member Create penetration normal position =
         if (normal |> Vector3D.toVector |> Vector.norm) - 1.0 > epsilon then
             invalidArg "normal" "normal vector must me normalized"
 
         { Normal = normal
-          ContactPoints = contactPoint
+          Position = position
           Penetration = penetration }
+
+type CollisionData =
+    { ContactPoints: ContactPoint seq }
+
+    member this.WithInvertedNormals() =
+        { ContactPoints =
+            this.ContactPoints
+            |> Seq.map (fun cp ->
+                { cp with
+                    Normal = cp.Normal |> Vector3D.apply (~-) }) }
 
 module CollisionDetection =
     open Vector3D
@@ -35,11 +44,6 @@ module CollisionDetection =
         candidatesMap |> Map.toList |> List.minBy (snd >> _.Penetration)
 
     let private detectBoxBoxCollision boxCollider1 body1 boxCollider2 body2 : CollisionData option =
-        // let getVertices colliderBox (rigidBody: RigidBody) =
-        //     Collider.getVertices colliderBox
-        //     |> Seq.map (fun v -> v.Get * rigidBody.Variables.Orientation.Get)
-        //     |> Seq.map (fun v -> v + rigidBody.MassCenter.Variables.Position.Get)
-
         let getOrientedFaces colliderBox (rigidBody: RigidBody) =
             let getOrientedVertex =
                 getOriented rigidBody.Variables.Orientation rigidBody.MassCenter.Variables.Position
@@ -116,8 +120,6 @@ module CollisionDetection =
                 >> Seq.sequence
                 >> Option.map (Seq.minBy (_.Penetration))
             )
-        //  |> Map.filter (fun _ value -> value |> Option.isSome)
-        //            |> Map.mapValues Option.get
 
         let findIncidentFace (referenceFace: Face) (facesCandidates: Face seq) =
             facesCandidates |> Seq.minBy (_.Normal.Get.DotProduct(referenceFace.Normal.Get))
@@ -127,13 +129,12 @@ module CollisionDetection =
         else
             let separationAxis = bestAxes |> Map.mapValues Option.get |> chooseSeparationAxis
 
-            match separationAxis with
-            | Faces1,
-              { Normal = normal
-                Penetration = penetration } ->
-                let reference = Collider.findFaceByNormal normal faces1
-                let incidentFace = findIncidentFace reference faces2
-                let adjacentFaces = reference |> Collider.findAdjacentFaces faces1 |> Seq.toList
+            let generateFaceContactPoints normal penetration referenceFaces otherFaces =
+                let reference = Collider.findFaceByNormal normal referenceFaces
+                let incidentFace = findIncidentFace reference otherFaces
+
+                let adjacentFaces =
+                    reference |> Collider.findAdjacentFaces referenceFaces |> Seq.toList
 
                 let contactPoints =
                     incidentFace.Vertices
@@ -145,13 +146,16 @@ module CollisionDetection =
                     |> List.filter (fun vertex ->
                         vertex
                         |> GraphicsUtils.isPointInPlane (reference |> Face.toPlane |> Plane.invertNormal))
+                    |> Seq.map (fun cp -> ContactPoint.Create penetration normal cp)
+                { ContactPoints = contactPoints } |> Some
 
-
-                { CollisionData.Normal = normal
-                  ContactPoints = contactPoints
-                  Penetration = penetration }
-                |> Some
-            | Faces2, { Normal = n; Penetration = f } -> failwith "todo"
+            match separationAxis with
+            | Faces1,
+              { Normal = normal
+                Penetration = penetration } -> (faces1, faces2) ||> generateFaceContactPoints normal penetration
+            | Faces2,
+              { Normal = normal
+                Penetration = penetration } -> (faces2, faces1) ||> generateFaceContactPoints normal penetration
             | Edges, { Normal = n; Penetration = f } -> failwith "edges"
 
     let areColliding first second : CollisionData option =
@@ -176,7 +180,7 @@ module CollisionDetection =
                     let contactPoint =
                         (contactPoint1 + (contactPoint2 - contactPoint1) / 2.0 |> ofVector)
 
-                    CollisionData.Create 0.0 normal [ contactPoint ] |> Some
+                    { ContactPoints = [ (ContactPoint.Create 0.0 normal contactPoint) ] } |> Some
             | Sphere sphere, Box box -> None
             | Box box, Sphere sphere -> None
             | Box box1, Box box2 -> detectBoxBoxCollision box1 body1 box2 body2
