@@ -1,9 +1,7 @@
 namespace PhysicsSimulator
 
-open FSharpPlus
 open MathNet.Numerics.LinearAlgebra
-open FSharp.Data.UnitSystems.SI.UnitSymbols
-open MathNet.Numerics.LinearAlgebra
+open Utils
 
 type Matrix3 =
     private
@@ -42,8 +40,6 @@ type Vector3D =
 type Plane =
     { Normal: Vector3D
       DistanceFromOrigin: float }
-module Constants =
-    let epsilon = 0.00001
 
 module Vector3D =
     let create x y z = vector [ x; y; z ] |> Vector3D.Value
@@ -68,14 +64,13 @@ module Vector3D =
     let crossProductV (first) (second) =
         second |> ofVector |> crossProduct (first |> ofVector) |> toVector
 
-    let getOriented  (rotationMatrix: Matrix3) (translationVector: Vector3D) (v: Vector3D) =
+    let getOriented (rotationMatrix: Matrix3) (translationVector: Vector3D) (v: Vector3D) =
         v
         |> ((fun v -> v.Get * rotationMatrix.Get) >> (fun v -> v + translationVector.Get))
         |> ofVector
 
 module Matrix3 =
-    open Vector3D    
-    open Constants
+    open Vector3D
     let (|Matrix3|) (Value value) = value
 
     let fromMatrix (matrix: Matrix<float>) =
@@ -137,7 +132,6 @@ module Matrix3 =
 
 module RotationMatrix3D =
     open Vector3D
-    open Constants
     let zero = Matrix<float>.Build.DenseIdentity 3 |> Matrix3.Value
 
     let fromAxisAndAngle (Vector3D axis) angle =
@@ -169,15 +163,15 @@ module RotationMatrix3D =
         |> Matrix3.Value
 
 module Plane =
-    open Constants
     let create distance normal =
-       // let eps = 0.00001
+        // let eps = 0.00001
 
-        if (normal |> Vector3D.toVector |> Vector.norm) - 1.0 > epsilon then
+        if normal |> Vector3D.toVector |> Vector.norm |> equals 1.0 |> not then
             invalidArg "normal" "normal vector must me normalized"
 
         { Normal = normal
           DistanceFromOrigin = distance }
-        
-    let invertNormal (plane:Plane) =
-        { plane with Normal = plane.Normal |> Vector3D.apply (~-)   }
+
+    let invertNormal (plane: Plane) =
+        { plane with
+            Normal = plane.Normal |> Vector3D.apply (~-) }

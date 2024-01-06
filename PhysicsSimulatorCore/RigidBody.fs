@@ -13,19 +13,42 @@ type RigidBody =
     { Variables: RigidBodyVariables
       MassCenter: Particle
       ElasticityCoeff: float
-      FrictionCoeff: float 
+      FrictionCoeff: float
       PrincipalRotationalInertia: Matrix3
       PrincipalRotationalInertiaInverse: Matrix3 }
+
+    static member CalcFullRotationalInertia (orientation: Matrix3) (inertiaMatrix: Matrix3) =
+        let orientation = orientation.Get
+        orientation * inertiaMatrix.Get * orientation.Transpose() |> Matrix3.fromMatrix
+
+    member this.CalcRotationalInertia() =
+        RigidBody.CalcFullRotationalInertia this.Variables.Orientation this.PrincipalRotationalInertia
+
+    member this.CalcRotationalInertiaInverse() =
+        RigidBody.CalcFullRotationalInertia this.Variables.Orientation this.PrincipalRotationalInertiaInverse
+
+    member this.GetMassCenterPosition = this.MassCenter.Variables.Position
+    
+    member this.CalcAngularVelocity() =
+        this.CalcRotationalInertiaInverse().Get * this.Variables.AngularMomentum.Get |> Vector3D.ofVector 
 
 type Torque = Vector3D
 
 type RigidBodyIntegrator = TimeSpan -> Torque -> RotationalInertiaInverse -> RigidBodyVariables -> RigidBodyVariables
 
 module RigidBody =
-    let create initialOrientation initialVelocity elasticityCoeff frictionCoeff mass position principalRotationalInertia =
+    let create
+        initialOrientation
+        initialVelocity
+        elasticityCoeff
+        frictionCoeff
+        mass
+        position
+        principalRotationalInertia
+        =
         if elasticityCoeff < 0.0 || elasticityCoeff > 1.0 then
             "Invalid value " |> invalidArg (nameof elasticityCoeff)
-            
+
         if frictionCoeff < 0.0 || frictionCoeff > 1.0 then
             "Invalid value " |> invalidArg (nameof frictionCoeff)
 
@@ -84,8 +107,7 @@ module RigidBodyIntegrators =
             let angle = axis.Norm(2.0)
 
             let newOrientation =
-                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> ofVector) angle)
-                    .Get
+                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> ofVector) angle).Get
                 * old.Orientation.Get
 
             { Orientation = newOrientation |> fromMatrix |> orthonormalize
@@ -117,8 +139,7 @@ module RigidBodyIntegrators =
             let angle = axis.Norm(2.0)
 
             let newOrientation =
-                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> ofVector) angle)
-                    .Get
+                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> ofVector) angle).Get
                 * old.Orientation.Get
 
             { Orientation = newOrientation |> fromMatrix |> orthonormalize
@@ -127,10 +148,7 @@ module RigidBodyIntegrators =
 module RigidBodyMotion =
 
     let calcFullRotationalInertia (orientation: Matrix3) (inertiaMatrix: Matrix3) =
-        let orientation = orientation.Get
-
-        orientation * inertiaMatrix.Get * orientation.Transpose()
-        |> Matrix3.fromMatrix
+        RigidBody.CalcFullRotationalInertia orientation inertiaMatrix
 
     let applyImpulse rigidBody impulse (offset: Vector3D) =
 

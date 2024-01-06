@@ -1,9 +1,11 @@
 namespace PhysicsSimulator
 
+open System.Security.AccessControl
 open MathNet.Numerics.LinearAlgebra
-
+open Utils
 
 module CollisionResponse =
+    open Vector3D
 
     let private isImpulseInFrictionCone (collisionNormal: Vector3D) (frictionCoeff: float) (impulse: Vector3D) =
 
@@ -22,10 +24,10 @@ module CollisionResponse =
         elasticityCoeff
         frictionCoeff
         collisionNormal
-        (vOffset: Vector<float>)
+        (uRel: Vector<float>)
         =
-        let vNorm = vOffset.DotProduct(collisionNormal)
-        let vTan = vOffset - vNorm * collisionNormal
+        let vNorm = uRel.DotProduct(collisionNormal)
+        let vTan = uRel - vNorm * collisionNormal
 
         //TODO: vTan is zero sometimes!
         let t = vTan / vTan.L2Norm()
@@ -37,46 +39,85 @@ module CollisionResponse =
         jn * collisionNormal - frictionCoeff * jn * t |> Vector3D.ofVector
 
     let private calculateRigidBodyImpulse otherBody targetBody (contactPoint: ContactPoint) =
-        let relativeVelocity =
-            targetBody.MassCenter.Variables.Velocity.Get
-            - otherBody.MassCenter.Variables.Velocity.Get
 
         let compoundFriction = max targetBody.FrictionCoeff otherBody.FrictionCoeff
         let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
         let normal = contactPoint.Normal.Get
 
-        let calculateSingleImpulse (contactPoint: Vector3D) =
-            let offset = targetBody.MassCenter.Variables.Position.Get - contactPoint.Get
+        let offset1 =
+            (contactPoint.Position, targetBody.GetMassCenterPosition) ||> apply2 (-)
 
-            let vOffset = // velocity of colliding point before collision
-                relativeVelocity
-                + (offset |> Vector3D.crossProductV (targetBody.Variables.AngularMomentum.Get))
+        let offset2 =
+            (contactPoint.Position, otherBody.GetMassCenterPosition) ||> apply2 (-)
 
-            let vNorm = vOffset.DotProduct(normal) * normal // normal component of velocity before collision
+        let vRelLinear =
+            targetBody.MassCenter.Variables.Velocity.Get
+            - otherBody.MassCenter.Variables.Velocity.Get
 
-            let vNormAfterCol = -compoundElasticity * vNorm
+        let vRelAngular =
+            targetBody.CalcAngularVelocity().Get - otherBody.CalcAngularVelocity().Get
 
-            let inverseRotInertia =
-                targetBody.PrincipalRotationalInertiaInverse
-                |> RigidBodyMotion.calcFullRotationalInertia targetBody.Variables.Orientation
+        let uRel = vRelLinear + vRelAngular
+        let uRelNorm = uRel.DotProduct(normal)
+      //  printfn $"vNorm: {uRelNorm}"
+        //
+        let K body (offset: Vector3D) =
+            body.MassCenter.GetInverseMassMatrix().Get
+            + offset.HatOperator().Get.Transpose()
+              * body.CalcRotationalInertiaInverse().Get
+              * offset.HatOperator().Get
+        
+        let totalM = (K targetBody offset1) + (K otherBody offset2)
 
-            let offsetMatrix = (offset |> Vector3D.ofVector).HatOperator()
+        let coeff =  normal  * (totalM * normal)
+        
+        // let coeff1 = offset1 |> toVector |> crossProductV (targetBody.CalcRotationalInertiaInverse().Get * (normal |> ofVector |> crossProduct offset1).Get)
+        // let coeff2 = offset2 |> toVector |> crossProductV (otherBody.CalcRotationalInertiaInverse().Get * (normal |> ofVector |> crossProduct offset2).Get)
+        // let coeff = (1.0 / targetBody.MassCenter.Mass   + 1.0 / otherBody.MassCenter.Mass) + (coeff1 + coeff2).DotProduct(normal) 
+            
+        let impulseValue =
+            -(compoundElasticity + 1.0) * uRelNorm / coeff
 
-            let massMatrix =
-                targetBody.MassCenter.GetInverseMassMatrix().Get
-                - offsetMatrix.Get * inverseRotInertia.Get * offsetMatrix.Get
-                |> Matrix.inverse
+        let impulse = impulseValue * normal |> ofVector
+        impulse
 
-            let impulse = massMatrix * (vNormAfterCol - vNorm) |> Vector3D.ofVector
-            impulse
+    //    if impulse |> isImpulseInFrictionCone normal compoundFriction then
+    //             impulse
+    //      else
+    //         (calculateSlidingFrictionImpulse totalM compoundElasticity compoundFriction normal uRel)
 
-        // if impulse |> isImpulseInFrictionCone normal compoundFriction then
-        //      impulse
-        // else
-        //      (calculateSlidingFrictionImpulse massMatrix compoundElasticity compoundFriction normal vOffset)
-
-        contactPoint.Position |> calculateSingleImpulse
-
-    let calculateImpulse (contactPoint: ContactPoint)  (other: PhysicalObject) (target: PhysicalObject) =
+    let calculateImpulse (contactPoint: ContactPoint) (other: PhysicalObject) (target: PhysicalObject) =
         match (target, other) with
         | RigidBody targetBody, RigidBody otherBody -> calculateRigidBodyImpulse otherBody targetBody contactPoint
+
+    let resolveCollision (collisionData: CollisionData) first second =
+        //let collisionData2 = collisionData.WithInvertedNormals()
+
+        let resolveIteration objectsPair =
+            collisionData.ContactPoints
+            |> Seq.fold
+                (fun (first, second) contactPoint ->
+                    let offset1 = contactPoint.Position |> SimulatorObject.getOffsetFrom first
+                    let offset2 = contactPoint.Position |> SimulatorObject.getOffsetFrom second                  
+
+                    let impulse =
+                        first.PhysicalObject |> calculateImpulse contactPoint second.PhysicalObject
+                    //  let impulse1 = impulse1.Get.Divide(collisionData.ContactPoints |> Seq.length |> float) |> ofVector
+
+
+                    printfn $"  impulse: %A{impulse} offset: {offset1}"
+                    //                    printfn $"  impulse second: %A{impulse2} offset: {offset2}"
+
+                    let updated1 = first |> SimulatorObject.applyImpulse impulse offset1
+
+                    let updated2 =
+                        second |> SimulatorObject.applyImpulse (impulse.Get.Negate()) offset2
+
+                    //printfn $"  state1 after applying {updated1.PhysicalObject}"
+                    //printfn $"  state2 after applying {updated2.PhysicalObject}"
+
+                    (updated1, updated2))
+                objectsPair
+
+        let iterationCount = 10
+        (first, second) |> applyN iterationCount resolveIteration
