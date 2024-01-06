@@ -4,6 +4,7 @@ open MathNet.Numerics.LinearAlgebra
 open FSharpPlus
 open FSharpPlus.Data
 open Constants
+open Utils
 
 type ContactPoint =
     { Normal: Vector3D
@@ -11,7 +12,7 @@ type ContactPoint =
       Penetration: float }
 
     static member Create penetration normal position =
-        if (normal |> Vector3D.toVector |> Vector.norm) - 1.0 > epsilon then
+        if normal |> Vector3D.toVector |> Vector.norm |> equals 1.0 |> not then
             invalidArg "normal" "normal vector must me normalized"
 
         { Normal = normal
@@ -19,12 +20,12 @@ type ContactPoint =
           Penetration = penetration }
 
 type CollisionData =
-    { ContactPoints: ContactPoint seq }
+    { ContactPoints: ContactPoint list }
 
     member this.WithInvertedNormals() =
         { ContactPoints =
             this.ContactPoints
-            |> Seq.map (fun cp ->
+            |> List.map (fun cp ->
                 { cp with
                     Normal = cp.Normal |> Vector3D.apply (~-) }) }
 
@@ -147,7 +148,7 @@ module CollisionDetection =
                         vertex
                         |> GraphicsUtils.isPointInPlane (reference |> Face.toPlane |> Plane.invertNormal))
                     |> Seq.map (fun cp -> ContactPoint.Create penetration normal cp)
-                { ContactPoints = contactPoints } |> Some
+                { ContactPoints = contactPoints |> Seq.toList } |> Some
 
             match separationAxis with
             | Faces1,
