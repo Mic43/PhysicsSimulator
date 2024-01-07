@@ -22,8 +22,7 @@ type Simulator(simulatorObjects) =
                 (simulatorState.Value.GetObjects |> Map.keys |> Set.ofSeq)
 
             let newState =
-                simulatorState.Value
-                //      |> SimulatorState.withCollisionResponse interval (0, 1)
+                simulatorState.Value         
                 |> SimulatorState.withCollisionResponseGlobal interval collidingObjectsCandidates
                 |> SimulatorState.update interval
 
