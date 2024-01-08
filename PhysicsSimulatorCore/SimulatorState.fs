@@ -4,10 +4,21 @@ open System
 open FSharpPlus
 open Utils
 
-type ValueSupplier<'T> =
+[<CustomEquality; NoComparison>]
+type ValueSupplier<'T> when 'T: equality =
     | Zero
     | Constant of 'T
     | Variable of (unit -> 'T)
+
+    override this.Equals(other) =
+        match other with
+        | :? ValueSupplier<'T> as other ->
+            match (this, other) with
+            | Zero, Zero -> true
+            | Constant foo, Constant foo1 -> foo = foo1
+            | _ -> false
+        | o -> false
+
 
 type SimulatorState =
     private

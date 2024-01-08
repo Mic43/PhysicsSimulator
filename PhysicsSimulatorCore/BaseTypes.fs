@@ -166,7 +166,7 @@ module RotationMatrix3D =
 
         let len = axis.Norm(2.0)
 
-        if axis <> Vector3D.zero.Get && len < 1.0 - 1e-14 && len > 1.0 + 1e-14 then
+        if axis <> Vector3D.zero.Get && equals len 1.0 |> not then
             invalidArg "axis" "axis must be unit vector"
 
         let ux = axis.Item(0)
@@ -179,14 +179,14 @@ module RotationMatrix3D =
 
 
         matrix
-            [ [ cos angle + ux * ux * cosInv
+            [ [ cosA + ux * ux * cosInv
                 ux * uy * cosInv - uz * sinA
                 ux * uz * cosInv + uy * sinA ]
               [ uy * ux * cosInv + uz * sinA
                 cosA + uy * uy * cosInv
                 uy * uz * cosInv - ux * sinA ]
               [ uz * ux * cosInv - uy * sinA
-                uz * uy * cosA + ux * sinA
+                uz * uy * cosInv + ux * sinA
                 cosA + uz * uz * cosInv ] ]
         |> Matrix3.Value
 

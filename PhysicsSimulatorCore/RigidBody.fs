@@ -104,12 +104,14 @@ module RigidBodyIntegrators =
 
             let axis = (angularVelocity * totalSeconds)
 
-            let angle = axis.Norm(2.0)
+            let angle = axis.L2Norm()
+            printfn $"magn {angle} axis {axis.ToArray()}"
 
             let newOrientation =
-                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> ofVector) angle).Get
+                (angle |> RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0))).Get
                 * old.Orientation.Get
-
+            printfn $"Matrix: {newOrientation}"
+            
             { Orientation = newOrientation |> fromMatrix |> orthonormalize
               AngularMomentum = newAngMomentum |> ofVector }
 
@@ -147,9 +149,6 @@ module RigidBodyIntegrators =
 
 module RigidBodyMotion =
 
-    let calcFullRotationalInertia (orientation: Matrix3) (inertiaMatrix: Matrix3) =
-        RigidBody.CalcFullRotationalInertia orientation inertiaMatrix
-
     let applyImpulse rigidBody impulse (offset: Vector3D) =
 
         { rigidBody with
@@ -157,9 +156,6 @@ module RigidBodyMotion =
             Variables.AngularMomentum =
                 (rigidBody.Variables.AngularMomentum, impulse |> Vector3D.crossProduct offset)
                 ||> Vector3D.apply2 (+) }
-    // (rigidBody.Variables.AngularMomentum.Get
-    //  + (impulse |> Vector3D.crossProduct offset).Get)
-    // |> Vector3D.ofVector }
 
     let update
         (particleIntegrator: ParticleIntegrator)
@@ -173,15 +169,11 @@ module RigidBodyMotion =
             (totalForce |> Vector3D.toVector) / rigidBody.MassCenter.Mass
             |> Vector3D.ofVector
 
-        let rotInInv =
-            rigidBody.PrincipalRotationalInertiaInverse
-            |> calcFullRotationalInertia rigidBody.Variables.Orientation
-
         let newLinearComponent =
             particleIntegrator dt acceleration rigidBody.MassCenter.Variables
 
         let newRotComponent =
-            rigidBodyIntegrator dt totalTorque rotInInv rigidBody.Variables
+            rigidBodyIntegrator dt totalTorque (rigidBody.CalcRotationalInertiaInverse()) rigidBody.Variables
 
         { rigidBody with
             Variables = newRotComponent

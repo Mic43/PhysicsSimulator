@@ -14,7 +14,8 @@ type Simulator(simulatorObjects) =
     let simulatorState: SimulatorState ref =
         simulatorObjects |> SimulatorState.fromObjects |> ref
 
-    let interval = TimeSpan.FromMilliseconds(20.0)
+    let simulationStepInterval = TimeSpan.FromMilliseconds(10.0)
+    let simulationSpeedMultiplier = 1.0
    
     let broadPhaseCollisions (simulatorState:SimulatorState) = (simulatorState.GetObjects |> Map.keys |> Set.ofSeq) 
     let updateSimulation =
@@ -24,11 +25,11 @@ type Simulator(simulatorObjects) =
 
             let newState =
                 simulatorState.Value         
-                |> SimulatorState.withCollisionResponseGlobal interval collidingObjectsCandidates
-                |> SimulatorState.update interval
+                |> SimulatorState.withCollisionResponseGlobal simulationStepInterval collidingObjectsCandidates
+                |> SimulatorState.update simulationStepInterval
 
-            // if newState <> simulatorState.Value then
-            //     newState |> printf "%A"
+//            if newState <> simulatorState.Value then
+//                newState |> printfn "%A"
                 
             (fun _ -> simulatorState.Value <- newState) |> lock objectsLocker
         }
@@ -55,12 +56,11 @@ type Simulator(simulatorObjects) =
         let rec updateSingleFrame () =
             async {
                 do! updateSimulation
-                do! interval |> Async.Sleep
+                do! simulationStepInterval.Divide(simulationSpeedMultiplier) |> Async.Sleep
 
                 return! updateSingleFrame ()
             }
             
-
         Async.Start(updateSingleFrame (), cancellationTokenSource.Token)
 
     member this.PauseUpdateThread() = cancellationTokenSource.Cancel()
