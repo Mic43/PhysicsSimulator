@@ -98,35 +98,39 @@ module SimulatorState =
         simulatorState
         |> changeSimulatorObject objectIdentifier (simulatorObject |> applyImpulseToObject)
 
-    let private tryHandleCollision (obj1NextState, obj2NextState) (id1, id2) (curSimulationState: SimulatorState) =
-        (obj1NextState, obj2NextState)
-        ||> CollisionDetection.areColliding
+    let private tryHandleCollision
+        (nextStates: SetOf2<SimulatorObjectIdentifier * SimulatorObject>)
+        (curSimulationState: SimulatorState)
+        =
+        nextStates
+        |> SetOf2.map snd
+        |> CollisionDetection.areColliding
         |> Option.bind (fun collisionData ->
             "Collision detected " |> printfn "%A"
             collisionData |> printfn "%A"
 
             let resolvedObjects =
-                CollisionResponse.resolveCollision collisionData obj1NextState obj2NextState
+                CollisionResponse.resolveCollision collisionData (nextStates |> SetOf2.map snd)
 
-            //            printfn "State after collision: "
+            //  printfn "State after collision: "
             //  printfn $"%A{nextSimulationState.Objects[id1].PhysicalObject}"
-            //          printfn $"%A{nextSimulationState.Objects[id2].PhysicalObject}"
+            //  printfn $"%A{nextSimulationState.Objects[id2].PhysicalObject}"
 
             curSimulationState
-            |> changeSimulatorObject id1 (resolvedObjects |> fst)
-            |> changeSimulatorObject id2 (resolvedObjects |> snd)
+            |> changeSimulatorObject (nextStates |> SetOf2.fst |> fst) (resolvedObjects |> SetOf2.fst)
+            |> changeSimulatorObject (nextStates |> SetOf2.snd |> fst) (resolvedObjects |> SetOf2.snd)
             |> Some)
 
-    let private withCollisionResponse dt (curSimulationState: SimulatorState) (id1, id2) =
-        let obj1NextState =
-            { curSimulationState.Objects[id1] with
-                PhysicalObject = id1 |> updateObjectById curSimulationState dt }
+    let private withCollisionResponse dt (curSimulationState: SimulatorState) ids =
 
-        let obj2NextState =
-            { curSimulationState.Objects[id2] with
-                PhysicalObject = id2 |> updateObjectById curSimulationState dt }
+        let nextStates: SetOf2<SimulatorObjectIdentifier * SimulatorObject> =
+            ids
+            |> SetOf2.map (fun id ->
+                (id,
+                 { curSimulationState.Objects[id] with
+                     PhysicalObject = id |> updateObjectById curSimulationState dt }))
 
-        tryHandleCollision (obj1NextState, obj2NextState) (id1, id2) curSimulationState
+        tryHandleCollision nextStates curSimulationState
         |> Option.defaultValue curSimulationState
 
     let withCollisionResponseGlobal
@@ -134,13 +138,9 @@ module SimulatorState =
         (collidingObjectsCandidates: SimulatorObjectIdentifier Set)
         (curSimulationState: SimulatorState)
         =
-        let setOf2ToPair set =
-            match (set |> Set.toList) with
-            | [ v1; v2 ] -> (v1, v2)
-            | _ -> invalidArg "set" "set must be set of two "
 
         let withCollisionResponse simulatorState objectIdentifiers =
-            objectIdentifiers |> setOf2ToPair |> withCollisionResponse dt simulatorState
+            objectIdentifiers |> SetOf2.ofSet |> withCollisionResponse dt simulatorState
 
         collidingObjectsCandidates
         |> subSetsOf2Tail

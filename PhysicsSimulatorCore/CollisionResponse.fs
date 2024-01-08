@@ -6,6 +6,7 @@ open Utils
 
 module CollisionResponse =
     open Vector3D
+    open SetOf2
 
     let private isImpulseInFrictionCone (collisionNormal: Vector3D) (frictionCoeff: float) (impulse: Vector3D) =
 
@@ -59,20 +60,19 @@ module CollisionResponse =
 
         let uRel = vRelLinear + vRelAngular
         let uRelNorm = uRel.DotProduct(normal)
-      //  printfn $"vNorm: {uRelNorm}"
+        //  printfn $"vNorm: {uRelNorm}"
         //
         let K body (offset: Vector3D) =
             body.MassCenter.GetInverseMassMatrix().Get
             + offset.HatOperator().Get.Transpose()
               * body.CalcRotationalInertiaInverse().Get
               * offset.HatOperator().Get
-        
+
         let totalM = (K targetBody offset1) + (K otherBody offset2)
 
-        let coeff =  normal  * (totalM * normal)
-                    
-        let impulseValue =
-            -(compoundElasticity + 1.0) * uRelNorm / coeff
+        let coeff = normal * (totalM * normal)
+
+        let impulseValue = -(compoundElasticity + 1.0) * uRelNorm / coeff
 
         let impulse = impulseValue * normal |> ofVector
         impulse
@@ -86,34 +86,30 @@ module CollisionResponse =
         match (target, other) with
         | RigidBody targetBody, RigidBody otherBody -> calculateRigidBodyImpulse otherBody targetBody contactPoint
 
-    let resolveCollision (collisionData: CollisionData) first second =
-        //let collisionData2 = collisionData.WithInvertedNormals()
-
-        let resolveIteration objectsPair =
+    let resolveCollision (collisionData: CollisionData) (objects: SimulatorObject SetOf2) =
+        let resolveIteration (objectsPair: SimulatorObject SetOf2) =
             collisionData.ContactPoints
             |> Seq.fold
-                (fun (first, second) contactPoint ->
-                    let offset1 = contactPoint.Position |> SimulatorObject.getOffsetFrom first
-                    let offset2 = contactPoint.Position |> SimulatorObject.getOffsetFrom second                  
+                (fun objects contactPoint ->
+                    let offsets =
+                        objects |> map (contactPoint.Position |> SimulatorObject.getOffsetFrom)
 
                     let impulse =
-                        first.PhysicalObject |> calculateImpulse contactPoint second.PhysicalObject
-                    //  let impulse1 = impulse1.Get.Divide(collisionData.ContactPoints |> Seq.length |> float) |> ofVector
+                        (objects |> fst).PhysicalObject
+                        |> calculateImpulse contactPoint (objects |> snd).PhysicalObject
 
+                    printfn $"  impulse: %A{impulse} offset: {offsets}"
 
-                    printfn $"  impulse: %A{impulse} offset: {offset1}"
-                    //                    printfn $"  impulse second: %A{impulse2} offset: {offset2}"
-
-                    let updated1 = first |> SimulatorObject.applyImpulse impulse offset1
-
-                    let updated2 =
-                        second |> SimulatorObject.applyImpulse (impulse.Get.Negate()) offset2
+                    let updated =
+                        ([ impulse; impulse.Get.Negate() ] |> ofList, offsets, objects)
+                        |||> zip3
+                        |> map (fun (impulse, offset, obj) -> obj |> SimulatorObject.applyImpulse impulse offset)
 
                     //printfn $"  state1 after applying {updated1.PhysicalObject}"
                     //printfn $"  state2 after applying {updated2.PhysicalObject}"
 
-                    (updated1, updated2))
+                    updated)
                 objectsPair
 
         let iterationCount = 10
-        (first, second) |> applyN iterationCount resolveIteration
+        objects |> applyN iterationCount resolveIteration

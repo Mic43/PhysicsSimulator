@@ -15,11 +15,12 @@ type Simulator(simulatorObjects) =
         simulatorObjects |> SimulatorState.fromObjects |> ref
 
     let interval = TimeSpan.FromMilliseconds(20.0)
-
+   
+    let broadPhaseCollisions (simulatorState:SimulatorState) = (simulatorState.GetObjects |> Map.keys |> Set.ofSeq) 
     let updateSimulation =
         async {
             let collidingObjectsCandidates =
-                (simulatorState.Value.GetObjects |> Map.keys |> Set.ofSeq)
+                simulatorState.Value |> broadPhaseCollisions
 
             let newState =
                 simulatorState.Value         

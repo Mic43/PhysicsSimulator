@@ -27,6 +27,7 @@ type PhysicalObject =
 
     member this.MassCenterPosition() = this.AsParticle().Variables.Position
 
+
 type SimulatorObject =
     { PhysicalObject: PhysicalObject
       Collider: Collider }
@@ -47,7 +48,7 @@ module SimulatorObject =
             |> RigidBody
           Collider = (size, size, size) |||> Collider.createBox |> Box }
 
-    let getOffsetFrom (physicalObject: SimulatorObject) (point: Vector3D) =
+    let getOffsetFrom (point: Vector3D) (physicalObject: SimulatorObject) =
         (point, physicalObject.PhysicalObject.MassCenterPosition())
         ||> Vector3D.apply2 (-)
 
@@ -56,7 +57,7 @@ module SimulatorObject =
             match object with
             | RigidBody rigidBody -> RigidBodyMotion.applyImpulse rigidBody impulse offset |> RigidBody
             | Particle particle -> impulse |> ParticleMotion.applyImpulse particle |> Particle
-
+         
         { object with
             PhysicalObject = object.PhysicalObject |> applyImpulseToObject }
 

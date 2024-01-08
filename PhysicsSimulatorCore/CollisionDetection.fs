@@ -1,5 +1,6 @@
 namespace PhysicsSimulator
 
+open System
 open MathNet.Numerics.LinearAlgebra
 open FSharpPlus
 open FSharpPlus.Data
@@ -148,6 +149,7 @@ module CollisionDetection =
                         vertex
                         |> GraphicsUtils.isPointInPlane (reference |> Face.toPlane |> Plane.invertNormal))
                     |> Seq.map (fun cp -> ContactPoint.Create penetration normal cp)
+
                 { ContactPoints = contactPoints |> Seq.toList } |> Some
 
             match separationAxis with
@@ -159,15 +161,23 @@ module CollisionDetection =
                 Penetration = penetration } -> (faces2, faces1) ||> generateFaceContactPoints normal penetration
             | Edges, { Normal = n; Penetration = f } -> failwith "edges"
 
-    let areColliding first second : CollisionData option =
-        let firstPos = first.PhysicalObject.MassCenterPosition()
-        let secondPos = second.PhysicalObject.MassCenterPosition()
+    open SetOf2
+
+    let areColliding (pair: SimulatorObject SetOf2) : CollisionData option =
+
+        let objects = pair |> map _.PhysicalObject
+        let positions = objects |> map _.MassCenterPosition().Get
+
+        let first = pair |> fst
+        let second = pair |> snd
 
         match (first.PhysicalObject, second.PhysicalObject) with
         | RigidBody body1, RigidBody body2 ->
             match (first.Collider, second.Collider) with
             | Sphere sphere, Sphere sphere2 ->
-                let normal = firstPos.Get - secondPos.Get
+                let firstPos = positions |> fst
+                let secondPos = positions |> snd
+                let normal = firstPos - secondPos
                 let dist = normal.L2Norm()
 
                 if dist > sphere.Radius + sphere2.Radius then
@@ -175,11 +185,10 @@ module CollisionDetection =
                 else
                     let normal = normal.Normalize(2.0)
 
-                    let contactPoint1 = firstPos.Get + -normal * sphere.Radius
-                    let contactPoint2 = secondPos.Get + normal * sphere2.Radius
+                    let contactPoint1 = firstPos + -normal * sphere.Radius
+                    let contactPoint2 = secondPos + normal * sphere2.Radius
 
-                    let contactPoint =
-                        (contactPoint1 + (contactPoint2 - contactPoint1) / 2.0 |> ofVector)
+                    let contactPoint = (contactPoint1 + (contactPoint2 - contactPoint1) / 2.0)
 
                     { ContactPoints = [ (ContactPoint.Create 0.0 normal contactPoint) ] } |> Some
             | Sphere sphere, Box box -> None
