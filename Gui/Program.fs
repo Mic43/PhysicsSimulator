@@ -12,7 +12,7 @@ open FSharpPlus
 let radius = 1.0
 let mass = 1.0
 let impulseValue = Vector3D.create 2 0 0
-let impulseOffset = Vector3D.create 0 -0.5 0
+let impulseOffset = Vector3D.create 0 -0.5 -0.5
 //let epsilon = 0.001
 
 let prepareSimulator2 () =

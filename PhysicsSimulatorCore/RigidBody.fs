@@ -28,9 +28,10 @@ type RigidBody =
         RigidBody.CalcFullRotationalInertia this.Variables.Orientation this.PrincipalRotationalInertiaInverse
 
     member this.GetMassCenterPosition = this.MassCenter.Variables.Position
-    
+
     member this.CalcAngularVelocity() =
-        this.CalcRotationalInertiaInverse().Get * this.Variables.AngularMomentum.Get |> Vector3D.ofVector 
+        this.CalcRotationalInertiaInverse().Get * this.Variables.AngularMomentum.Get
+        |> Vector3D.ofVector
 
 type Torque = Vector3D
 
@@ -93,25 +94,25 @@ module RigidBodyIntegrators =
     open Matrix3
 
     let (firstOrder: RigidBodyIntegrator) =
-        fun dt (Vector3D torque) inertiaInverse old ->
+        fun dt torque inertiaInverse old ->
             let totalSeconds = dt.TotalSeconds
 
             let angMomentumChange = torque * totalSeconds
 
-            let newAngMomentum = old.AngularMomentum.Get + angMomentumChange
+            let newAngMomentum = old.AngularMomentum + angMomentumChange
 
-            let angularVelocity = inertiaInverse.Get * newAngMomentum
+            let angularVelocity = inertiaInverse.Get * newAngMomentum.Get |> ofVector
 
-            let axis = (angularVelocity * totalSeconds)
+            let axis = angularVelocity * totalSeconds
 
-            let angle = axis.L2Norm()           
+            let angle = axis |> l2Norm
 
             let newOrientation =
-                (angle |> RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0))).Get
-                * old.Orientation.Get            
-            
+                (angle |> RotationMatrix3D.fromAxisAndAngle (axis |> normalized)).Get
+                * old.Orientation.Get
+
             { Orientation = newOrientation |> fromMatrix |> orthonormalize
-              AngularMomentum = newAngMomentum |> ofVector }
+              AngularMomentum = newAngMomentum }
 
     let (augmentedSecondOrder: RigidBodyIntegrator) =
         fun dt (Vector3D torque) inertiaInverse old ->
@@ -143,7 +144,7 @@ module RigidBodyIntegrators =
                 * old.Orientation.Get
 
             { Orientation = newOrientation |> fromMatrix |> orthonormalize
-              AngularMomentum = (old.AngularMomentum, angMomentumChange |> ofVector) ||> apply2 (+) }
+              AngularMomentum = old.AngularMomentum + (angMomentumChange |> ofVector) }
 
 module RigidBodyMotion =
 
@@ -151,9 +152,7 @@ module RigidBodyMotion =
 
         { rigidBody with
             MassCenter = impulse |> ParticleMotion.applyImpulse rigidBody.MassCenter
-            Variables.AngularMomentum =
-                (rigidBody.Variables.AngularMomentum, impulse |> Vector3D.crossProduct offset)
-                ||> Vector3D.apply2 (+) }
+            Variables.AngularMomentum = rigidBody.Variables.AngularMomentum + (impulse |> Vector3D.crossProduct offset) }
 
     let update
         (particleIntegrator: ParticleIntegrator)
@@ -163,9 +162,7 @@ module RigidBodyMotion =
         dt
         (rigidBody: RigidBody)
         =
-        let acceleration =
-            (totalForce |> Vector3D.toVector) / rigidBody.MassCenter.Mass
-            |> Vector3D.ofVector
+        let acceleration = totalForce / rigidBody.MassCenter.Mass
 
         let newLinearComponent =
             particleIntegrator dt acceleration rigidBody.MassCenter.Variables

@@ -17,8 +17,7 @@ type ValueSupplier<'T> when 'T: equality =
             | Zero, Zero -> true
             | Constant foo, Constant foo1 -> foo = foo1
             | _ -> false
-        | o -> false
-
+        | _ -> false
 
 type SimulatorState =
     private

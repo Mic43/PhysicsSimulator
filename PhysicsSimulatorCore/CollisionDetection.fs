@@ -39,7 +39,7 @@ module CollisionDetection =
         | Edges
 
     type private PossibleCollisionData =
-        { Normal: Vector<float>
+        { Normal: Vector3D
           Penetration: float }
 
     let private chooseSeparationAxis (candidatesMap: Map<SATAxisOrigin, PossibleCollisionData>) =
@@ -79,7 +79,7 @@ module CollisionDetection =
                 let penetration = b - c // ??
                 let normal = axis
 
-                { Normal = normal
+                { Normal = normal |> ofVector
                   Penetration = penetration }
                 // CollisionData.Create penetration normal [ max1 + normal * penetration |> ofVector ]
                 |> Some
@@ -88,7 +88,7 @@ module CollisionDetection =
                 let penetration = d - a // ??
                 let normal = -axis // ???
 
-                { Normal = normal
+                { Normal = normal |> ofVector
                   Penetration = penetration }
                 //CollisionData.Create penetration normal [ min1 + normal * penetration |> ofVector ]
                 |> Some
@@ -166,7 +166,7 @@ module CollisionDetection =
     let areColliding (pair: SimulatorObject SetOf2) : CollisionData option =
 
         let objects = pair |> map _.PhysicalObject
-        let positions = objects |> map _.MassCenterPosition().Get
+        let positions = objects |> map _.MassCenterPosition()
 
         let first = pair |> fst
         let second = pair |> snd
@@ -178,12 +178,12 @@ module CollisionDetection =
                 let firstPos = positions |> fst
                 let secondPos = positions |> snd
                 let normal = firstPos - secondPos
-                let dist = normal.L2Norm()
+                let dist = normal |> l2Norm
 
                 if dist > sphere.Radius + sphere2.Radius then
                     None
                 else
-                    let normal = normal.Normalize(2.0)
+                    let normal = normal |> normalized
 
                     let contactPoint1 = firstPos + -normal * sphere.Radius
                     let contactPoint2 = secondPos + normal * sphere2.Radius

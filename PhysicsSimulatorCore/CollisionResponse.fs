@@ -10,15 +10,12 @@ module CollisionResponse =
 
     let private isImpulseInFrictionCone (collisionNormal: Vector3D) (frictionCoeff: float) (impulse: Vector3D) =
 
-        let impulse = impulse.Get
-        let normal = collisionNormal.Get
-
-        let impulseNormal = normal.DotProduct(impulse) * normal
+        let impulseNormal = (collisionNormal |> dotProduct impulse) * collisionNormal
         let impulseTg = impulse - impulseNormal
         //let temp = impulse.DotProduct(normal)
         //   (impulse - temp * normal).L2Norm() <= frictionCoeff * impulse.DotProduct(normal)
-        let tmp = impulse.DotProduct(normal)
-        impulseTg.L2Norm() <= frictionCoeff * tmp
+        let tmp = impulse |> dotProduct collisionNormal
+        (impulseTg |> l2Norm) <= frictionCoeff * tmp
 
     let private calculateSlidingFrictionImpulse
         (massMatrix: Matrix<float>)
@@ -43,25 +40,21 @@ module CollisionResponse =
 
         let compoundFriction = max targetBody.FrictionCoeff otherBody.FrictionCoeff
         let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
-        let normal = contactPoint.Normal.Get
+        let normal = contactPoint.Normal
 
-        let offset1 =
-            (contactPoint.Position, targetBody.GetMassCenterPosition) ||> apply2 (-)
-
-        let offset2 =
-            (contactPoint.Position, otherBody.GetMassCenterPosition) ||> apply2 (-)
+        let offset1 = (contactPoint.Position - targetBody.GetMassCenterPosition)
+        let offset2 = (contactPoint.Position - otherBody.GetMassCenterPosition)
 
         let vRelLinear =
-            targetBody.MassCenter.Variables.Velocity.Get
-            - otherBody.MassCenter.Variables.Velocity.Get
+            targetBody.MassCenter.Variables.Velocity
+            - otherBody.MassCenter.Variables.Velocity
 
         let vRelAngular =
-            (offset1 |> crossProduct (targetBody.CalcAngularVelocity()),
-             (offset2 |> crossProduct (otherBody.CalcAngularVelocity())))
-            ||> apply2 (-)
+            (offset1 |> crossProduct (targetBody.CalcAngularVelocity()))
+            - (offset2 |> crossProduct (otherBody.CalcAngularVelocity()))
 
-        let uRel = vRelLinear + vRelAngular.Get
-        let uRelNorm = uRel.DotProduct(normal)
+        let uRel = vRelLinear + vRelAngular
+        let uRelNorm = uRel |> dotProduct (normal)
         //  printfn $"vNorm: {uRelNorm}"
         //
         let K body (offset: Vector3D) =
@@ -72,11 +65,11 @@ module CollisionResponse =
 
         let totalM = (K targetBody offset1) + (K otherBody offset2)
 
-        let coeff = normal * (totalM * normal)
+        let coeff = normal.Get * (totalM * normal.Get)
 
         let impulseValue = -(compoundElasticity + 1.0) * uRelNorm / coeff
 
-        let impulse = impulseValue * normal |> ofVector
+        let impulse = impulseValue * normal
         impulse
 
     //    if impulse |> isImpulseInFrictionCone normal compoundFriction then
@@ -103,7 +96,7 @@ module CollisionResponse =
                     printfn $"  impulse: %A{impulse} offset: {offsets}"
 
                     let updated =
-                        ([ impulse; impulse.Get.Negate() ] |> ofList, offsets, objects)
+                        ([ impulse; -impulse ] |> ofList, offsets, objects)
                         |||> zip3
                         |> map (fun (impulse, offset, obj) -> obj |> SimulatorObject.applyImpulse impulse offset)
 
@@ -113,5 +106,5 @@ module CollisionResponse =
                     updated)
                 objectsPair
 
-        let iterationCount = 1
+        let iterationCount = 10
         objects |> applyN iterationCount resolveIteration

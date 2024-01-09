@@ -1,7 +1,10 @@
 namespace PhysicsSimulator
 
+[<AutoOpen>]
 module Constants =
     let epsilon = 0.00001
+
+[<AutoOpen>]
 module Utils =
     let rec subSetsOf2<'t when 't: comparison> (set: 't Set) =
         if (set.Count < 2) then
@@ -27,11 +30,10 @@ module Utils =
             |> Set.union (processed |> Set.map (fun el -> [ el; maximumElement ] |> Set.ofList))
 
     let subSetsOf2Tail set = subSetsOf2Ag Set.empty set Set.empty
-    
-    // Applies function n times to given object 
-    let applyN n f object =
-        [1..n] |> List.fold (fun obj _ -> obj |> f ) object
-    
-    let equals (a:float) b  =
-        (b - a |> abs) <= Constants.epsilon
 
+    // Applies function n times to given object
+    let applyN n f object =
+        [ 1..n ] |> List.fold (fun obj _ -> obj |> f) object
+
+
+    let equals (a: float) b = (b - a |> abs) <= Constants.epsilon

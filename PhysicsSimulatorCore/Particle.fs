@@ -26,11 +26,11 @@ module ParticleIntegrators =
     let (dummy: ParticleIntegrator) = fun dt acceleration vars -> vars
 
     let (forwardEuler: ParticleIntegrator) =
-        fun dt (Vector3D acceleration) old ->
-            let newVelocity = old.Velocity.Get + acceleration * dt.TotalSeconds
+        fun dt acceleration old ->
+            let newVelocity = old.Velocity + acceleration * dt.TotalSeconds
 
-            { Position = (old.Position.Get + newVelocity * dt.TotalSeconds) |> ofVector
-              Velocity = newVelocity |> ofVector }
+            { Position = old.Position + newVelocity * dt.TotalSeconds
+              Velocity = newVelocity }
 
 module ParticleMotion =
 

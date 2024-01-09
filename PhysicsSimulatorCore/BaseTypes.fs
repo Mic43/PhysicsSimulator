@@ -35,7 +35,19 @@ type Vector3D =
         matrix [ [ 0.0; -this.Z; this.Y ]; [ this.Z; 0.0; -this.X ]; [ -this.Y; this.X; 0.0 ] ]
         |> Matrix3.Value
 
-    static member op_Implicit(v: Vector<float>) = v |> Vector3D.Value
+  
+    static member apply2 (f: Vector<float> -> Vector<float> -> Vector<float>) (v: Vector3D) (v2: Vector3D) =
+        (v.Get, v2.Get) ||> f |> Value
+
+    static member (+)(v1, v2) = (v1, v2) ||> Vector3D.apply2 (+)
+    static member (-)(v1, v2) = (v1, v2) ||> Vector3D.apply2 (-)
+    static member (*)(scalar: float, v: Vector3D) = scalar * v.Get |> Value
+    static member (*)(v: Vector3D, scalar: float) = scalar * v
+    static member (/)(v: Vector3D, scalar: float) = v * (1.0 / scalar)
+    static member (~-)(v: Vector3D) = -v.Get |> Value
+
+
+// static member op_Implicit(v: Vector<float>) = v |> Vector3D.Value
 
 type Plane =
     { Normal: Vector3D
@@ -80,8 +92,7 @@ module Vector3D =
     let apply (f: Vector<float> -> Vector<float>) (v: Vector3D) = v |> toVector |> f |> ofVector
 
     let apply2 (f: Vector<float> -> Vector<float> -> Vector<float>) (v: Vector3D) (v2: Vector3D) =
-        (v |> toVector, v2 |> toVector) ||> f |> ofVector
-
+        (f,v,v2) |||> Vector3D.apply2      
     let crossProduct (first: Vector3D) (second: Vector3D) =
         let x = (first.Y * second.Z) - (first.Z * second.Y)
         let y = (first.Z * second.X) - (first.X * second.Z)
@@ -89,8 +100,13 @@ module Vector3D =
 
         (x, y, z) |||> create
 
+    let l2Norm (v: Vector3D) = v.Get.L2Norm()
+    let normalized v = v |> apply (_.Normalize(2.0))
+
     let crossProductV (first) (second) =
         second |> ofVector |> crossProduct (first |> ofVector) |> toVector
+
+    let dotProduct (v1: Vector3D) (v2: Vector3D) = v1.Get.DotProduct(v2.Get)
 
     let getOriented (rotationMatrix: Matrix3) (translationVector: Vector3D) (v: Vector3D) =
         v
@@ -98,7 +114,7 @@ module Vector3D =
         |> ofVector
 
 module Matrix3 =
-    open Vector3D
+    //open Vector3D
     let (|Matrix3|) (Value value) = value
 
     let fromMatrix (matrix: Matrix<float>) =
@@ -131,38 +147,11 @@ module Matrix3 =
 
         Matrix.Build.DenseOfColumns([ col0; col1; col2 ]) |> fromMatrix
 
-    let reorthogonalise2 (m: Matrix3) =
-        let x = m.Get.Row(0)
-        let y = m.Get.Row(1)
-        let z = m.Get.Row(2)
-
-        let xORt = (crossProductV y z)
-        let yOrt = (crossProductV z x)
-        let zORt = z
-
-        Matrix<float>.Build
-            .DenseOfRowVectors(xORt.Normalize(2.0), yOrt.Normalize(2.0), zORt.Normalize(2.0))
-        |> fromMatrix
-
-    let reorthogonalise (m: Matrix3) =
-        let x = m.Get.Row(0)
-        let y = m.Get.Row(1)
-
-        let error = x.DotProduct(y)
-
-        let xORt = x - (error / 2.0) * y
-        let yOrt = y - (error / 2.0) * x
-        let zORt = yOrt |> ofVector |> crossProduct (xORt |> ofVector) |> toVector
-
-        Matrix<float>.Build
-            .DenseOfRowVectors(xORt.Normalize(2.0), yOrt.Normalize(2.0), zORt.Normalize(2.0))
-        |> fromMatrix
-
 module RotationMatrix3D =
-    open Vector3D
+    // open Vector3D
     let zero = Matrix<float>.Build.DenseIdentity 3 |> Matrix3.Value
 
-    let fromAxisAndAngle (Vector3D axis) angle =
+    let fromAxisAndAngle (Vector3D.Vector3D axis) angle =
 
         let len = axis.Norm(2.0)
 

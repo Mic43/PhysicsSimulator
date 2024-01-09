@@ -90,7 +90,11 @@ module Collider =
         |> List.mapi (fun i normal ->
             { Vertices =
                 faces[i]
-                |> List.map ((fun i -> vertices[i].Get) >> (_.PointwiseMultiply(scaleVector)))
+                |> List.map (
+                    (fun i -> vertices[i].Get)
+                    >> (_.PointwiseMultiply(scaleVector))
+                    >> Vector3D.ofVector
+                )
               Normal = normal })
         |> List.toSeq
 
@@ -99,9 +103,9 @@ module Collider =
 
     let findAdjacentFaces boxFaces targetFace =
         boxFaces
-        |> Seq.filter (fun f -> ((f.Normal.Get - targetFace.Normal.Get).L2Norm() |> abs) >= epsilon)
+        |> Seq.filter (fun f -> f.Normal - targetFace.Normal |> Vector3D.l2Norm |> (equals 0.0))
         |> Seq.filter (fun face ->
             face.Vertices
             |> Seq.allPairs targetFace.Vertices
-            |> Seq.exists (fun (v1, v2) -> ((v1.Get - v2.Get).L2Norm() |> abs) <= epsilon))
+            |> Seq.exists (fun (v1, v2) -> v1 - v2 |> Vector3D.l2Norm |> (equals 0.0)))
 //face.Normal |> Vector3D.crossProduct targetFace.Normal |> abs > epsilon)
