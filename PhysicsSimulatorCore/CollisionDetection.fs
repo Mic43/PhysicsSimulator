@@ -86,7 +86,7 @@ module CollisionDetection =
             // c     a     d  b
             elif c <= a && d >= a then
                 let penetration = d - a // ??
-                let normal = -axis
+                let normal = -axis // ???
 
                 { Normal = normal
                   Penetration = penetration }

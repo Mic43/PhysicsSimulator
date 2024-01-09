@@ -56,9 +56,11 @@ module CollisionResponse =
             - otherBody.MassCenter.Variables.Velocity.Get
 
         let vRelAngular =
-            targetBody.CalcAngularVelocity().Get - otherBody.CalcAngularVelocity().Get
+            (offset1 |> crossProduct (targetBody.CalcAngularVelocity()),
+             (offset2 |> crossProduct (otherBody.CalcAngularVelocity())))
+            ||> apply2 (-)
 
-        let uRel = vRelLinear + vRelAngular
+        let uRel = vRelLinear + vRelAngular.Get
         let uRelNorm = uRel.DotProduct(normal)
         //  printfn $"vNorm: {uRelNorm}"
         //
@@ -111,5 +113,5 @@ module CollisionResponse =
                     updated)
                 objectsPair
 
-        let iterationCount = 10
+        let iterationCount = 1
         objects |> applyN iterationCount resolveIteration

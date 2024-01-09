@@ -11,8 +11,8 @@ open FSharpPlus
 
 let radius = 1.0
 let mass = 1.0
-let impulseValue = Vector3D.create 1 0 0
-let impulseOffset = Vector3D.create 0 0 0
+let impulseValue = Vector3D.create 2 0 0
+let impulseOffset = Vector3D.create 0 -0.5 0
 //let epsilon = 0.001
 
 let prepareSimulator2 () =
@@ -39,11 +39,11 @@ let prepareSimulator () =
      [
         SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create -3 0 0)
         SimulatorObject.createDefaultCube (radius * 2.0) (mass) (Vector3D.create 0 0 0)
-
-     //   SimulatorObject.createDefaultSphere (radius) mass (Vector3D.create 4 0.0 0)
+       //
        // SimulatorObject.createDefaultSphere radius mass Vector3D.zero
-       // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 2.1 0.0 0.0)
-       // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 1.0 1.0 -1.0)
+       // SimulatorObject.createDefaultSphere (radius) mass (Vector3D.create 3 0.0 0)
+       // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 6 0.0 0.0)
+       // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 9 1.0 -1.0)
 
       ]
     |> Simulator
@@ -59,9 +59,9 @@ let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifie
         let mutable m33d = tmp |> M33d.op_Explicit
 
         let fromM33d = Rot3d.FromM33d(m33d, Constants.epsilon)
-        let foo = fromM33d.GetEulerAngles()
-        printfn $"Angles: %A{foo.Elements.ToListOfT()}"
-        printfn $"Matrix: %A{matrix}"
+        //let foo = fromM33d.GetEulerAngles()
+       // printfn $"Angles: %A{foo.Elements.ToListOfT()}"
+        //printfn $"Matrix: %A{matrix}"
 
         Trafo3d(fromM33d)
 

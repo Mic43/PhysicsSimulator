@@ -15,7 +15,7 @@ type Simulator(simulatorObjects) =
         simulatorObjects |> SimulatorState.fromObjects |> ref
 
     let simulationStepInterval = TimeSpan.FromMilliseconds(10.0)
-    let simulationSpeedMultiplier = 1.0
+    let simulationSpeedMultiplier = 1
    
     let broadPhaseCollisions (simulatorState:SimulatorState) = (simulatorState.GetObjects |> Map.keys |> Set.ofSeq) 
     let updateSimulation =

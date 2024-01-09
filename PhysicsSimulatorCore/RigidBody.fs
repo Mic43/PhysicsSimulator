@@ -104,13 +104,11 @@ module RigidBodyIntegrators =
 
             let axis = (angularVelocity * totalSeconds)
 
-            let angle = axis.L2Norm()
-            printfn $"magn {angle} axis {axis.ToArray()}"
+            let angle = axis.L2Norm()           
 
             let newOrientation =
                 (angle |> RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0))).Get
-                * old.Orientation.Get
-            printfn $"Matrix: {newOrientation}"
+                * old.Orientation.Get            
             
             { Orientation = newOrientation |> fromMatrix |> orthonormalize
               AngularMomentum = newAngMomentum |> ofVector }
