@@ -1,4 +1,4 @@
-namespace PhysicsSimulator
+namespace PhysicsSimulator.Utilities
 
 [<AutoOpen>]
 module Constants =

@@ -1,5 +1,7 @@
 namespace PhysicsSimulator
 
+open PhysicsSimulator.Utilities
+
 open Constants
 type Sphere = { Radius: float }
 

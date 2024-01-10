@@ -2,9 +2,8 @@ namespace PhysicsSimulator
 
 open System
 open System.Threading
-open System.Threading.Tasks
 open FSharpPlus
-open MathNet.Numerics.LinearAlgebra
+
 
 
 type Simulator(simulatorObjects) =

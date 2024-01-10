@@ -1,4 +1,6 @@
-namespace PhysicsSimulator
+namespace PhysicsSimulator.Collisions
+
+open PhysicsSimulator.Utilities
 
 module Friction =
     open Vector3D

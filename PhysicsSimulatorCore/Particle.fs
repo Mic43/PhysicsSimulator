@@ -3,6 +3,7 @@ namespace PhysicsSimulator
 open System
 
 open MathNet.Numerics.LinearAlgebra
+open PhysicsSimulator.Utilities
 
 type ParticleVariables =
     { Position: Vector3D

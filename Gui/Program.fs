@@ -1,6 +1,7 @@
 ﻿// For more information see https://aka.ms/fsharp-console-apps
 open System
 open PhysicsSimulator
+open PhysicsSimulator.Utilities
 open Aardvark.Base
 open Aardvark.Rendering
 open FSharp.Data.Adaptive
@@ -8,7 +9,6 @@ open Aardvark.SceneGraph
 open Aardvark.Application
 open Aardvark.Application.Slim
 open FSharpPlus
-
 
 let id = 0
 let radius = 1.0
