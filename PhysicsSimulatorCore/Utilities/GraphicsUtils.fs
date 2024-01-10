@@ -1,4 +1,4 @@
-namespace PhysicsSimulator
+namespace PhysicsSimulator.Utilities
 
 open MathNet.Numerics.LinearAlgebra
 open FSharpPlus
@@ -71,3 +71,8 @@ module GraphicsUtils =
                 loop clippedPolygon planesTail
 
         loop inputPolygon clipPlanes |> List.distinct
+
+    let toWorldCoordinates (rotationMatrix: Matrix3) (translationVector: Vector3D) (v: Vector3D) =
+        v
+        |> ((fun v -> v.Get * rotationMatrix.Get) >> (fun v -> v + translationVector.Get))
+        |> Vector3D.ofVector

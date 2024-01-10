@@ -1,4 +1,6 @@
-namespace PhysicsSimulator
+namespace PhysicsSimulator.Entities
+
+open PhysicsSimulator.Utilities
 
 type SimulatorObjectIdentifier =
     private

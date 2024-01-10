@@ -1,6 +1,8 @@
-namespace PhysicsSimulator
+namespace PhysicsSimulator.Collisions
 
-open Utils
+open PhysicsSimulator
+open PhysicsSimulator.Utilities
+open PhysicsSimulator.Entities
 
 module CollisionResponse =
     open Vector3D
@@ -36,9 +38,9 @@ module CollisionResponse =
             //
             let K body (offset: Vector3D) =
                 body.MassCenter.GetInverseMassMatrix().Get
-                + offset.HatOperator().Get.Transpose()
+                + (offset |> Matrix3.hatOperator).Get.Transpose()
                   * body.CalcRotationalInertiaInverse().Get
-                  * offset.HatOperator().Get
+                  * (offset |> Matrix3.hatOperator).Get
 
             let totalM = (K targetBody offset1) + (K otherBody offset2)
             let coeff = normal.Get * (totalM * normal.Get)
@@ -55,7 +57,7 @@ module CollisionResponse =
 
     let resolveCollision (collisionData: CollisionData) (objects: SimulatorObject SetOf2) =
         let resolveIteration (objectsPair: SimulatorObject SetOf2) =
-            let resolveContactPoint objects contactPoint =
+            let resolveContactPoint objects (contactPoint: ContactPoint) =
                 let offsets =
                     objects |> map (contactPoint.Position |> SimulatorObject.getOffsetFrom)
 

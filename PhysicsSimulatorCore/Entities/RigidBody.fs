@@ -1,8 +1,11 @@
-namespace PhysicsSimulator
+namespace PhysicsSimulator.Entities
+
 
 open System
 open MathNet.Numerics.LinearAlgebra
+open PhysicsSimulator.Utilities
 
+   
 type RotationalInertiaInverse = Matrix3
 
 type RigidBodyVariables =

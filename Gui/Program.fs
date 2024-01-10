@@ -1,6 +1,9 @@
 ﻿// For more information see https://aka.ms/fsharp-console-apps
 open System
 open PhysicsSimulator
+open PhysicsSimulator.Utilities
+open PhysicsSimulator.Entities
+
 open Aardvark.Base
 open Aardvark.Rendering
 open FSharp.Data.Adaptive
@@ -8,7 +11,6 @@ open Aardvark.SceneGraph
 open Aardvark.Application
 open Aardvark.Application.Slim
 open FSharpPlus
-
 
 let id = 0
 let radius = 1.0
@@ -90,8 +92,8 @@ let toRenderable (simulator: Simulator) (id: SimulatorObjectIdentifier) =
     let color = C4b(100, 100, 100)
 
     (match physicalObj.Collider with
-     | PhysicsSimulator.Sphere s -> Sg.sphere' 5 color s.Radius
-     | PhysicsSimulator.Box b ->
+     | PhysicsSimulator.Entities.Sphere s -> Sg.sphere' 5 color s.Radius
+     | PhysicsSimulator.Entities.Box b ->
          let position = physicalObj.PhysicalObject.AsParticle().Variables.Position
          let bounds = Box3d.FromCenterAndSize(V3d(0, 0, 0), V3d(b.XSize, b.YSize, b.ZSize))
 

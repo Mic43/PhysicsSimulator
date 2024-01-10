@@ -1,8 +1,9 @@
 namespace PhysicsSimulator
 
 open System
-open FSharpPlus
-open Utils
+open PhysicsSimulator.Collisions
+open PhysicsSimulator.Utilities
+open PhysicsSimulator.Entities
 
 [<CustomEquality; NoComparison>]
 type ValueSupplier<'T> when 'T: equality =

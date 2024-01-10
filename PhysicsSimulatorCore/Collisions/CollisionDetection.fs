@@ -1,11 +1,12 @@
-namespace PhysicsSimulator
+namespace PhysicsSimulator.Collisions
 
-open System
+open PhysicsSimulator
+open PhysicsSimulator.Utilities
+open PhysicsSimulator.Entities
+
 open MathNet.Numerics.LinearAlgebra
 open FSharpPlus
 open FSharpPlus.Data
-open Constants
-open Utils
 
 type ContactPoint =
     { Normal: Vector3D
@@ -48,7 +49,7 @@ module CollisionDetection =
     let private detectBoxBoxCollision boxCollider1 body1 boxCollider2 body2 : CollisionData option =
         let getOrientedFaces colliderBox (rigidBody: RigidBody) =
             let getOrientedVertex =
-                getOriented rigidBody.Variables.Orientation rigidBody.MassCenter.Variables.Position
+                GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation rigidBody.MassCenter.Variables.Position
 
             colliderBox
             |> Collider.getFaces
