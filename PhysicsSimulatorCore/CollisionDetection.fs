@@ -163,6 +163,7 @@ module CollisionDetection =
 
     open SetOf2
 
+    /// Collision Normal vector points from the first to the second object in pair
     let areColliding (pair: SimulatorObject SetOf2) : CollisionData option =
 
         let objects = pair |> map _.PhysicalObject

@@ -21,6 +21,7 @@
       <Compile Include="Collider.fs" />
       <Compile Include="SimulatorObject.fs" />
       <Compile Include="CollisionDetection.fs" />
+      <Compile Include="Friction.fs" />
       <Compile Include="CollisionResponse.fs" />
       <Compile Include="SimulatorState.fs" />
       <Compile Include="Simulator.fs" />

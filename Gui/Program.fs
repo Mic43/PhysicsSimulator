@@ -9,10 +9,12 @@ open Aardvark.Application
 open Aardvark.Application.Slim
 open FSharpPlus
 
+
+let id = 0
 let radius = 1.0
 let mass = 1.0
 let impulseValue = Vector3D.create 2 0 0
-let impulseOffset = Vector3D.create 0 -0.5 -0.5
+let impulseOffset = Vector3D.create 0 0.3 0.3
 //let epsilon = 0.001
 
 let prepareSimulator2 () =
@@ -37,8 +39,8 @@ let prepareSimulator2 () =
 let prepareSimulator () =
 
      [
-        SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create -3 0 0)
-        SimulatorObject.createDefaultCube (radius * 2.0) (mass) (Vector3D.create 0 0 0)
+        SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 0 0 0)
+        SimulatorObject.createDefaultCube (radius * 2.0) (mass) (Vector3D.create 3 0 0)
        //
        // SimulatorObject.createDefaultSphere radius mass Vector3D.zero
        // SimulatorObject.createDefaultSphere (radius) mass (Vector3D.create 3 0.0 0)
@@ -98,10 +100,9 @@ let toRenderable (simulator: Simulator) (id: SimulatorObjectIdentifier) =
 let onKeyDown (simulator: Simulator) (key: Keys) =
     match key with
     | Keys.Space ->
-        transact (fun () ->
-            let physicalObjectIdentifier = 0 |> SimulatorObjectIdentifier.fromInt
-            simulator.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset
-           // simulator.ApplyImpulse (1 |> SimulatorObjectIdentifier.fromInt) impulseValue impulseOffset
+        transact (fun () ->            
+            let physicalObjectIdentifier = id |> SimulatorObjectIdentifier.fromInt
+            simulator.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset           
         )
 
     | _ -> ()

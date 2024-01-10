@@ -2,7 +2,6 @@ namespace PhysicsSimulator
 
 open System
 
-open FSharp.Data.UnitSystems.SI.UnitSymbols
 open MathNet.Numerics.LinearAlgebra
 
 type ParticleVariables =
@@ -14,14 +13,13 @@ type Particle =
       Mass: float }
 
     member this.GetInverseMassMatrix() =
-        Matrix.Build.Diagonal(3, 3, 1.0 / this.Mass) |> Matrix3.fromMatrix
+        Matrix.Build.Diagonal(3, 3, 1.0 / this.Mass) |> Matrix3.ofMatrix
 
 
 type Acceleration = Vector3D
 type ParticleIntegrator = TimeSpan -> Acceleration -> ParticleVariables -> ParticleVariables
 
 module ParticleIntegrators =
-    open Vector3D
 
     let (dummy: ParticleIntegrator) = fun dt acceleration vars -> vars
 

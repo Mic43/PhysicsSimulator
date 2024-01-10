@@ -19,7 +19,7 @@ type RigidBody =
 
     static member CalcFullRotationalInertia (orientation: Matrix3) (inertiaMatrix: Matrix3) =
         let orientation = orientation.Get
-        orientation * inertiaMatrix.Get * orientation.Transpose() |> Matrix3.fromMatrix
+        orientation * inertiaMatrix.Get * orientation.Transpose() |> Matrix3.ofMatrix
 
     member this.CalcRotationalInertia() =
         RigidBody.CalcFullRotationalInertia this.Variables.Orientation this.PrincipalRotationalInertia
@@ -62,7 +62,7 @@ module RigidBody =
                   Velocity = initialVelocity }
               Particle.Mass = mass }
           PrincipalRotationalInertia = principalRotationalInertia
-          PrincipalRotationalInertiaInverse = principalRotationalInertia.Get.Inverse() |> Matrix3.fromMatrix
+          PrincipalRotationalInertiaInverse = principalRotationalInertia.Get.Inverse() |> Matrix3.ofMatrix
           ElasticityCoeff = elasticityCoeff
           FrictionCoeff = frictionCoeff }
 
@@ -74,7 +74,7 @@ module RigidBody =
 
         let mat =
             Matrix<float>.Build.Diagonal [| m * (b2 + c2); m * (a2 + c2); m * (a2 + b2) |]
-            |> Matrix3.fromMatrix
+            |> Matrix3.ofMatrix
 
         create initialOrientation initialVelocity elasticityCoeff frictionCoeff mass position mat
 
@@ -83,7 +83,7 @@ module RigidBody =
     let createSphere initialOrientation initialVelocity elasticityCoeff frictionCoeff radius mass position =
         let I = 2.0 * mass * radius * radius / 5.0
 
-        let mat = Matrix<float>.Build.Diagonal(3, 3, I) |> Matrix3.fromMatrix
+        let mat = Matrix<float>.Build.Diagonal(3, 3, I) |> Matrix3.ofMatrix
 
         create initialOrientation initialVelocity elasticityCoeff frictionCoeff mass position mat
 
@@ -111,7 +111,7 @@ module RigidBodyIntegrators =
                 (angle |> RotationMatrix3D.fromAxisAndAngle (axis |> normalized)).Get
                 * old.Orientation.Get
 
-            { Orientation = newOrientation |> fromMatrix |> orthonormalize
+            { Orientation = newOrientation |> ofMatrix |> orthonormalize
               AngularMomentum = newAngMomentum }
 
     let (augmentedSecondOrder: RigidBodyIntegrator) =
@@ -143,7 +143,7 @@ module RigidBodyIntegrators =
                 (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> ofVector) angle).Get
                 * old.Orientation.Get
 
-            { Orientation = newOrientation |> fromMatrix |> orthonormalize
+            { Orientation = newOrientation |> ofMatrix |> orthonormalize
               AngularMomentum = old.AngularMomentum + (angMomentumChange |> ofVector) }
 
 module RigidBodyMotion =

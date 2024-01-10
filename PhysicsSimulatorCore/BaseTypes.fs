@@ -55,7 +55,7 @@ type Plane =
 
 type SetOf2<'t> =
     private
-    | Value of List<'t>
+    | Value of List<'t> 
 
     member this.Get =
         match this with
@@ -117,7 +117,7 @@ module Matrix3 =
     //open Vector3D
     let (|Matrix3|) (Value value) = value
 
-    let fromMatrix (matrix: Matrix<float>) =
+    let ofMatrix (matrix: Matrix<float>) =
         if matrix.RowCount <> 3 || matrix.ColumnCount <> 3 then
             invalidArg "matrix" "matrix must be of size 3"
 
@@ -145,7 +145,7 @@ module Matrix3 =
         col2 <- col2 - deltaCol col1 col2
         col2 <- col2.Normalize(2.0)
 
-        Matrix.Build.DenseOfColumns([ col0; col1; col2 ]) |> fromMatrix
+        Matrix.Build.DenseOfColumns([ col0; col1; col2 ]) |> ofMatrix
 
 module RotationMatrix3D =
     // open Vector3D
