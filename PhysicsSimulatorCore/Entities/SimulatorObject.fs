@@ -2,6 +2,8 @@ namespace PhysicsSimulator.Entities
 
 open PhysicsSimulator.Utilities
 
+open PhysicsSimulator.Utilities
+
 type SimulatorObjectIdentifier =
     private
     | Value of int
