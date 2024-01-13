@@ -2,16 +2,6 @@ namespace PhysicsSimulator.Entities
 
 open PhysicsSimulator.Utilities
 
-open PhysicsSimulator.Utilities
-
-open Constants
-type Sphere = { Radius: float }
-
-type Box =
-    { XSize: float
-      YSize: float
-      ZSize: float }
-
 type Collider =
     | Sphere of Sphere
     | Box of Box

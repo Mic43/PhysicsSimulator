@@ -1,24 +1,10 @@
 namespace PhysicsSimulator
 
 open System
+open FSharpPlus
 open PhysicsSimulator.Collisions
 open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
-
-[<CustomEquality; NoComparison>]
-type ValueSupplier<'T> when 'T: equality =
-    | Zero
-    | Constant of 'T
-    | Variable of (unit -> 'T)
-
-    override this.Equals(other) =
-        match other with
-        | :? ValueSupplier<'T> as other ->
-            match (this, other) with
-            | Zero, Zero -> true
-            | Constant foo, Constant foo1 -> foo = foo1
-            | _ -> false
-        | _ -> false
 
 type SimulatorState =
     private
@@ -31,65 +17,59 @@ type SimulatorState =
     member this.GetExternalTorque = this.ExternalTorque
 
 
-    member this.CalculateTotalForce objId =
-        let valueSupplier = this.GetExternalForces[objId]
+module SimulatorStateBuilder =
+    let private earthGAcceleration = Vector3D.create 0.0 0.0 -9.81
+    let private gravityForce mass = mass * earthGAcceleration
 
-        match valueSupplier with
-        | Zero -> Vector3D.zero
-        | Constant vector3D -> vector3D
-        | Variable unitFunc -> unitFunc ()
+    let private getExternalForceSupplier proto =
+        (match proto.UseGravity with
+         | true -> proto.Mass.GetValue() |> gravityForce
+         | false -> Vector3D.zero)
+        |> ValueSupplier.Constant
+
+    let fromPrototypes (prototypes: RigidBodyPrototype seq) =
+        let prototypes = prototypes |> Seq.toList
+
+        let identifiers =
+            prototypes |> List.mapi (fun i _ -> (i |> SimulatorObjectIdentifier.fromInt))
+
+        let objectMap: Map<SimulatorObjectIdentifier, SimulatorObject> =
+            prototypes
+            |> List.zip identifiers
+            |> List.map (fun pair ->
+                pair
+                |> Tuple2.mapItem2 (fun proto -> pair |> fst |> RigidBodyPrototype.build proto))
+            |> Map.ofList
+
+        let externalForces =
+            prototypes
+            |> List.zip identifiers
+            |> List.map (Tuple2.mapItem2 getExternalForceSupplier)
+            |> Map.ofList
+
+        { Objects = objectMap
+          ExternalForces = externalForces
+          ExternalTorque = identifiers |> Seq.map (fun i -> (i, Vector3D.zero)) |> Map.ofSeq }
 
 module SimulatorState =
     let private particleIntegrator = ParticleIntegrators.forwardEuler
     let private rigidBodyIntegrator = RigidBodyIntegrators.firstOrder
-    let private earthGAcceleration = Vector3D.create 0.0 0.0 -9.81
 
-    let private gravityForce (objects: Map<SimulatorObjectIdentifier, SimulatorObject>) identifier =
-        objects.[identifier].PhysicalObject.AsParticle().Mass * earthGAcceleration.Get
-        |> Vector3D.ofVector
-
-    let private calculateForce (objects: Map<SimulatorObjectIdentifier, SimulatorObject>) identifier =
-        // gravityForce objects identifier
-        Vector3D.zero
-
-    let private updateObject =
+    let private objectUpdater =
         SimulatorObject.update particleIntegrator rigidBodyIntegrator
 
     let private updateObjectById (simulatorState: SimulatorState) dt id =
-        updateObject
-            dt
-            (id |> simulatorState.CalculateTotalForce)
-            simulatorState.ExternalTorque[id]
-            simulatorState.Objects[id].PhysicalObject
+        let newState =
+            (objectUpdater
+                dt
+                (simulatorState.GetExternalForces[id].GetValue())
+                simulatorState.ExternalTorque[id]
+                simulatorState.Objects[id].PhysicalObject)
 
-    let fromObjects (objects: SimulatorObject seq) =
-        let identifiers =
-            objects |> Seq.mapi (fun i _ -> (i |> SimulatorObjectIdentifier.fromInt))
+        { simulatorState.Objects[id] with
+            PhysicalObject = newState }
 
-        let objectMap: Map<SimulatorObjectIdentifier, SimulatorObject> =
-            objects |> Seq.zip identifiers |> Map.ofSeq
-
-        { Objects = objectMap
-          ExternalForces =
-            identifiers
-            |> Seq.map (fun i -> (i, i |> calculateForce objectMap |> ValueSupplier.Constant))
-            |> Map.ofSeq
-          ExternalTorque = identifiers |> Seq.map (fun i -> (i, Vector3D.zero)) |> Map.ofSeq }
-
-    let update (dt: TimeSpan) simulatorState : SimulatorState =
-        { simulatorState with
-            Objects =
-                simulatorState.Objects
-                |> Map.map (fun ident simObj ->
-                    { simObj with
-                        PhysicalObject =
-                            simObj.PhysicalObject
-                            |> updateObject
-                                dt
-                                (ident |> simulatorState.CalculateTotalForce)
-                                simulatorState.ExternalTorque[ident] }) }
-
-    let private changeSimulatorObject objectIdentifier newPhysicalOBject (simulationState: SimulatorState) =
+    let private changeSimulatorObject objectIdentifier newPhysicalObject (simulationState: SimulatorState) =
         { simulationState with
             Objects =
                 simulationState.Objects.Change(
@@ -98,8 +78,14 @@ module SimulatorState =
                         if simObj.IsNone then
                             invalidArg (nameof objectIdentifier) "object doest exist in map"
 
-                        newPhysicalOBject |> Some)
+                        newPhysicalObject |> Some)
                 ) }
+   
+    let update (dt: TimeSpan) simulatorState : SimulatorState =
+        { simulatorState with
+            Objects =
+                simulatorState.Objects
+                |> Map.mapValues (fun simObj -> updateObjectById simulatorState dt simObj.Id) }
 
     let applyImpulse objectIdentifier impulse (offset: Vector3D) simulatorState =
         let applyImpulseToObject = SimulatorObject.applyImpulse impulse offset
@@ -109,37 +95,28 @@ module SimulatorState =
         simulatorState
         |> changeSimulatorObject objectIdentifier (simulatorObject |> applyImpulseToObject)
 
-    let private tryHandleCollision
-        (nextStates: SetOf2<SimulatorObjectIdentifier * SimulatorObject>)
-        (curSimulationState: SimulatorState)
-        =
+    let private tryHandleCollision (nextStates: SetOf2<SimulatorObject>) (curSimulationState: SimulatorState) =
         nextStates
-        |> SetOf2.map snd
         |> CollisionDetection.areColliding
         |> Option.bind (fun collisionData ->
             "Collision detected " |> printfn "%A"
             collisionData |> printfn "%A"
 
-            let resolvedObjects =
-                CollisionResponse.resolveCollision collisionData (nextStates |> SetOf2.map snd)
+            let resolvedObjects = CollisionResponse.resolveCollision collisionData nextStates
 
             //  printfn "State after collision: "
             //  printfn $"%A{nextSimulationState.Objects[id1].PhysicalObject}"
             //  printfn $"%A{nextSimulationState.Objects[id2].PhysicalObject}"
 
             curSimulationState
-            |> changeSimulatorObject (nextStates |> SetOf2.fst |> fst) (resolvedObjects |> SetOf2.fst)
-            |> changeSimulatorObject (nextStates |> SetOf2.snd |> fst) (resolvedObjects |> SetOf2.snd)
+            |> changeSimulatorObject (nextStates |> SetOf2.fst).Id (resolvedObjects |> SetOf2.fst)
+            |> changeSimulatorObject (nextStates |> SetOf2.snd).Id (resolvedObjects |> SetOf2.snd)
             |> Some)
 
     let private withCollisionResponse dt (curSimulationState: SimulatorState) ids =
 
-        let nextStates: SetOf2<SimulatorObjectIdentifier * SimulatorObject> =
-            ids
-            |> SetOf2.map (fun id ->
-                (id,
-                 { curSimulationState.Objects[id] with
-                     PhysicalObject = id |> updateObjectById curSimulationState dt }))
+        let nextStates: SetOf2<SimulatorObject> =
+            ids |> SetOf2.map (updateObjectById curSimulationState dt)
 
         tryHandleCollision nextStates curSimulationState
         |> Option.defaultValue curSimulationState

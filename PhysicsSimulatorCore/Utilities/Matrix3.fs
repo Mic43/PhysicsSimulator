@@ -83,3 +83,24 @@ module RotationMatrix3D =
                 uz * uy * cosInv + ux * sinA
                 cosA + uz * uz * cosInv ] ]
         |> Matrix3.Value
+
+    let fromYawPitchRoll yaw pitch roll =
+        let cosA = yaw |> cos
+        let sinA = yaw |> sin
+
+        let cosB = pitch |> cos
+        let sinB = pitch |> sin
+
+        let cosG = roll |> cos
+        let sinG = roll |> sin
+
+
+        matrix
+            [ [ cosB * cosG
+                sinA * sinB * cosG - cosA * sinG
+                cosA * sinB * cosG + sinA * sinG ]
+              [ cosB * sinG
+                cosA * sinB * sinG + cosA * cosG
+                cosA * sinB * sinG - sinA * cosG ]
+              [ -sinB; sinA * cosB; cosA * cosB ] ]
+        |> Matrix3.Value

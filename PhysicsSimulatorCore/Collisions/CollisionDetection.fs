@@ -176,7 +176,7 @@ module CollisionDetection =
         match (first.PhysicalObject, second.PhysicalObject) with
         | RigidBody body1, RigidBody body2 ->
             match (first.Collider, second.Collider) with
-            | Sphere sphere, Sphere sphere2 ->
+            | Collider.Sphere sphere, Collider.Sphere sphere2 ->
                 let firstPos = positions |> fst
                 let secondPos = positions |> snd
                 let normal = firstPos - secondPos
@@ -193,6 +193,6 @@ module CollisionDetection =
                     let contactPoint = (contactPoint1 + (contactPoint2 - contactPoint1) / 2.0)
 
                     { ContactPoints = [ (ContactPoint.Create 0.0 normal contactPoint) ] } |> Some
-            | Sphere sphere, Box box -> None
-            | Box box, Sphere sphere -> None
-            | Box box1, Box box2 -> detectBoxBoxCollision box1 body1 box2 body2
+            | Collider.Sphere sphere, Collider.Box box -> None
+            | Collider.Box box, Collider.Sphere sphere -> None
+            | Collider.Box box1, Collider.Box box2 -> detectBoxBoxCollision box1 body1 box2 body2

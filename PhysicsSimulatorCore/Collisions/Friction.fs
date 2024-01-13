@@ -35,7 +35,7 @@ module Friction =
                    * massMatrix.Get
                    * (collisionNormal.Get - compoundFriction * t.Get))
 
-            jn * collisionNormal - (compoundFriction * jn * t)
+            jn * collisionNormal// - (compoundFriction * jn * t)
 
         if impulse |> isImpulseInFrictionCone collisionNormal compoundFriction then
             impulse

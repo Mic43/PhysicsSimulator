@@ -16,8 +16,6 @@ type Particle =
     member this.GetInverseMassMatrix() =
         Matrix.Build.Diagonal(3, 3, 1.0 / this.Mass) |> Matrix3.ofMatrix
 
-
-type Acceleration = Vector3D
 type ParticleIntegrator = TimeSpan -> Acceleration -> ParticleVariables -> ParticleVariables
 
 module ParticleIntegrators =

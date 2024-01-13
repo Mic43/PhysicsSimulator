@@ -11,7 +11,7 @@ type Simulator(simulatorObjects) =
     let objectsLocker = Object()
 
     let simulatorState: SimulatorState ref =
-        simulatorObjects |> SimulatorState.fromObjects |> ref
+        simulatorObjects |> SimulatorStateBuilder.fromPrototypes |> ref
 
     let simulationStepInterval = TimeSpan.FromMilliseconds(10.0)
     let simulationSpeedMultiplier = 1

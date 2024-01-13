@@ -11,7 +11,7 @@ module CollisionResponse =
     let frictionApplier = Friction.applyNoFriction
     let collisionSolverIterationCount = 10
 
-    let private calculateRigidBodyImpulse otherBody targetBody (contactPoint: ContactPoint) =
+    let private calculateRigidBodyImpulse (otherBody:RigidBody) (targetBody:RigidBody) (contactPoint: ContactPoint) =
 
         let compoundFriction = max targetBody.FrictionCoeff otherBody.FrictionCoeff
         let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff

@@ -1,12 +1,9 @@
 namespace PhysicsSimulator.Entities
 
-
 open System
 open MathNet.Numerics.LinearAlgebra
 open PhysicsSimulator.Utilities
 
-   
-type RotationalInertiaInverse = Matrix3
 
 type RigidBodyVariables =
     { Orientation: Matrix3
@@ -36,7 +33,6 @@ type RigidBody =
         this.CalcRotationalInertiaInverse().Get * this.Variables.AngularMomentum.Get
         |> Vector3D.ofVector
 
-type Torque = Vector3D
 
 type RigidBodyIntegrator = TimeSpan -> Torque -> RotationalInertiaInverse -> RigidBodyVariables -> RigidBodyVariables
 
@@ -70,25 +66,33 @@ module RigidBody =
           FrictionCoeff = frictionCoeff }
 
     let createBox initialOrientation initialVelocity elasticityCoeff frictionCoeff sizeX sizeY sizeZ mass position =
-        let m = mass / 12.0
-        let a2 = sizeX * sizeX
-        let b2 = sizeY * sizeY
-        let c2 = sizeZ * sizeY
+        let box =
+            { XSize = sizeX
+              YSize = sizeY
+              ZSize = sizeZ }
 
-        let mat =
-            Matrix<float>.Build.Diagonal [| m * (b2 + c2); m * (a2 + c2); m * (a2 + b2) |]
-            |> Matrix3.ofMatrix
-
-        create initialOrientation initialVelocity elasticityCoeff frictionCoeff mass position mat
+        create
+            initialOrientation
+            initialVelocity
+            elasticityCoeff
+            frictionCoeff
+            mass
+            position
+            (box.CreateRotationalInertia(mass))
 
     let createDefaultBox = createBox RotationMatrix3D.zero Vector3D.zero
 
     let createSphere initialOrientation initialVelocity elasticityCoeff frictionCoeff radius mass position =
-        let I = 2.0 * mass * radius * radius / 5.0
+        let spehere = { Radius = radius }
 
-        let mat = Matrix<float>.Build.Diagonal(3, 3, I) |> Matrix3.ofMatrix
-
-        create initialOrientation initialVelocity elasticityCoeff frictionCoeff mass position mat
+        create
+            initialOrientation
+            initialVelocity
+            elasticityCoeff
+            frictionCoeff
+            mass
+            position
+            (spehere.CreateRotationalInertia(mass))
 
     let createDefaultSphere = createSphere RotationMatrix3D.zero Vector3D.zero
 
@@ -97,7 +101,7 @@ module RigidBodyIntegrators =
     open Matrix3
 
     let (firstOrder: RigidBodyIntegrator) =
-        fun dt torque inertiaInverse old ->
+        fun dt (torque: Torque) inertiaInverse old ->
             let totalSeconds = dt.TotalSeconds
 
             let angMomentumChange = torque * totalSeconds
