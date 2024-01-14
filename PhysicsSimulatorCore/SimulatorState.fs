@@ -80,7 +80,7 @@ module SimulatorState =
 
                         newPhysicalObject |> Some)
                 ) }
-   
+
     let update (dt: TimeSpan) simulatorState : SimulatorState =
         { simulatorState with
             Objects =
@@ -99,7 +99,8 @@ module SimulatorState =
         nextStates
         |> CollisionDetection.areColliding
         |> Option.bind (fun collisionData ->
-            "Collision detected " |> printfn "%A"
+            $"Collision detected between target: {(nextStates |> SetOf2.fst).Id} and other: {(nextStates |> SetOf2.snd).Id}"
+            |> printfn "%A"
             collisionData |> printfn "%A"
 
             let resolvedObjects = CollisionResponse.resolveCollision collisionData nextStates

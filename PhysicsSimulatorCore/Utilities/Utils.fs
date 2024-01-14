@@ -1,11 +1,13 @@
 namespace PhysicsSimulator.Utilities
 
+open Microsoft.FSharp.Core
+
 [<AutoOpen>]
 module Constants =
     let epsilon = 0.00001
     let defaultElasticityCoeff = 0.9
     let defaultFrictionCoeff = 0.5
-    let infiniteMass = 999999.0
+    let infiniteMass  = infinity
 
 [<AutoOpen>]
 module Utils =

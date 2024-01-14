@@ -40,8 +40,7 @@ module CollisionDetection =
         | Edges
 
     type private PossibleCollisionData =
-        { Normal: Vector3D
-          Penetration: float }
+        { Normal: Vector3D; Penetration: float }
 
     let private chooseSeparationAxis (candidatesMap: Map<SATAxisOrigin, PossibleCollisionData>) =
         candidatesMap |> Map.toList |> List.minBy (snd >> _.Penetration)
@@ -55,7 +54,9 @@ module CollisionDetection =
             |> Collider.getFaces
             |> Seq.map (fun face ->
                 { Vertices = face.Vertices |> Seq.map getOrientedVertex
-                  Face.Normal = face.Normal.Get * rigidBody.Variables.Orientation.Get |> ofVector })
+                  Normal =
+                    face.Normal
+                    |> GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation zero })
 
         let tryGetCollisionDataForAxis vertices1 vertices2 (axis: Vector<float>) : PossibleCollisionData option =
             let withProjection (vertices: Vector<float> seq) =
@@ -124,15 +125,15 @@ module CollisionDetection =
                 >> Option.map (Seq.minBy (_.Penetration))
             )
 
-        let findIncidentFace (referenceFace: Face) (facesCandidates: Face seq) =
-            facesCandidates |> Seq.minBy (_.Normal.Get.DotProduct(referenceFace.Normal.Get))
-
         if bestAxes |> Map.exists (fun _ axis -> axis.IsNone) then
             None
         else
             let separationAxis = bestAxes |> Map.mapValues Option.get |> chooseSeparationAxis
 
             let generateFaceContactPoints normal penetration referenceFaces otherFaces =
+                let findIncidentFace (referenceFace: Face) (facesCandidates: Face seq) =
+                    facesCandidates |> Seq.minBy (_.Normal.Get.DotProduct(referenceFace.Normal.Get))
+
                 let reference = Collider.findFaceByNormal normal referenceFaces
                 let incidentFace = findIncidentFace reference otherFaces
 

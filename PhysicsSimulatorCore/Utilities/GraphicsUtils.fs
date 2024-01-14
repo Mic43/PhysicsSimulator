@@ -74,5 +74,5 @@ module GraphicsUtils =
 
     let toWorldCoordinates (rotationMatrix: Matrix3) (translationVector: Vector3D) (v: Vector3D) =
         v
-        |> ((fun v -> v.Get * rotationMatrix.Get) >> (fun v -> v + translationVector.Get))
+        |> ((fun v -> rotationMatrix.Get * v.Get) >> (fun v -> v + translationVector.Get))
         |> Vector3D.ofVector

@@ -13,6 +13,7 @@ open Aardvark.Application.Slim
 open FSharpPlus
 
 let impulsedObjectId = 1
+let groundId = 0
 let radius = 1.0
 let mass = 1.0
 let impulseValue = Vector3D.create 2 0 0
@@ -22,15 +23,23 @@ let impulseOffset = Vector3D.create 0 0.3 0.3
 let createCube () =
     (radius |> RigidBodyPrototype.createDefaultCube)
 
+let createSphere () =
+    (radius |> RigidBodyPrototype.createDefaultSphere)
+
 let prepareSimulator () =
-    [ { ((15.0, 15.0, 0.1)
+    [ { ((15.0, 15.0, 0.5)
          |||> Box.create
          |> RigidBodyKind.Box
          |> RigidBodyPrototype.createDefault) with
           Mass = Mass.Infinite
           UseGravity = false
+          Yaw =   -0.5           
           Position = Vector3D.create 0 0 -10 }
-      { createCube () with UseGravity = true }
+      // { createSphere () with
+      //     UseGravity = true }
+      { createCube () with UseGravity = true; ElasticityCoeff = 0.3 }
+      { createCube () with UseGravity = true;Position = Vector3D.create 0 0 2; ElasticityCoeff = 0.3}
+
       // SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 0 0 0)
       // SimulatorObject.createDefaultCube (radius * 2.0) (mass) (Vector3D.create 3 0 0)
       //
@@ -80,10 +89,10 @@ let toRenderable (simulator: Simulator) (id: SimulatorObjectIdentifier) =
 
     //  let transformation = getObjectTransformation simulator id
     let color =
-        if id = impulsedObjectId then
-            C4b(100, 100, 100)
-        else
+        if id = groundId then
             C4b(00, 100, 00)
+        else
+            C4b(100, 100, 100)
 
     (match physicalObj.Collider with
      | PhysicsSimulator.Entities.Sphere s -> Sg.sphere' 5 color s.Radius
@@ -100,6 +109,7 @@ let onKeyDown (simulator: Simulator) (key: Keys) =
             let physicalObjectIdentifier = impulsedObjectId |> SimulatorObjectIdentifier.fromInt
             simulator.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset)
 
+    | Keys.Pause ->  transact (fun () -> simulator.PauseResume())
     | _ -> ()
 
 [<EntryPoint>]
@@ -127,7 +137,7 @@ let main _ =
         |> Seq.map (fun key -> (key, toRenderable sim key))
         |> Map.ofSeq
 
-    sim.StartUpdateThread()
+    sim.Start()
 
     let getObjectTransformation = getObjectTransformation sim
 
