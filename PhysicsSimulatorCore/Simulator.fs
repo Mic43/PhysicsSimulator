@@ -12,13 +12,12 @@ type SimulatorTaskState =
     | Stopped
 
 type Simulator(simulatorObjects) =
-    let objectsLocker = Object()
 
     let simulatorState: SimulatorState ref =
         simulatorObjects |> SimulatorStateBuilder.fromPrototypes |> ref
 
     let simulationStepInterval = TimeSpan.FromMilliseconds(10.0)
-    let simulationSpeedMultiplier = 1
+    let simulationSpeedMultiplier = 0.1
     let mutable taskState = SimulatorTaskState.Stopped
 
     let broadPhaseCollisions (simulatorState: SimulatorState) =
@@ -36,7 +35,7 @@ type Simulator(simulatorObjects) =
             //            if newState <> simulatorState.Value then
             //                newState |> printfn "%A"
 
-            (fun _ -> simulatorState.Value <- newState) |> lock objectsLocker
+            simulatorState.Value <- newState
         }
 
     let cancellationTokenSource = new CancellationTokenSource()
@@ -44,17 +43,15 @@ type Simulator(simulatorObjects) =
     member this.ObjectIdentifiers = simulatorState.Value.GetObjects.Keys |> set
 
     member this.SimulatorObject
-        with get identifier = (fun _ -> simulatorState.Value.GetObjects[identifier]) |> lock objectsLocker
+        with get identifier = simulatorState.Value.GetObjects[identifier]
 
     member this.PhysicalObject
         with get identifier = this.SimulatorObject(identifier).PhysicalObject
 
     member this.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset =
-        (fun _ ->
-            simulatorState.Value <-
-                simulatorState.Value
-                |> SimulatorState.applyImpulse physicalObjectIdentifier impulseValue impulseOffset)
-        |> lock objectsLocker
+        simulatorState.Value <-
+            simulatorState.Value
+            |> SimulatorState.applyImpulse physicalObjectIdentifier impulseValue impulseOffset
 
     member this.Start() =
         if taskState <> SimulatorTaskState.Stopped then
