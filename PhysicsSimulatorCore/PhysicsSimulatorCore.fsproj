@@ -25,6 +25,7 @@
         <Compile Include="Entities\RigidBody.fs" />
         <Compile Include="Entities\Collider.fs" />
         <Compile Include="Entities\SimulatorObject.fs" />
+        <Compile Include="Collisions\SAT.fs" />
         <Compile Include="Collisions\CollisionDetection.fs"/>
         <Compile Include="Collisions\Friction.fs"/>
         <Compile Include="Collisions\CollisionResponse.fs"/>

@@ -33,12 +33,12 @@ let prepareSimulator () =
          |> RigidBodyPrototype.createDefault) with
           Mass = Mass.Infinite
           UseGravity = false
-          Yaw =   -0.5           
-          Position = Vector3D.create 0 0 -10 }
+          // Yaw =   -0.5           
+          Position = Vector3D.create 0 0 -2 }
       // { createSphere () with
       //     UseGravity = true }
-      { createCube () with UseGravity = true; ElasticityCoeff = 0.3 }
-      { createCube () with UseGravity = true;Position = Vector3D.create 0 0 2; ElasticityCoeff = 0.3}
+      //{ createCube () with UseGravity = true; ElasticityCoeff = 0.3; }
+      { createCube () with UseGravity = true;Position = Vector3D.create 0 0 10; ElasticityCoeff = 0.3}
 
       // SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 0 0 0)
       // SimulatorObject.createDefaultCube (radius * 2.0) (mass) (Vector3D.create 3 0 0)
