@@ -5,6 +5,37 @@ open FSharpPlus
 open Constants
 
 module GraphicsUtils =
+    open Vector3D
+
+    let getClosestPointTo (vertex1: Vector3D, vertex2: Vector3D) position =
+        let diff_AP = position - vertex1
+        let diff_AB = vertex2 - vertex1
+
+        //Distance along the line of point 'pos' in world distance
+        let ABAPproduct = diff_AP |> dotProduct diff_AB
+        let magnitudeAB = diff_AB |> dotProduct diff_AB
+
+        //Distance along the line of point 'pos' between 0-1 where 0 is line start and 1 is line end
+        let distance = ABAPproduct / magnitudeAB
+
+        //Clamp distance so it cant go beyond the line's start/end in either direction
+        let distance = (distance |> min 1.0) |> max 0.0
+
+        //Use distance from line start (0-1) to compute the actual position
+        vertex1 + diff_AB * distance
+
+    let getClosestPointToPoly (position: Vector3D) (polygon: Vector3D list) =
+        let edges =
+            (polygon |> List.last, polygon |> List.head) :: (polygon |> List.pairwise)
+
+        seq {
+            for startPoint, endPoint in edges do
+                let edgeClosestPoint = position |> getClosestPointTo (startPoint, endPoint)
+                let diff = position - edgeClosestPoint
+                yield (diff |> dotProduct diff, edgeClosestPoint)
+        }
+        |> Seq.minBy fst
+        |> snd
 
     // Performs a plane/edge collision test, if an intersection does occur then
     //    it will return the point on the line where it intersected the given plane.
@@ -23,18 +54,17 @@ module GraphicsUtils =
             let fac = min (max fac 0.0) 1.0
 
             //Return point on edge
-            startPoint.Get + ab * fac |> Vector3D.ofVector |> Some
+            startPoint.Get + ab * fac |> ofVector |> Some
         else
             None
 
     let isPointInPlane plane (point: Vector3D) =
-        point.Get.DotProduct(plane.Normal.Get) + plane.DistanceFromOrigin >= 0.0
+        (point |> dotProduct plane.Normal) + plane.DistanceFromOrigin >= 0.0
 
     /// Planes normals must point to polygon parts that should be left after clipping
     let SutherlandHodgmanClipping
-        (clipPlanes: Plane list)
-        (inputPolygon: Vector3D list)
-        //(removeNotClipToPlane: bool)
+        (clipPlanes: Plane list) 
+        (inputPolygon: Vector3D list)        
         : Vector3D list =
 
         let rec loop (inputPolygon: Vector3D list) (planes: Plane list) =

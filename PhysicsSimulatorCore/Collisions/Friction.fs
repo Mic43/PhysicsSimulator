@@ -25,8 +25,7 @@ module Friction =
         =
 
         let includeSlidingFriction () =
-            let uTan = vRel - vRelNormal * collisionNormal
-            //TODO: vTan is zero sometimes!
+            let uTan = vRel - vRelNormal * collisionNormal            
             let t = uTan |> normalized
 
             let jn =

@@ -77,22 +77,14 @@ module CollisionDetection =
             let max2, d = minMax[1].Max
 
             // a    c  b           d
-            if a <= c && b >= c then
-                let penetration = b - c // ??
-                let normal = axis
-
-                { Normal = normal |> ofVector
-                  Penetration = penetration }
-                // CollisionData.Create penetration normal [ max1 + normal * penetration |> ofVector ]
+            if a <= c && b >= c then                
+                { Normal = axis |> ofVector
+                  Penetration = b - c }
                 |> Some
             // c     a     d  b
-            elif c <= a && d >= a then
-                let penetration = d - a // ??
-                let normal = -axis // ???
-
-                { Normal = normal |> ofVector
-                  Penetration = penetration }
-                //CollisionData.Create penetration normal [ min1 + normal * penetration |> ofVector ]
+            elif c <= a && d >= a then                
+                { Normal = -axis |> ofVector
+                  Penetration = d - a }
                 |> Some
             else
                 None
@@ -113,7 +105,7 @@ module CollisionDetection =
         let axes =
             [ Faces1, facesAxes[0]
               Faces2, facesAxes[1]
-              // Edges, edgesAxes
+              //Edges, edgesAxes
               ]
             |> Map.ofList
 
@@ -130,15 +122,15 @@ module CollisionDetection =
         else
             let separationAxis = bestAxes |> Map.mapValues Option.get |> chooseSeparationAxis
 
-            let generateFaceContactPoints normal penetration referenceFaces otherFaces =
+            let generateFaceContactPoints normal referenceFaces otherFaces =
                 let findIncidentFace (referenceFace: Face) (facesCandidates: Face seq) =
                     facesCandidates |> Seq.minBy (_.Normal.Get.DotProduct(referenceFace.Normal.Get))
 
-                let reference = Collider.findFaceByNormal normal referenceFaces
-                let incidentFace = findIncidentFace reference otherFaces
+                let referenceFace = Collider.findFaceByNormal normal referenceFaces
+                let incidentFace = findIncidentFace referenceFace otherFaces
 
                 let adjacentFaces =
-                    reference |> Collider.findAdjacentFaces referenceFaces |> Seq.toList
+                    referenceFace |> Collider.findAdjacentFaces referenceFaces |> Seq.toList
 
                 let contactPoints =
                     incidentFace.Vertices
@@ -149,19 +141,20 @@ module CollisionDetection =
                     // clip against reference plane:
                     |> List.filter (fun vertex ->
                         vertex
-                        |> GraphicsUtils.isPointInPlane (reference |> Face.toPlane |> Plane.invertNormal))
-                    |> Seq.map (fun cp -> ContactPoint.Create penetration normal cp)
+                        |> GraphicsUtils.isPointInPlane (referenceFace |> Face.toPlane |> Plane.invertNormal))
+                    |> Seq.map (fun cpPosition ->
+                        let penetration =
+                            cpPosition - GraphicsUtils.getClosestPointToPoly cpPosition (referenceFace.Vertices |> Seq.toList)
+                            |> dotProduct normal
+
+                        ContactPoint.Create penetration normal cpPosition)
 
                 { ContactPoints = contactPoints |> Seq.toList } |> Some
 
             match separationAxis with
-            | Faces1,
-              { Normal = normal
-                Penetration = penetration } -> (faces1, faces2) ||> generateFaceContactPoints normal penetration
-            | Faces2,
-              { Normal = normal
-                Penetration = penetration } -> (faces2, faces1) ||> generateFaceContactPoints normal penetration
-            | Edges, { Normal = n; Penetration = f } -> failwith "edges"
+            | Faces1, { Normal = normal; Penetration = _ } -> (faces1, faces2) ||> generateFaceContactPoints normal
+            | Faces2, { Normal = normal; Penetration = _ } -> (faces2, faces1) ||> generateFaceContactPoints normal
+//            | Edges, { Normal = n; Penetration = _ } -> failwith "edges"
 
     open SetOf2
 

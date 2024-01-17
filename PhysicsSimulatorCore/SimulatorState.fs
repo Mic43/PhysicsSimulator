@@ -95,7 +95,7 @@ module SimulatorState =
         simulatorState
         |> changeSimulatorObject objectIdentifier (simulatorObject |> applyImpulseToObject)
 
-    let private tryHandleCollision (nextStates: SetOf2<SimulatorObject>) (curSimulationState: SimulatorState) =
+    let private tryHandleCollision dt (nextStates: SetOf2<SimulatorObject>) (curSimulationState: SimulatorState) =
         nextStates
         |> CollisionDetection.areColliding
         |> Option.bind (fun collisionData ->
@@ -103,7 +103,7 @@ module SimulatorState =
             |> printfn "%A"
             collisionData |> printfn "%A"
 
-            let resolvedObjects = CollisionResponse.resolveCollision collisionData nextStates
+            let resolvedObjects = CollisionResponse.resolveCollision dt collisionData nextStates
 
             //  printfn "State after collision: "
             //  printfn $"%A{nextSimulationState.Objects[id1].PhysicalObject}"
@@ -119,7 +119,7 @@ module SimulatorState =
         let nextStates: SetOf2<SimulatorObject> =
             ids |> SetOf2.map (updateObjectById curSimulationState dt)
 
-        tryHandleCollision nextStates curSimulationState
+        tryHandleCollision dt nextStates curSimulationState
         |> Option.defaultValue curSimulationState
 
     let withCollisionResponseGlobal

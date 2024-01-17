@@ -1,5 +1,6 @@
 namespace PhysicsSimulator.Collisions
 
+open System
 open PhysicsSimulator
 open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
@@ -11,7 +12,10 @@ module CollisionResponse =
     let frictionApplier = Friction.applyNoFriction
     let collisionSolverIterationCount = 10
 
-    let private calculateRigidBodyImpulse (otherBody:RigidBody) (targetBody:RigidBody) (contactPoint: ContactPoint) =
+    let private calculateBaumgarteBias (timeInterval: TimeSpan) penetration =
+        -baumagarteTerm / timeInterval.TotalSeconds * penetration
+
+    let private calculateRigidBodyImpulse timeInterval (otherBody: RigidBody) (targetBody: RigidBody) (contactPoint: ContactPoint) =
 
         let compoundFriction = max targetBody.FrictionCoeff otherBody.FrictionCoeff
         let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
@@ -34,28 +38,29 @@ module CollisionResponse =
         if vRelNorm < 0 then
             zero
         else
-            // printfn $"vNorm: {uRelNorm}"
-            //
             let K body (offset: Vector3D) =
                 body.MassCenter.GetInverseMassMatrix().Get
                 + (offset |> Matrix3.hatOperator).Get.Transpose()
                   * body.CalcRotationalInertiaInverse().Get
                   * (offset |> Matrix3.hatOperator).Get
 
+            //TODO: should be calculated only once, not for every iteration
             let totalM = (K targetBody offset1) + (K otherBody offset2)
             let coeff = normal.Get * (totalM * normal.Get)
+            //TODO: should be calculated only once, not for every iteration
+            let bias = calculateBaumgarteBias timeInterval contactPoint.Penetration
 
-            let impulseValue = -(compoundElasticity + 1.0) * vRelNorm / coeff
+            let impulseValue = (-(compoundElasticity + 1.0) * vRelNorm + bias) / coeff
             let impulse = impulseValue * normal
 
             impulse
             |> frictionApplier (totalM |> Matrix3.ofMatrix) compoundElasticity compoundFriction normal vRel vRelNorm
 
-    let calculateImpulse (contactPoint: ContactPoint) (other: PhysicalObject) (target: PhysicalObject) =
+    let private calculateImpulse dt (contactPoint: ContactPoint) (other: PhysicalObject) (target: PhysicalObject) =
         match (target, other) with
-        | RigidBody targetBody, RigidBody otherBody -> calculateRigidBodyImpulse otherBody targetBody contactPoint
+        | RigidBody targetBody, RigidBody otherBody -> calculateRigidBodyImpulse dt otherBody targetBody contactPoint
 
-    let resolveCollision (collisionData: CollisionData) (objects: SimulatorObject SetOf2) =
+    let resolveCollision dt (collisionData: CollisionData) (objects: SimulatorObject SetOf2) =
         let resolveIteration (objectsPair: SimulatorObject SetOf2) =
             let resolveContactPoint objects (contactPoint: ContactPoint) =
                 let offsets =
@@ -63,7 +68,7 @@ module CollisionResponse =
 
                 let impulse =
                     (objects |> fst).PhysicalObject
-                    |> calculateImpulse contactPoint (objects |> snd).PhysicalObject
+                    |> calculateImpulse dt contactPoint (objects |> snd).PhysicalObject
 
                 // printfn $"  impulse: %A{impulse} offset: {offsets}"
 

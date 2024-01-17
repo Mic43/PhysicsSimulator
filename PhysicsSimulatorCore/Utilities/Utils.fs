@@ -7,7 +7,8 @@ module Constants =
     let epsilon = 0.00001
     let defaultElasticityCoeff = 0.9
     let defaultFrictionCoeff = 0.5
-    let infiniteMass  = infinity
+    let infiniteMass  = infinity    
+    let baumagarteTerm = 0.0
 
 [<AutoOpen>]
 module Utils =
@@ -39,6 +40,5 @@ module Utils =
     // Applies function n times to given object
     let applyN n f object =
         [ 1..n ] |> List.fold (fun obj _ -> obj |> f) object
-
 
     let equals (a: float) b = (b - a |> abs) <= Constants.epsilon

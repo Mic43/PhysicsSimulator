@@ -33,6 +33,4 @@ module ParticleMotion =
 
     let applyImpulse particle (impulse: Vector3D) : Particle =
         { particle with
-            Variables.Velocity =
-                particle.Variables.Velocity.Get + impulse.Get / particle.Mass
-                |> Vector3D.ofVector }
+            Variables.Velocity = particle.Variables.Velocity + impulse / particle.Mass }
