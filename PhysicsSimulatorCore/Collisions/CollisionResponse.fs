@@ -10,12 +10,18 @@ module CollisionResponse =
     open SetOf2
 
     let frictionApplier = Friction.applyNoFriction
-    let collisionSolverIterationCount = 10
+    let collisionSolverIterationCount = Configuration.collisionSolverIterationCount
 
     let private calculateBaumgarteBias (timeInterval: TimeSpan) penetration =
-        -baumagarteTerm / timeInterval.TotalSeconds * penetration
+        -baumgarteTerm / timeInterval.TotalSeconds
+        * ((penetration |> abs) - allowedPenetration |> max 0.0)
 
-    let private calculateRigidBodyImpulse timeInterval (otherBody: RigidBody) (targetBody: RigidBody) (contactPoint: ContactPoint) =
+    let private calculateRigidBodyImpulse
+        timeInterval
+        (otherBody: RigidBody)
+        (targetBody: RigidBody)
+        (contactPoint: ContactPoint)
+        =
 
         let compoundFriction = max targetBody.FrictionCoeff otherBody.FrictionCoeff
         let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
@@ -49,6 +55,7 @@ module CollisionResponse =
             let coeff = normal.Get * (totalM * normal.Get)
             //TODO: should be calculated only once, not for every iteration
             let bias = calculateBaumgarteBias timeInterval contactPoint.Penetration
+            printf $"Bias {bias}"
 
             let impulseValue = (-(compoundElasticity + 1.0) * vRelNorm + bias) / coeff
             let impulse = impulseValue * normal

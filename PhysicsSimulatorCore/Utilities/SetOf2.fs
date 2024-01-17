@@ -17,7 +17,7 @@ module SetOf2 =
         | _ -> invalidArg "lst" "lst must be of size 2"
 
     let ofSet set = set |> Set.toList |> ofList
-
+    let toList (set:SetOf2<'t>) = set.Get 
     let fst (set: SetOf2<'t>) = set.Get[0]
     let snd (set: SetOf2<'t>) = set.Get[1]
 
@@ -27,7 +27,7 @@ module SetOf2 =
     let zip3 (set1: SetOf2<'T>) (set2: SetOf2<'V>) (set3: SetOf2<'U>) =
         (set1.Get, set2.Get, set3.Get) |||> List.zip3 |> ofList
 
-
+    let flip set = set |> toList |> List.rev |> ofList
 
 
 

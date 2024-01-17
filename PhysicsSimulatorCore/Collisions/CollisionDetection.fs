@@ -33,128 +33,64 @@ type CollisionData =
 
 module CollisionDetection =
     open Vector3D
+    open SAT
 
-    type private SATAxisOrigin =
-        | Faces1
-        | Faces2
-        | Edges
+    let private detectBoxBoxCollision
+        (boxCollider1: Box)
+        body1
+        (boxCollider2: Box)
+        (body2: RigidBody)
+        : CollisionData option =
 
-    type private PossibleCollisionData =
-        { Normal: Vector3D; Penetration: float }
+        let generateFaceContactPoints normal referenceFaces otherFaces =
+            let findIncidentFace (referenceFace: Face) (facesCandidates: Face seq) =
+                facesCandidates |> Seq.minBy (_.Normal.Get.DotProduct(referenceFace.Normal.Get))
 
-    let private chooseSeparationAxis (candidatesMap: Map<SATAxisOrigin, PossibleCollisionData>) =
-        candidatesMap |> Map.toList |> List.minBy (snd >> _.Penetration)
+            let referenceFace = referenceFaces |> Collider.findFaceByNormal normal 
+            let incidentFace = otherFaces |> findIncidentFace referenceFace 
 
-    let private detectBoxBoxCollision boxCollider1 body1 boxCollider2 body2 : CollisionData option =
-        let getOrientedFaces colliderBox (rigidBody: RigidBody) =
-            let getOrientedVertex =
-                GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation rigidBody.MassCenter.Variables.Position
+            let adjacentFaces =
+                referenceFace |> Collider.findAdjacentFaces referenceFaces |> Seq.toList
 
-            colliderBox
-            |> Collider.getFaces
-            |> Seq.map (fun face ->
-                { Vertices = face.Vertices |> Seq.map getOrientedVertex
-                  Normal =
-                    face.Normal
-                    |> GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation zero })
+            let clipAgainstReferencePlane vertices =
+                vertices
+                |> List.filter (GraphicsUtils.isPointInPlane (referenceFace |> Face.toPlane |> Plane.invertNormal))
 
-        let tryGetCollisionDataForAxis vertices1 vertices2 (axis: Vector<float>) : PossibleCollisionData option =
-            let withProjection (vertices: Vector<float> seq) =
-                vertices |> Seq.map (fun v -> (v, v.DotProduct(axis)))
+            let calculatePenetration cpPosition =
+                cpPosition
+                - GraphicsUtils.getClosestPointToPoly cpPosition (referenceFace.Vertices |> Seq.toList)
+                |> dotProduct normal
 
-            let v1 = vertices1 |> withProjection
-            let v2 = vertices2 |> withProjection
+            let contactPoints =
+                incidentFace.Vertices
+                |> Seq.toList
+                |> GraphicsUtils.SutherlandHodgmanClipping(
+                    adjacentFaces |> List.map (Face.toPlane >> Plane.invertNormal)
+                )
+                |> clipAgainstReferencePlane
+                |> Seq.map (fun cpPosition ->
+                    ContactPoint.Create (cpPosition |> calculatePenetration) normal cpPosition)
 
-            let minMax =
-                [ v1; v2 ]
-                |> List.map (fun s ->
-                    {| Min = s |> Seq.minBy snd
-                       Max = s |> Seq.maxBy snd |})
+            { ContactPoints = contactPoints |> Seq.toList } |> Some
 
-            let min1, a = minMax[0].Min
-            let max1, b = minMax[0].Max
-            let min2, c = minMax[1].Min
-            let max2, d = minMax[1].Max
+        monad' {
+            let! separationAxis =
+                [ (boxCollider1, body1); (boxCollider2, body2) ]
+                |> SetOf2.ofList
+                |> tryFindSeparatingAxis
 
-            // a    c  b           d
-            if a <= c && b >= c then                
-                { Normal = axis |> ofVector
-                  Penetration = b - c }
-                |> Some
-            // c     a     d  b
-            elif c <= a && d >= a then                
-                { Normal = -axis |> ofVector
-                  Penetration = d - a }
-                |> Some
-            else
-                None
+            let result =
+                (match separationAxis with
+                 | { Origin = origin
+                     Reference = reference
+                     Incident = incident
+                     CollisionNormalFromReference = normal } as res when origin = Faces1 || origin = Faces2 ->
 
-        let faces1 = getOrientedFaces boxCollider1 body1
-        let faces2 = getOrientedFaces boxCollider2 body2
+                     printfn $"Reference: {separationAxis.Origin}"
+                     (reference.Faces, incident.Faces) ||> generateFaceContactPoints normal)
 
-        let vertices1 = faces1 |> Seq.bind _.Vertices |> Seq.distinct |> Seq.map toVector
-        let vertices2 = faces2 |> Seq.bind _.Vertices |> Seq.distinct |> Seq.map toVector
-
-        let facesAxes = [ faces1; faces2 ] |> List.map (Seq.map (_.Normal >> toVector))
-
-        let edgesAxes =
-            facesAxes[1]
-            |> Seq.apply (facesAxes[0] |> Seq.map crossProductV)
-            |> Seq.map _.Normalize(2.0)
-
-        let axes =
-            [ Faces1, facesAxes[0]
-              Faces2, facesAxes[1]
-              //Edges, edgesAxes
-              ]
-            |> Map.ofList
-
-        let bestAxes =
-            axes
-            |> Map.mapValues (
-                Seq.map (tryGetCollisionDataForAxis vertices1 vertices2)
-                >> Seq.sequence
-                >> Option.map (Seq.minBy (_.Penetration))
-            )
-
-        if bestAxes |> Map.exists (fun _ axis -> axis.IsNone) then
-            None
-        else
-            let separationAxis = bestAxes |> Map.mapValues Option.get |> chooseSeparationAxis
-
-            let generateFaceContactPoints normal referenceFaces otherFaces =
-                let findIncidentFace (referenceFace: Face) (facesCandidates: Face seq) =
-                    facesCandidates |> Seq.minBy (_.Normal.Get.DotProduct(referenceFace.Normal.Get))
-
-                let referenceFace = Collider.findFaceByNormal normal referenceFaces
-                let incidentFace = findIncidentFace referenceFace otherFaces
-
-                let adjacentFaces =
-                    referenceFace |> Collider.findAdjacentFaces referenceFaces |> Seq.toList
-
-                let contactPoints =
-                    incidentFace.Vertices
-                    |> Seq.toList
-                    |> GraphicsUtils.SutherlandHodgmanClipping(
-                        adjacentFaces |> List.map (Face.toPlane >> Plane.invertNormal)
-                    )
-                    // clip against reference plane:
-                    |> List.filter (fun vertex ->
-                        vertex
-                        |> GraphicsUtils.isPointInPlane (referenceFace |> Face.toPlane |> Plane.invertNormal))
-                    |> Seq.map (fun cpPosition ->
-                        let penetration =
-                            cpPosition - GraphicsUtils.getClosestPointToPoly cpPosition (referenceFace.Vertices |> Seq.toList)
-                            |> dotProduct normal
-
-                        ContactPoint.Create penetration normal cpPosition)
-
-                { ContactPoints = contactPoints |> Seq.toList } |> Some
-
-            match separationAxis with
-            | Faces1, { Normal = normal; Penetration = _ } -> (faces1, faces2) ||> generateFaceContactPoints normal
-            | Faces2, { Normal = normal; Penetration = _ } -> (faces2, faces1) ||> generateFaceContactPoints normal
-//            | Edges, { Normal = n; Penetration = _ } -> failwith "edges"
+            return! result
+        }
 
     open SetOf2
 

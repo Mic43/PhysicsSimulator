@@ -2,7 +2,7 @@ namespace PhysicsSimulator.Utilities
 
 open MathNet.Numerics.LinearAlgebra
 open FSharpPlus
-open Constants
+open Configuration
 
 module GraphicsUtils =
     open Vector3D

@@ -3,12 +3,14 @@ namespace PhysicsSimulator.Utilities
 open Microsoft.FSharp.Core
 
 [<AutoOpen>]
-module Constants =
+module Configuration =
     let epsilon = 0.00001
     let defaultElasticityCoeff = 0.9
     let defaultFrictionCoeff = 0.5
     let infiniteMass  = infinity    
-    let baumagarteTerm = 0.0
+    let baumgarteTerm = 0.2
+    let collisionSolverIterationCount = 10    
+    let allowedPenetration = 0.01
 
 [<AutoOpen>]
 module Utils =
@@ -41,4 +43,4 @@ module Utils =
     let applyN n f object =
         [ 1..n ] |> List.fold (fun obj _ -> obj |> f) object
 
-    let equals (a: float) b = (b - a |> abs) <= Constants.epsilon
+    let equals (a: float) b = (b - a |> abs) <= Configuration.epsilon
