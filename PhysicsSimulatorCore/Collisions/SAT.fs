@@ -30,19 +30,9 @@ module SAT =
           Incident: Polyhedron
           CollisionNormalFromReference: Vector3D }
 
-    let private chooseSeparationAxis candidatesMap =
-        let origin, collisionData, polyhedrons =
-            candidatesMap
-            |> Map.toList
-            |> List.map (fun (axis, (cd, polyhedron)) -> (axis, cd, polyhedron))
-            |> List.minBy (fun (_, cd, _) -> cd.Penetration)
 
-        { Origin = origin
-          Reference = polyhedrons |> SetOf2.fst
-          Incident = polyhedrons |> SetOf2.snd
-          CollisionNormalFromReference = collisionData.NormalFromTarget }
     // axis must correspond to one if the target's vertices
-    
+
     let private tryGetCollisionDataForAxis
         (polyhedronTarget: Polyhedron)
         (polyhedronOther: Polyhedron)
@@ -60,10 +50,10 @@ module SAT =
                 {| Min = s |> Seq.minBy snd
                    Max = s |> Seq.maxBy snd |})
 
-        let min1, a = minMax[0].Min
-        let max1, b = minMax[0].Max
-        let min2, c = minMax[1].Min
-        let max2, d = minMax[1].Max
+        let _, a = minMax[0].Min
+        let _, b = minMax[0].Max
+        let _, c = minMax[1].Min
+        let _, d = minMax[1].Max
 
         // a    c  b           d
         if a <= c && b >= c then
@@ -89,6 +79,25 @@ module SAT =
               Normal =
                 face.Normal
                 |> GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation zero })
+
+    let private chooseSeparationAxis bestAxes =
+        monad' {
+            let! bestAxes =
+                bestAxes
+                |> Map.toList
+                |> List.map (fun (key, value) -> value |> Option.map (fun v -> (key, v)))
+                |> sequence
+
+            let origin, collisionData, polyhedrons =
+                bestAxes
+                |> List.map (fun (axis, (cd, polyhedron)) -> (axis, cd, polyhedron))
+                |> List.minBy (fun (_, cd, _) -> cd.Penetration)
+
+            { Origin = origin
+              Reference = polyhedrons |> SetOf2.fst
+              Incident = polyhedrons |> SetOf2.snd
+              CollisionNormalFromReference = collisionData.NormalFromTarget }
+        }
 
     let tryFindSeparatingAxis (objects: (Box * RigidBody) SetOf2) : SATResult option =
 
@@ -118,7 +127,7 @@ module SAT =
               ]
             |> Map.ofList
 
-        let bestAxes: Map<SATAxisOrigin, (PossibleCollisionData * SetOf2<Polyhedron>) option> =
+        let bestAxes =
             axesWithData
             |> Map.mapValues (
                 (fun (polyhedrons, axes) ->
@@ -130,8 +139,4 @@ module SAT =
                 >> (Seq.sequence >> Option.map (Seq.minBy (fun (cd, _) -> cd.Penetration)))
             )
 
-        //TODO: improve
-        if bestAxes |> Map.exists (fun _ axis -> axis.IsNone) then
-            None
-        else
-            bestAxes |> Map.mapValues Option.get |> chooseSeparationAxis |> Some
+        bestAxes |> chooseSeparationAxis
