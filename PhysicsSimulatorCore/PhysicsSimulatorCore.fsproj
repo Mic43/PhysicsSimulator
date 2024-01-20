@@ -21,6 +21,8 @@
         <Compile Include="Utilities\GraphicsUtils.fs" />
         <Compile Include="Utilities\ValueSupplier.fs" />
         <Compile Include="Entities\Base.fs" />
+        <Compile Include="Entities\Box.fs" />
+        <Compile Include="Entities\Sphere.fs" />
         <Compile Include="Entities\Particle.fs" />
         <Compile Include="Entities\RigidBody.fs" />
         <Compile Include="Entities\Collider.fs" />
