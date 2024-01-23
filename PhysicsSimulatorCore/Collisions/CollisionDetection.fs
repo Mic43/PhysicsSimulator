@@ -46,11 +46,11 @@ module CollisionDetection =
             let findIncidentFace (referenceFace: Face) (facesCandidates: Face seq) =
                 facesCandidates |> Seq.minBy (_.Normal.Get.DotProduct(referenceFace.Normal.Get))
 
-            let referenceFace = referenceFaces |> Collider.findFaceByNormal normal 
+            let referenceFace = referenceFaces |> Box.findFaceByNormal normal 
             let incidentFace = otherFaces |> findIncidentFace referenceFace 
 
             let adjacentFaces =
-                referenceFace |> Collider.findAdjacentFaces referenceFaces |> Seq.toList
+                referenceFace |> Box.findAdjacentFaces referenceFaces |> Seq.toList
 
             let clipAgainstReferencePlane vertices =
                 vertices
