@@ -16,7 +16,7 @@ module SAT =
         | Faces2
         | Edges
 
-    type Polyhedron =
+    type OrientedBox =
         { Faces: Face seq
           Vertices: Vector3D seq }
 
@@ -26,16 +26,14 @@ module SAT =
 
     type SATResult =
         { Origin: SATAxisOrigin
-          Reference: Polyhedron
-          Incident: Polyhedron
+          Reference: OrientedBox
+          Incident: OrientedBox
           CollisionNormalFromReference: Vector3D }
 
-
-    // axis must correspond to one if the target's vertices
-
+    // axis must correspond to one of the target's vertices
     let private tryGetCollisionDataForAxis
-        (polyhedronTarget: Polyhedron)
-        (polyhedronOther: Polyhedron)
+        (polyhedronTarget: OrientedBox)
+        (polyhedronOther: OrientedBox)
         (axis: Vector3D)
         : PossibleCollisionData option =
         let withProjection (vertices: Vector3D seq) =
@@ -73,7 +71,7 @@ module SAT =
             GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation rigidBody.MassCenter.Variables.Position
 
         colliderBox
-        |> Collider.getFaces
+        |> Box.getFaces
         |> Seq.map (fun face ->
             { Vertices = face.Vertices |> Seq.map getOrientedVertex
               Normal =
@@ -127,7 +125,7 @@ module SAT =
               ]
             |> Map.ofList
 
-        let bestAxes =
+        let bestAxes = // bestAxes for given origin
             axesWithData
             |> Map.mapValues (
                 (fun (polyhedrons, axes) ->

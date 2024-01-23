@@ -50,7 +50,7 @@ module SimulatorObject =
         { PhysicalObject =
             (RigidBody.createDefaultBox defaultElasticityCoeff defaultFrictionCoeff size size size mass position)
             |> RigidBody
-          Collider = (size, size, size) |||> Collider.createBox |> Box
+          Collider = (size, size, size) |||> Collider.createBox
           Id = id }
 
     let getOffsetFrom (point: Vector3D) (physicalObject: SimulatorObject) =
