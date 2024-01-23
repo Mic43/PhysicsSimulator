@@ -21,8 +21,7 @@ type Vector3D =
     member this.Z =
         match this with
         | Value v -> v.At(2)
-
-   
+  
     static member apply2 (f: Vector<float> -> Vector<float> -> Vector<float>) (v: Vector3D) (v2: Vector3D) =
         (v.Get, v2.Get) ||> f |> Value
 

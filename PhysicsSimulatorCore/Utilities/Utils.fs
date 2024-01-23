@@ -14,6 +14,9 @@ module Configuration =
 
 [<AutoOpen>]
 module Utils =
+    let throwIfNegative value name =
+        if value < 0.0 then
+            "Must be positive" |> invalidArg name
     let rec subSetsOf2<'t when 't: comparison> (set: 't Set) =
         if (set.Count < 2) then
             Set.empty
@@ -34,6 +37,7 @@ module Utils =
         else
             let maximumElement = rest |> Set.toSeq |> Seq.head
 
+            //TODO: fix tailcall
             subSetsOf2Ag (processed |> Set.add maximumElement) (rest |> Set.remove maximumElement) accumulator
             |> Set.union (processed |> Set.map (fun el -> [ el; maximumElement ] |> Set.ofList))
 
