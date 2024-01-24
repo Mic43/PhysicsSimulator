@@ -24,7 +24,10 @@ type RigidBodyPrototype =
       FrictionCoeff: float
       UseGravity: bool }
 
-module RigidBodyPrototype =
+module RigidBodyPrototype =    
+    let private defaultElasticityCoeff = 0.9
+    let private defaultFrictionCoeff = 0.5
+    
     let createDefault kind =
         let collider =
             match kind with

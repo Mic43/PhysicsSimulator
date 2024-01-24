@@ -1,6 +1,8 @@
 namespace PhysicsSimulator.Collisions
 
 open System
+open FSharpPlus
+open FSharpPlus.Data
 open PhysicsSimulator
 open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
@@ -10,11 +12,16 @@ module CollisionResponse =
     open SetOf2
 
     let frictionApplier = Friction.applyNoFriction
-    let collisionSolverIterationCount = Configuration.collisionSolverIterationCount
+    // let collisionSolverIterationCount = Configuration.collisionSolverIterationCount
 
-    let private calculateBaumgarteBias (timeInterval: TimeSpan) penetration =
-        -baumgarteTerm / timeInterval.TotalSeconds
-        * ((penetration |> abs) - allowedPenetration |> max 0.0)
+    let private calculateBaumgarteBias (timeInterval: TimeSpan) penetration : Reader<Configuration, float> =
+        monad {
+            let! config = ask
+
+            return
+                -config.baumgarteTerm / timeInterval.TotalSeconds
+                * ((penetration |> abs) - config.allowedPenetration |> max 0.0)
+        }
 
     let private calculateRigidBodyImpulse
         timeInterval
@@ -25,7 +32,7 @@ module CollisionResponse =
 
         let compoundFriction = max targetBody.FrictionCoeff otherBody.FrictionCoeff
         let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
-        let normal = contactPoint.Normal
+        let normal = contactPoint.Normal.Get
 
         let offset1 = (contactPoint.Position - targetBody.GetMassCenterPosition)
         let offset2 = (contactPoint.Position - otherBody.GetMassCenterPosition)
@@ -54,7 +61,7 @@ module CollisionResponse =
             let totalM = (K targetBody offset1) + (K otherBody offset2)
             let coeff = normal.Get * (totalM * normal.Get)
             //TODO: should be calculated only once, not for every iteration
-            let bias = calculateBaumgarteBias timeInterval contactPoint.Penetration
+            let bias = 0.0 // calculateBaumgarteBias timeInterval contactPoint.Penetration
             printf $"Bias {bias}"
 
             let impulseValue = (-(compoundElasticity + 1.0) * vRelNorm + bias) / coeff
@@ -67,7 +74,12 @@ module CollisionResponse =
         match (target, other) with
         | RigidBody targetBody, RigidBody otherBody -> calculateRigidBodyImpulse dt otherBody targetBody contactPoint
 
-    let resolveCollision dt (collisionData: CollisionData) (objects: SimulatorObject SetOf2) =
+    let resolveCollision
+        dt
+        (collisionData: CollisionData)
+        (objects: SimulatorObject SetOf2)
+        : Reader<Configuration, SetOf2<SimulatorObject>> =
+
         let resolveIteration (objectsPair: SimulatorObject SetOf2) =
             let resolveContactPoint objects (contactPoint: ContactPoint) =
                 let offsets =
@@ -76,13 +88,14 @@ module CollisionResponse =
                 let impulse =
                     (objects |> fst).PhysicalObject
                     |> calculateImpulse dt contactPoint (objects |> snd).PhysicalObject
-
-                // printfn $"  impulse: %A{impulse} offset: {offsets}"
-
+             
                 ([ impulse; -impulse ] |> ofList, offsets, objects)
                 |||> zip3
                 |> map (fun (impulse, offset, obj) -> obj |> SimulatorObject.applyImpulse impulse offset)
 
             collisionData.ContactPoints |> Seq.fold resolveContactPoint objectsPair
 
-        objects |> applyN collisionSolverIterationCount resolveIteration
+        monad {
+            let! config = ask
+            return objects |> applyN config.collisionSolverIterationCount resolveIteration
+        }

@@ -1,22 +1,19 @@
 namespace PhysicsSimulator.Collisions
 
+open FSharpPlus.Data
 open PhysicsSimulator
 open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
 
 open MathNet.Numerics.LinearAlgebra
 open FSharpPlus
-open FSharpPlus.Data
 
 type ContactPoint =
-    { Normal: Vector3D
+    { Normal: NormalVector
       Position: Vector3D
       Penetration: float }
 
     static member Create penetration normal position =
-        if normal |> Vector3D.toVector |> Vector.norm |> equals 1.0 |> not then
-            invalidArg "normal" "normal vector must me normalized"
-
         { Normal = normal
           Position = position
           Penetration = penetration }
@@ -25,11 +22,7 @@ type CollisionData =
     { ContactPoints: ContactPoint list }
 
     member this.WithInvertedNormals() =
-        { ContactPoints =
-            this.ContactPoints
-            |> List.map (fun cp ->
-                { cp with
-                    Normal = cp.Normal |> Vector3D.apply (~-) }) }
+        { ContactPoints = this.ContactPoints |> List.map (fun cp -> { cp with Normal = -cp.Normal }) }
 
 module CollisionDetection =
     open Vector3D
@@ -39,63 +32,68 @@ module CollisionDetection =
         (boxCollider1: Box)
         body1
         (boxCollider2: Box)
-        (body2: RigidBody)
-        : CollisionData option =
+        body2
+        : Reader<Configuration, CollisionData Option> =
 
-        let generateFaceContactPoints normal referenceFaces otherFaces =
-            let findIncidentFace (referenceFace: Face) (facesCandidates: Face seq) =
-                facesCandidates |> Seq.minBy (_.Normal.Get.DotProduct(referenceFace.Normal.Get))
+        let generateFaceContactPoints normal referenceFaces otherFaces : Reader<Configuration, CollisionData Option> =
+            monad {
+                let! (config: Configuration) = ask
+                let epsilon = config.epsilon
+                let faceToPlane = Face.toPlane
 
-            let referenceFace = referenceFaces |> Box.findFaceByNormal normal 
-            let incidentFace = otherFaces |> findIncidentFace referenceFace 
+                let findIncidentFace (referenceFace: Face) (facesCandidates: Face seq) =
+                    facesCandidates
+                    |> Seq.minBy (fun f -> f.Normal.Get |> dotProduct referenceFace.Normal.Get)
 
-            let adjacentFaces =
-                referenceFace |> Box.findAdjacentFaces referenceFaces |> Seq.toList
+                let referenceFace = referenceFaces |> Box.findFaceByNormal normal
+                let incidentFace = otherFaces |> findIncidentFace referenceFace
 
-            let clipAgainstReferencePlane vertices =
-                vertices
-                |> List.filter (GraphicsUtils.isPointInPlane (referenceFace |> Face.toPlane |> Plane.invertNormal))
+                let adjacentFaces =
+                    referenceFace |> Box.findAdjacentFaces epsilon referenceFaces |> Seq.toList
 
-            let calculatePenetration cpPosition =
-                cpPosition
-                - GraphicsUtils.getClosestPointToPoly cpPosition (referenceFace.Vertices |> Seq.toList)
-                |> dotProduct normal
+                let clipAgainstReferencePlane vertices =
+                    vertices
+                    |> List.filter (GraphicsUtils.isPointInPlane (referenceFace |> faceToPlane |> Plane.invertNormal))
 
-            let contactPoints =
-                incidentFace.Vertices
-                |> Seq.toList
-                |> GraphicsUtils.SutherlandHodgmanClipping(
-                    adjacentFaces |> List.map (Face.toPlane >> Plane.invertNormal)
-                )
-                |> clipAgainstReferencePlane
-                |> Seq.map (fun cpPosition ->
-                    ContactPoint.Create (cpPosition |> calculatePenetration) normal cpPosition)
+                let calculatePenetration cpPosition =
+                    cpPosition
+                    - GraphicsUtils.getClosestPointToPoly cpPosition (referenceFace.Vertices |> Seq.toList)
+                    |> dotProduct normal.Get
 
-            { ContactPoints = contactPoints |> Seq.toList } |> Some
+                let contactPoints =
+                    incidentFace.Vertices
+                    |> Seq.toList
+                    |> GraphicsUtils.SutherlandHodgmanClipping
+                        epsilon
+                        (adjacentFaces |> List.map (faceToPlane >> Plane.invertNormal))
+                    |> clipAgainstReferencePlane
+                    |> Seq.map (fun cpPosition ->
+                        ContactPoint.Create (cpPosition |> calculatePenetration) normal cpPosition)
 
-        monad' {
-            let! separationAxis =
-                [ (boxCollider1, body1); (boxCollider2, body2) ]
-                |> SetOf2.ofList
-                |> tryFindSeparatingAxis
+                return { ContactPoints = contactPoints |> Seq.toList } |> Some
+            }
 
-            let result =
-                (match separationAxis with
-                 | { Origin = origin
-                     Reference = reference
-                     Incident = incident
-                     CollisionNormalFromReference = normal } as res when origin = Faces1 || origin = Faces2 ->
+        let separationAxis =
+            [ (boxCollider1, body1); (boxCollider2, body2) ]
+            |> SetOf2.ofList
+            |> tryFindSeparatingAxis
 
-                     printfn $"Reference: {separationAxis.Origin}"
-                     (reference.Faces, incident.Faces) ||> generateFaceContactPoints normal)
+        match separationAxis with
+        | None -> None |> Reader.Return
+        | Some separationAxis ->
+            (match separationAxis with
+             | { Origin = origin
+                 Reference = reference
+                 Incident = incident
+                 CollisionNormalFromReference = normal } as res when origin = Faces1 || origin = Faces2 ->
 
-            return! result
-        }
+                 printfn $"Reference: {separationAxis.Origin}"
+                 (reference.Faces, incident.Faces) ||> generateFaceContactPoints normal)
 
     open SetOf2
 
     /// Collision Normal vector points from the first to the second object in pair
-    let areColliding (pair: SimulatorObject SetOf2) : CollisionData option =
+    let areColliding (pair: SimulatorObject SetOf2) : Reader<Configuration, CollisionData Option> =
 
         let objects = pair |> map _.PhysicalObject
         let positions = objects |> map _.MassCenterPosition()
@@ -117,12 +115,11 @@ module CollisionDetection =
                 else
                     let normal = normal |> normalized
 
-                    let contactPoint1 = firstPos + -normal * sphere.Radius
-                    let contactPoint2 = secondPos + normal * sphere2.Radius
+                    let contactPoint1 = firstPos + -normal.Get * sphere.Radius
+                    let contactPoint2 = secondPos + normal.Get * sphere2.Radius
 
                     let contactPoint = (contactPoint1 + (contactPoint2 - contactPoint1) / 2.0)
 
                     { ContactPoints = [ (ContactPoint.Create 0.0 normal contactPoint) ] } |> Some
-            | Collider.Sphere sphere, Collider.Box box -> None
-            | Collider.Box box, Collider.Sphere sphere -> None
+                |> Reader.Return
             | Collider.Box box1, Collider.Box box2 -> detectBoxBoxCollision box1 body1 box2 body2

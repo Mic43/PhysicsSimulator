@@ -2,7 +2,6 @@ namespace PhysicsSimulator.Utilities
 
 open MathNet.Numerics.LinearAlgebra
 open FSharpPlus
-open Configuration
 
 module GraphicsUtils =
     open Vector3D
@@ -39,30 +38,31 @@ module GraphicsUtils =
 
     // Performs a plane/edge collision test, if an intersection does occur then
     //    it will return the point on the line where it intersected the given plane.
-    let tryGetPlaneEdgeIntersection (plane: Plane) (startPoint: Vector3D) (endPoint: Vector3D) : Vector3D option =
-        let ab = endPoint.Get - startPoint.Get
+    let tryGetPlaneEdgeIntersection epsilon (plane: Plane) (startPoint: Vector3D) (endPoint: Vector3D) : Vector3D option =
+        let ab = endPoint - startPoint
         //Check that the edge and plane are not parallel and thus never intersect
         // We do this by projecting the line (start - A, End - B) ab along the plane
-        let ab_p = plane.Normal.Get.DotProduct(ab)
+        let ab_p = plane.Normal.Get |> dotProduct(ab)
 
         if abs ab_p > epsilon then
             //Generate a random point on the plane (any point on the plane will suffice)
             let p_co = plane.Normal.Get * (-plane.DistanceFromOrigin)
-            let fac = -(plane.Normal.Get.DotProduct(startPoint.Get - p_co)) / ab_p
+            let fac = -(plane.Normal.Get |> dotProduct (startPoint - p_co)) / ab_p
 
             //Stop any large floating point divide issues with almost parallel planes
             let fac = min (max fac 0.0) 1.0
 
             //Return point on edge
-            startPoint.Get + ab * fac |> ofVector |> Some
+            startPoint + ab * fac  |> Some
         else
             None
 
     let isPointInPlane plane (point: Vector3D) =
-        (point |> dotProduct plane.Normal) + plane.DistanceFromOrigin >= 0.0
+        (point |> dotProduct plane.Normal.Get) + plane.DistanceFromOrigin >= 0.0
 
     /// Planes normals must point to polygon parts that should be left after clipping
     let SutherlandHodgmanClipping
+        epsilon
         (clipPlanes: Plane list) 
         (inputPolygon: Vector3D list)        
         : Vector3D list =
@@ -83,7 +83,7 @@ module GraphicsUtils =
 
                                  let getEdgeIntersection startPoint endPoint =
                                      (startPoint, endPoint)
-                                     ||> tryGetPlaneEdgeIntersection plane
+                                     ||> tryGetPlaneEdgeIntersection epsilon plane
                                      |> Option.map List.singleton
                                      |> Option.defaultValue []
 
@@ -105,4 +105,4 @@ module GraphicsUtils =
     let toWorldCoordinates (rotationMatrix: Matrix3) (translationVector: Vector3D) (v: Vector3D) =
         v
         |> ((fun v -> rotationMatrix.Get * v.Get) >> (fun v -> v + translationVector.Get))
-        |> Vector3D.ofVector
+        |> ofVector

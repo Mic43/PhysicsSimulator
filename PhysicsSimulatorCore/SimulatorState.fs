@@ -2,6 +2,7 @@ namespace PhysicsSimulator
 
 open System
 open FSharpPlus
+open FSharpPlus.Data
 open PhysicsSimulator.Collisions
 open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
@@ -10,12 +11,13 @@ type SimulatorState =
     private
         { Objects: Map<SimulatorObjectIdentifier, SimulatorObject>
           ExternalForces: Map<SimulatorObjectIdentifier, Vector3D ValueSupplier>
-          ExternalTorque: Map<SimulatorObjectIdentifier, Vector3D> }
+          ExternalTorque: Map<SimulatorObjectIdentifier, Vector3D>
+          Configuration: Configuration }
 
     member this.GetObjects = this.Objects
     member this.GetExternalForces = this.ExternalForces
-    member this.GetExternalTorque = this.ExternalTorque
-
+    member this.GetExternalTorque = this.ExternalTorque    
+    member this.GetConfiguration = this.Configuration
 
 module SimulatorStateBuilder =
     let private earthGAcceleration = Vector3D.create 0.0 0.0 -9.81
@@ -49,7 +51,8 @@ module SimulatorStateBuilder =
 
         { Objects = objectMap
           ExternalForces = externalForces
-          ExternalTorque = identifiers |> Seq.map (fun i -> (i, Vector3D.zero)) |> Map.ofSeq }
+          ExternalTorque = identifiers |> Seq.map (fun i -> (i, Vector3D.zero)) |> Map.ofSeq
+          Configuration = Configuration.getDefault }
 
 module SimulatorState =
     let private particleIntegrator = ParticleIntegrators.forwardEuler
@@ -59,15 +62,15 @@ module SimulatorState =
         SimulatorObject.update particleIntegrator rigidBodyIntegrator
 
     let private updateObjectById (simulatorState: SimulatorState) dt id =
-        let newState =
-            (objectUpdater
+        let newObjectState =
+            objectUpdater
                 dt
                 (simulatorState.GetExternalForces[id].GetValue())
                 simulatorState.ExternalTorque[id]
-                simulatorState.Objects[id].PhysicalObject)
+                simulatorState.Objects[id].PhysicalObject
 
         { simulatorState.Objects[id] with
-            PhysicalObject = newState }
+            PhysicalObject = newObjectState }
 
     let private changeSimulatorObject objectIdentifier newPhysicalObject (simulationState: SimulatorState) =
         { simulationState with
@@ -95,24 +98,31 @@ module SimulatorState =
         simulatorState
         |> changeSimulatorObject objectIdentifier (simulatorObject |> applyImpulseToObject)
 
-    let private tryHandleCollision dt (nextStates: SetOf2<SimulatorObject>) (curSimulationState: SimulatorState) =
-        nextStates
-        |> CollisionDetection.areColliding
-        |> Option.bind (fun collisionData ->
-            $"Collision detected between target: {(nextStates |> SetOf2.fst).Id} and other: {(nextStates |> SetOf2.snd).Id}"
-            |> printfn "%A"
-            collisionData |> printfn "%A"
+    let private tryHandleCollision
+        dt
+        (nextStates: SetOf2<SimulatorObject>)
+        (curSimulationState: SimulatorState)
+        : SimulatorState option =
+        let simulatorState =
+            monad {
+                let! collisionData = nextStates |> CollisionDetection.areColliding
 
-            let resolvedObjects = CollisionResponse.resolveCollision dt collisionData nextStates
+                match collisionData with
+                | None -> None
+                | Some collisionData ->
+                    $"Collision detected between target: {(nextStates |> SetOf2.fst).Id} and other: {(nextStates |> SetOf2.snd).Id}"
+                    |> printfn "%A"
+                    collisionData |> printfn "%A"
 
-            //  printfn "State after collision: "
-            //  printfn $"%A{nextSimulationState.Objects[id1].PhysicalObject}"
-            //  printfn $"%A{nextSimulationState.Objects[id2].PhysicalObject}"
+                    let! resolvedObjects = CollisionResponse.resolveCollision dt collisionData nextStates
 
-            curSimulationState
-            |> changeSimulatorObject (nextStates |> SetOf2.fst).Id (resolvedObjects |> SetOf2.fst)
-            |> changeSimulatorObject (nextStates |> SetOf2.snd).Id (resolvedObjects |> SetOf2.snd)
-            |> Some)
+                    curSimulationState
+                    |> changeSimulatorObject (nextStates |> SetOf2.fst).Id (resolvedObjects |> SetOf2.fst)
+                    |> changeSimulatorObject (nextStates |> SetOf2.snd).Id (resolvedObjects |> SetOf2.snd)
+                    |> Some
+            }
+
+        curSimulationState.Configuration |> Reader.run simulatorState
 
     let private withCollisionResponse dt (curSimulationState: SimulatorState) ids =
 

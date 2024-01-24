@@ -56,12 +56,12 @@ module RotationMatrix3D =
     // open Vector3D
     let zero = Matrix<float>.Build.DenseIdentity 3 |> Matrix3.Value
 
-    let fromAxisAndAngle (Vector3D.Vector3D axis) angle =
-
-        let len = axis.Norm(2.0)
-
-        if axis <> Vector3D.zero.Get && equals len 1.0 |> not then
-            invalidArg "axis" "axis must be unit vector"
+    let fromAxisAndAngle (NormalVector.Value axis) angle =
+        let  axis = axis.Get 
+        // let len = axis.Norm(2.0)
+        //
+        // if axis <> Vector3D.zero.Get && equals epsilon len 1.0 |> not then
+        //     invalidArg "axis" "axis must be unit vector"
 
         let ux = axis.Item(0)
         let uy = axis.Item(1)

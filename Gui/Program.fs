@@ -61,7 +61,7 @@ let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifie
 
         let mutable m33d = tmp |> M33d.op_Explicit
 
-        let fromM33d = Rot3d.FromM33d(m33d, Configuration.epsilon)
+        let fromM33d = Rot3d.FromM33d(m33d, simulator.Configuration.epsilon)
         //let foo = fromM33d.GetEulerAngles()
         // printfn $"Angles: %A{foo.Elements.ToListOfT()}"
         //printfn $"Matrix: %A{matrix}"

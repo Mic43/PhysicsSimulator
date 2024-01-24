@@ -1,8 +1,8 @@
 namespace PhysicsSimulator.Entities
 
+open FSharpPlus.Data
 open PhysicsSimulator.Utilities
-
-open PhysicsSimulator.Utilities
+open FSharpPlus
 
 type SimulatorObjectIdentifier =
     private
@@ -33,25 +33,25 @@ type PhysicalObject =
 
 
 type SimulatorObject =
-    { Id:SimulatorObjectIdentifier
+    { Id: SimulatorObjectIdentifier
       PhysicalObject: PhysicalObject
       Collider: Collider }
 
 module SimulatorObject =
-   
-    let createDefaultSphere id radius mass position =
-        { PhysicalObject =
-            (RigidBody.createDefaultSphere defaultElasticityCoeff defaultFrictionCoeff radius mass position)
-            |> RigidBody
-          Collider = radius |> Collider.createSphere
-          Id = id }
 
-    let createDefaultCube id size mass position =
-        { PhysicalObject =
-            (RigidBody.createDefaultBox defaultElasticityCoeff defaultFrictionCoeff size size size mass position)
-            |> RigidBody
-          Collider = (size, size, size) |||> Collider.createBox
-          Id = id }
+    // let createDefaultSphere id radius mass position =
+    //     { PhysicalObject =
+    //         (RigidBody.createDefaultSphere defaultElasticityCoeff defaultFrictionCoeff radius mass position)
+    //         |> RigidBody
+    //       Collider = radius |> Collider.createSphere
+    //       Id = id }
+    //
+    // let createDefaultCube id size mass position =
+    //     { PhysicalObject =
+    //         (RigidBody.createDefaultBox defaultElasticityCoeff defaultFrictionCoeff size size size mass position)
+    //         |> RigidBody
+    //       Collider = (size, size, size) |||> Collider.createBox
+    //       Id = id }
 
     let getOffsetFrom (point: Vector3D) (physicalObject: SimulatorObject) =
         (point, physicalObject.PhysicalObject.MassCenterPosition())
@@ -62,7 +62,7 @@ module SimulatorObject =
             match object with
             | RigidBody rigidBody -> RigidBodyMotion.applyImpulse rigidBody impulse offset |> RigidBody
             | Particle particle -> impulse |> ParticleMotion.applyImpulse particle |> Particle
-         
+
         { object with
             PhysicalObject = object.PhysicalObject |> applyImpulseToObject }
 
@@ -80,4 +80,5 @@ module SimulatorObject =
             let updater =
                 RigidBodyMotion.update particleIntegrator rigidBodyIntegrator totalForce totalTorque dt
 
-            rigidBody |> updater |> RigidBody
+            let newState = rigidBody |> updater
+            newState |> RigidBody
