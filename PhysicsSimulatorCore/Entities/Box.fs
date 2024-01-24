@@ -20,7 +20,7 @@ type Box =
 
 module Box =
     let private vertices =
-        [ (-1.0, -1.0, -1.0) |||> Vector3D.create
+        [ (-1.0, -1.0, -1.0) |||> Vector3D.create 
           (-1.0, 1.0, -1.0) |||> Vector3D.create
           (1.0, 1.0, -1.0) |||> Vector3D.create
           (1.0, -1.0, -1.0) |||> Vector3D.create
@@ -84,16 +84,16 @@ module Box =
                     >> (_.PointwiseMultiply(scaleVector))
                     >> Vector3D.ofVector
                 )
-              Normal = normal })
+              Normal = normal |> NormalVector.createUnsafe })
         |> List.toSeq
 
     let findFaceByNormal normal (faces:Face seq) =
         faces |> Seq.find (fun face -> face.Normal = normal)
 
-    let findAdjacentFaces (boxFaces: Face seq) (targetFace: Face) =
+    let findAdjacentFaces epsilon (boxFaces: Face seq) (targetFace: Face) =
         boxFaces
-        |> Seq.filter (fun f -> f.Normal - targetFace.Normal |> Vector3D.l2Norm |> (equals 0.0))
+        |> Seq.filter (fun f -> f.Normal.Get - targetFace.Normal.Get |> Vector3D.l2Norm |> (equals epsilon 0.0))
         |> Seq.filter (fun face ->
             face.Vertices
             |> Seq.allPairs targetFace.Vertices
-            |> Seq.exists (fun (v1, v2) -> v1 - v2 |> Vector3D.l2Norm |> (equals 0.0)))
+            |> Seq.exists (fun (v1, v2) -> v1 - v2 |> Vector3D.l2Norm |> (equals epsilon 0.0)))

@@ -48,6 +48,8 @@ type Simulator(simulatorObjects) =
     member this.PhysicalObject
         with get identifier = this.SimulatorObject(identifier).PhysicalObject
 
+    member this.Configuration = simulatorState.Value.Configuration
+
     member this.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset =
         simulatorState.Value <-
             simulatorState.Value

@@ -21,23 +21,23 @@ module SAT =
           Vertices: Vector3D seq }
 
     type PossibleCollisionData =
-        { NormalFromTarget: Vector3D
+        { NormalFromTarget: NormalVector
           Penetration: float }
 
     type SATResult =
         { Origin: SATAxisOrigin
           Reference: OrientedBox
           Incident: OrientedBox
-          CollisionNormalFromReference: Vector3D }
+          CollisionNormalFromReference: NormalVector }
 
     // axis must correspond to one of the target's vertices
     let private tryGetCollisionDataForAxis
         (polyhedronTarget: OrientedBox)
         (polyhedronOther: OrientedBox)
-        (axis: Vector3D)
+        (axis: NormalVector)
         : PossibleCollisionData option =
         let withProjection (vertices: Vector3D seq) =
-            vertices |> Seq.map (fun v -> (v, v |> dotProduct axis))
+            vertices |> Seq.map (fun v -> (v, v |> dotProduct axis.Get))
 
         let v1 = polyhedronTarget.Vertices |> withProjection
         let v2 = polyhedronOther.Vertices |> withProjection
@@ -75,8 +75,9 @@ module SAT =
         |> Seq.map (fun face ->
             { Vertices = face.Vertices |> Seq.map getOrientedVertex
               Normal =
-                face.Normal
-                |> GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation zero })
+                face.Normal.Get
+                |> (GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation zero)
+                |> NormalVector.createUnsafe })
 
     let private chooseSeparationAxis bestAxes =
         monad' {
@@ -113,8 +114,8 @@ module SAT =
 
         let edgesAxes =
             facesAxes
-            |> SetOf2.snd
-            |> Seq.apply (facesAxes |> SetOf2.fst |> Seq.map crossProduct)
+            |> SetOf2.snd |> Seq.map _.Get
+            |> Seq.apply (facesAxes |> SetOf2.fst |> Seq.map (_.Get >> crossProduct))
             |> Seq.map (fun v -> v |> normalized)
 
         let axesWithData =

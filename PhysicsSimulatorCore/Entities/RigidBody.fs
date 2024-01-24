@@ -1,7 +1,9 @@
 namespace PhysicsSimulator.Entities
 
 open System
-open MathNet.Numerics.LinearAlgebra
+open FSharpPlus
+open FSharpPlus.Data
+open PhysicsSimulator
 open PhysicsSimulator.Utilities
 
 
@@ -111,7 +113,6 @@ module RigidBodyIntegrators =
             let angularVelocity = inertiaInverse.Get * newAngMomentum.Get |> ofVector
 
             let axis = angularVelocity * totalSeconds
-
             let angle = axis |> l2Norm
 
             let newOrientation =
@@ -120,6 +121,7 @@ module RigidBodyIntegrators =
 
             { Orientation = newOrientation |> ofMatrix |> orthonormalize
               AngularMomentum = newAngMomentum }
+
 
     let (augmentedSecondOrder: RigidBodyIntegrator) =
         fun dt (Vector3D torque) inertiaInverse old ->
@@ -143,11 +145,10 @@ module RigidBodyIntegrators =
                 + (totalSeconds * totalSeconds / 12.0) * comp1
 
             let axis = axisAverage * totalSeconds
-
             let angle = axis.Norm(2.0)
 
             let newOrientation =
-                (RotationMatrix3D.fromAxisAndAngle (axis.Normalize(2.0) |> ofVector) angle).Get
+                (RotationMatrix3D.fromAxisAndAngle (axis |> ofVector |> normalized) angle).Get
                 * old.Orientation.Get
 
             { Orientation = newOrientation |> ofMatrix |> orthonormalize

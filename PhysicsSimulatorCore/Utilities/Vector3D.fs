@@ -31,7 +31,16 @@ type Vector3D =
     static member (*)(v: Vector3D, scalar: float) = scalar * v
     static member (/)(v: Vector3D, scalar: float) = v * (1.0 / scalar)
     static member (~-)(v: Vector3D) = -v.Get |> Value
+             
+type NormalVector =
+    private
+     | Value of Vector3D
 
+     member this.Get =
+        match this with
+        | Value v -> v
+    static member (~-)(NormalVector.Value v) = -v |> Value
+        
 module Vector3D =
     let create x y z = vector [ x; y; z ] |> Vector3D.Value
     let zero = create 0.0 0.0 0.0
@@ -52,10 +61,17 @@ module Vector3D =
         (x, y, z) |||> create
 
     let l2Norm (v: Vector3D) = v.Get.L2Norm()
-    let normalized v = v |> apply (_.Normalize(2.0))
+    let normalized v = v |> apply (_.Normalize(2.0)) |> NormalVector.Value
 
     let crossProductV (first) (second) =
         second |> ofVector |> crossProduct (first |> ofVector) |> toVector
 
     let dotProduct (v1: Vector3D) (v2: Vector3D) = v1.Get.DotProduct(v2.Get)
 
+module NormalVector =
+    let internal createUnsafe v =        
+        v |> NormalVector.Value
+    let create epsilon v =
+        if v  |> Vector3D.l2Norm |> equals epsilon 1.0 |> not then
+            invalidArg "v" "normal vector must me normalized"
+        v |> NormalVector.Value

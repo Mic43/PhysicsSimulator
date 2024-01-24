@@ -13,6 +13,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Compile Include="Configuration.fs" />
         <Compile Include="Utilities\Utils.fs" />
         <Compile Include="Utilities\SetOf2.fs" />
         <Compile Include="Utilities\Vector3D.fs" />
