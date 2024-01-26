@@ -7,95 +7,146 @@ open PhysicsSimulator
 open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
 
+open Vector3D
+open SetOf2
+
+type ContactPointImpulseData =
+    { BaumgarteBias: float
+      AccumulatedNormalImpulse: float
+      PositionOffsetFromTarget: Vector3D
+      PositionOffsetFromOther: Vector3D
+      MassNormal: float }
+
+module ContactPointImpulseData =
+
+    let init (targetBody: RigidBody) (otherBody: RigidBody) baumgarteBias (contactPoint: ContactPoint) =
+        let K body (offset: Vector3D) =
+            body.MassCenter.GetInverseMassMatrix().Get
+            + (offset |> Matrix3.hatOperator).Get.Transpose()
+              * body.CalcRotationalInertiaInverse().Get
+              * (offset |> Matrix3.hatOperator).Get
+
+        let normal = contactPoint.Normal.Get.Get
+        let offsetTarget = contactPoint.Position - targetBody.GetMassCenterPosition
+        let offsetOther = contactPoint.Position - otherBody.GetMassCenterPosition
+
+        let totalM = (K targetBody offsetTarget) + (K otherBody offsetOther)
+        let massNormal = normal * (totalM * normal)
+
+        { BaumgarteBias = baumgarteBias
+          AccumulatedNormalImpulse = 0
+          PositionOffsetFromTarget = offsetTarget
+          PositionOffsetFromOther = offsetOther
+          MassNormal = massNormal }
+
+type CollisionManifold =
+    { Bodies: RigidBody SetOf2
+      Contacts: List<ContactPoint * ContactPointImpulseData> }
+
 module CollisionResponse =
-    open Vector3D
-    open SetOf2
-
     let frictionApplier = Friction.applyNoFriction
-    // let collisionSolverIterationCount = Configuration.collisionSolverIterationCount
-
-    let private calculateBaumgarteBias (timeInterval: TimeSpan) penetration : Reader<Configuration, float> =
-        monad {
-            let! config = ask
-
-            return
-                -config.baumgarteTerm / timeInterval.TotalSeconds
-                * ((penetration |> abs) - config.allowedPenetration |> max 0.0)
-        }
 
     let private calculateRigidBodyImpulse
-        timeInterval
-        (otherBody: RigidBody)
-        (targetBody: RigidBody)
+        targetBody
+        otherBody
         (contactPoint: ContactPoint)
-        =
+        : State<ContactPointImpulseData, Vector3D> =
+        monad {
+            let! cpImpulseData = State.get
 
-        let compoundFriction = max targetBody.FrictionCoeff otherBody.FrictionCoeff
-        let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
-        let normal = contactPoint.Normal.Get
+            let compoundFriction = max targetBody.FrictionCoeff otherBody.FrictionCoeff
+            let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
+            let normal = contactPoint.Normal.Get
 
-        let offset1 = (contactPoint.Position - targetBody.GetMassCenterPosition)
-        let offset2 = (contactPoint.Position - otherBody.GetMassCenterPosition)
+            let offset1 = cpImpulseData.PositionOffsetFromTarget
+            let offset2 = cpImpulseData.PositionOffsetFromOther
 
-        let vRelLinear =
-            targetBody.MassCenter.Variables.Velocity
-            - otherBody.MassCenter.Variables.Velocity
+            let vRelLinear =
+                targetBody.MassCenter.Variables.Velocity
+                - otherBody.MassCenter.Variables.Velocity
 
-        let vRelAngular =
-            (offset1 |> crossProduct (targetBody.CalcAngularVelocity()))
-            - (offset2 |> crossProduct (otherBody.CalcAngularVelocity()))
+            let vRelAngular =
+                (offset1 |> crossProduct (targetBody.CalcAngularVelocity()))
+                - (offset2 |> crossProduct (otherBody.CalcAngularVelocity()))
 
-        let vRel = vRelLinear + vRelAngular
-        let vRelNorm = vRel |> dotProduct normal
+            let vRel = vRelLinear + vRelAngular
+            let vRelNorm = vRel |> dotProduct normal
 
-        if vRelNorm < 0 then
-            zero
-        else
-            let K body (offset: Vector3D) =
-                body.MassCenter.GetInverseMassMatrix().Get
-                + (offset |> Matrix3.hatOperator).Get.Transpose()
-                  * body.CalcRotationalInertiaInverse().Get
-                  * (offset |> Matrix3.hatOperator).Get
+            return
+                if vRelNorm < 0 then
+                    zero
+                else
+                    let bias = cpImpulseData.BaumgarteBias
 
-            //TODO: should be calculated only once, not for every iteration
-            let totalM = (K targetBody offset1) + (K otherBody offset2)
-            let coeff = normal.Get * (totalM * normal.Get)
-            //TODO: should be calculated only once, not for every iteration
-            let bias = 0.0 // calculateBaumgarteBias timeInterval contactPoint.Penetration
-            printf $"Bias {bias}"
+                    let impulseValue =
+                        (-(compoundElasticity + 1.0) * vRelNorm + bias) / cpImpulseData.MassNormal
 
-            let impulseValue = (-(compoundElasticity + 1.0) * vRelNorm + bias) / coeff
-            let impulse = impulseValue * normal
-
-            impulse
-            |> frictionApplier (totalM |> Matrix3.ofMatrix) compoundElasticity compoundFriction normal vRel vRelNorm
-
-    let private calculateImpulse dt (contactPoint: ContactPoint) (other: PhysicalObject) (target: PhysicalObject) =
-        match (target, other) with
-        | RigidBody targetBody, RigidBody otherBody -> calculateRigidBodyImpulse dt otherBody targetBody contactPoint
+                    impulseValue * normal
+        // |> frictionApplier (totalM |> Matrix3.ofMatrix) compoundElasticity compoundFriction normal vRel vRelNorm
+        }
 
     let resolveCollision
         dt
         (collisionData: CollisionData)
-        (objects: SimulatorObject SetOf2)
-        : Reader<Configuration, SetOf2<SimulatorObject>> =
+        (objects: PhysicalObject SetOf2)
+        : Reader<Configuration, SetOf2<PhysicalObject>> =
 
-        let resolveIteration (objectsPair: SimulatorObject SetOf2) =
-            let resolveContactPoint objects (contactPoint: ContactPoint) =
-                let offsets =
-                    objects |> map (contactPoint.Position |> SimulatorObject.getOffsetFrom)
+        let calculateBaumgarteBias config (timeInterval: TimeSpan) penetration =
+            -config.baumgarteTerm / timeInterval.TotalSeconds
+            * ((penetration |> abs) - config.allowedPenetration |> max 0.0)
 
-                let impulse =
-                    (objects |> fst).PhysicalObject
-                    |> calculateImpulse dt contactPoint (objects |> snd).PhysicalObject
-             
-                ([ impulse; -impulse ] |> ofList, offsets, objects)
-                |||> zip3
-                |> map (fun (impulse, offset, obj) -> obj |> SimulatorObject.applyImpulse impulse offset)
+        let createCollisionManifold collisionData target other config =
+            { Bodies = (target, other) ||> create
+              Contacts =
+                collisionData.ContactPoints
+                |> List.map (fun cp ->
+                    let baumgarteBias = calculateBaumgarteBias config dt cp.Penetration
+                    cp, cp |> ContactPointImpulseData.init target other baumgarteBias) }
 
-            collisionData.ContactPoints |> Seq.fold resolveContactPoint objectsPair
+        let resolveIteration (manifold: CollisionManifold) =
+            let resolveContactPoint
+                (contactPoint: ContactPoint)
+                (objects: RigidBody SetOf2)
+                : State<ContactPointImpulseData, RigidBody SetOf2> =
+                monad {
+                    let! offsets =
+                        State.gets (fun pointImpulseData ->
+                            (pointImpulseData.PositionOffsetFromTarget, pointImpulseData.PositionOffsetFromOther)
+                            ||> create)
 
-        monad {
-            let! config = ask
-            return objects |> applyN config.collisionSolverIterationCount resolveIteration
-        }
+                    let! impulse = contactPoint |> calculateRigidBodyImpulse (objects |> fst) (objects |> snd)
+
+                    return
+                        ([ impulse; -impulse ] |> ofList, offsets, objects)
+                        |||> zip3
+                        |> map (fun (impulse, offset, rigidBody) ->
+                            rigidBody |> RigidBodyMotion.applyImpulse impulse offset)
+                }
+
+            { manifold with Contacts = [] }
+            |> List.foldBack
+                (fun (cp, cpd) m ->
+                    let updatedBodies, updatedCpImpulseData =
+                        cpd |> State.run (m.Bodies |> resolveContactPoint cp)
+
+                    { Bodies = updatedBodies
+                      Contacts = (cp, updatedCpImpulseData) :: m.Contacts })
+                manifold.Contacts
+
+        let target = (objects |> fst)
+        let other = (objects |> snd)
+
+        match (target, other) with
+        | RigidBody targetBody, RigidBody otherBody ->
+            monad {
+                let! config = ask
+
+                let collisionManifold =
+                    createCollisionManifold collisionData targetBody otherBody config
+
+                let newManifold =
+                    collisionManifold
+                    |> applyN config.collisionSolverIterationCount resolveIteration
+
+                return newManifold.Bodies |> map RigidBody
+            }

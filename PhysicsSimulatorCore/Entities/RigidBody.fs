@@ -1,11 +1,7 @@
 namespace PhysicsSimulator.Entities
 
 open System
-open FSharpPlus
-open FSharpPlus.Data
-open PhysicsSimulator
 open PhysicsSimulator.Utilities
-
 
 type RigidBodyVariables =
     { Orientation: Matrix3
@@ -156,7 +152,7 @@ module RigidBodyIntegrators =
 
 module RigidBodyMotion =
 
-    let applyImpulse rigidBody impulse (offset: Vector3D) =
+    let applyImpulse impulse (offset: Vector3D) rigidBody =
 
         { rigidBody with
             MassCenter = impulse |> ParticleMotion.applyImpulse rigidBody.MassCenter

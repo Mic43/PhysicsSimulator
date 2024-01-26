@@ -11,13 +11,14 @@ type SimulatorTaskState =
     | Started
     | Stopped
 
-type Simulator(simulatorObjects) =
+type Simulator(simulatorObjects, ?simulationSpeedMultiplier0) =
+    let simulationSpeedMultiplier = defaultArg simulationSpeedMultiplier0 1.0
 
     let simulatorState: SimulatorState ref =
         simulatorObjects |> SimulatorStateBuilder.fromPrototypes |> ref
 
     let simulationStepInterval = TimeSpan.FromMilliseconds(10.0)
-    let simulationSpeedMultiplier = 1
+
     let mutable taskState = SimulatorTaskState.Stopped
 
     let broadPhaseCollisions (simulatorState: SimulatorState) =

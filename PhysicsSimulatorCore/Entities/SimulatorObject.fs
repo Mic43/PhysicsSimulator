@@ -38,7 +38,9 @@ type SimulatorObject =
       Collider: Collider }
 
 module SimulatorObject =
-
+    let withPhysicalObject simulatorObject physicalObject =
+        { simulatorObject with
+            PhysicalObject = physicalObject }
     // let createDefaultSphere id radius mass position =
     //     { PhysicalObject =
     //         (RigidBody.createDefaultSphere defaultElasticityCoeff defaultFrictionCoeff radius mass position)
@@ -60,7 +62,7 @@ module SimulatorObject =
     let applyImpulse impulse offset object =
         let applyImpulseToObject object =
             match object with
-            | RigidBody rigidBody -> RigidBodyMotion.applyImpulse rigidBody impulse offset |> RigidBody
+            | RigidBody rigidBody -> RigidBodyMotion.applyImpulse impulse offset rigidBody |> RigidBody
             | Particle particle -> impulse |> ParticleMotion.applyImpulse particle |> Particle
 
         { object with

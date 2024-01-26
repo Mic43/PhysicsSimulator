@@ -16,7 +16,7 @@ type SimulatorState =
 
     member this.GetObjects = this.Objects
     member this.GetExternalForces = this.ExternalForces
-    member this.GetExternalTorque = this.ExternalTorque    
+    member this.GetExternalTorque = this.ExternalTorque
     member this.GetConfiguration = this.Configuration
 
 module SimulatorStateBuilder =
@@ -84,6 +84,10 @@ module SimulatorState =
                         newPhysicalObject |> Some)
                 ) }
 
+    let private changeSimulatorObjects simulatorObjects simulationState =
+        simulatorObjects
+        |> List.fold (fun state obj -> state |> changeSimulatorObject obj.Id obj) simulationState
+
     let update (dt: TimeSpan) simulatorState : SimulatorState =
         { simulatorState with
             Objects =
@@ -98,45 +102,46 @@ module SimulatorState =
         simulatorState
         |> changeSimulatorObject objectIdentifier (simulatorObject |> applyImpulseToObject)
 
-    let private tryHandleCollision
-        dt
-        (nextStates: SetOf2<SimulatorObject>)
-        (curSimulationState: SimulatorState)
-        : SimulatorState option =
+    /// returns simulator state with handled collisions for colliding objects or None if there was no collision
+    let private tryHandleCollision dt (collidingObjectsCandidates: SetOf2<SimulatorObject>) curSimulationState =
         let simulatorState =
             monad {
-                let! collisionData = nextStates |> CollisionDetection.areColliding
+                let! collisionData = collidingObjectsCandidates |> CollisionDetection.areColliding
 
                 match collisionData with
                 | None -> None
                 | Some collisionData ->
-                    $"Collision detected between target: {(nextStates |> SetOf2.fst).Id} and other: {(nextStates |> SetOf2.snd).Id}"
-                    |> printfn "%A"
-                    collisionData |> printfn "%A"
+                    // $"Collision detected between target: {(nextStates |> SetOf2.fst).Id} and other: {(nextStates |> SetOf2.snd).Id}"
+                    // |> printfn "%A"
 
-                    let! resolvedObjects = CollisionResponse.resolveCollision dt collisionData nextStates
+                    //collisionData |> printfn "%A"
 
-                    curSimulationState
-                    |> changeSimulatorObject (nextStates |> SetOf2.fst).Id (resolvedObjects |> SetOf2.fst)
-                    |> changeSimulatorObject (nextStates |> SetOf2.snd).Id (resolvedObjects |> SetOf2.snd)
-                    |> Some
+                    let! resolvedObjects =
+                        CollisionResponse.resolveCollision
+                            dt
+                            collisionData
+                            (collidingObjectsCandidates |> SetOf2.map (_.PhysicalObject))
+
+                    let resolved =
+                        (collidingObjectsCandidates, resolvedObjects)
+                        ||> SetOf2.zip
+                        |> SetOf2.map (fun p -> p ||> SimulatorObject.withPhysicalObject)
+                        |> SetOf2.toList
+
+                    curSimulationState |> changeSimulatorObjects resolved |> Some
             }
 
         curSimulationState.Configuration |> Reader.run simulatorState
 
-    let private withCollisionResponse dt (curSimulationState: SimulatorState) ids =
+    let private withCollisionResponse dt (curSimulationState: SimulatorState) candidatesIds =
 
-        let nextStates: SetOf2<SimulatorObject> =
-            ids |> SetOf2.map (updateObjectById curSimulationState dt)
+        let collidingObjectsCandidates: SetOf2<SimulatorObject> =
+            candidatesIds |> SetOf2.map (updateObjectById curSimulationState dt)
 
-        tryHandleCollision dt nextStates curSimulationState
+        tryHandleCollision dt collidingObjectsCandidates curSimulationState
         |> Option.defaultValue curSimulationState
 
-    let withCollisionResponseGlobal
-        dt
-        (collidingObjectsCandidates: SimulatorObjectIdentifier Set)
-        (curSimulationState: SimulatorState)
-        =
+    let withCollisionResponseGlobal dt collidingObjectsCandidates (curSimulationState: SimulatorState) =
         let withCollisionResponse simulatorState objectIdentifiers =
             objectIdentifiers |> SetOf2.ofSet |> withCollisionResponse dt simulatorState
 
