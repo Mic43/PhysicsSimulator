@@ -2,6 +2,7 @@ namespace PhysicsSimulator.Utilities
 
 open MathNet.Numerics.LinearAlgebra
 
+[<RequireQualifiedAccess>]
 type Vector3D =
     private
     | Value of Vector<float>
@@ -31,7 +32,8 @@ type Vector3D =
     static member (*)(v: Vector3D, scalar: float) = scalar * v
     static member (/)(v: Vector3D, scalar: float) = v * (1.0 / scalar)
     static member (~-)(v: Vector3D) = -v.Get |> Value
-             
+          
+[<RequireQualifiedAccess>]   
 type NormalVector =
     private
      | Value of Vector3D

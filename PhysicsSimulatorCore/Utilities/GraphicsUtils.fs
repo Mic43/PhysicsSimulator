@@ -93,6 +93,7 @@ module GraphicsUtils =
                                  match (iStartIn, isEndIn) with
                                  | true, true -> [ endPoint ]
                                  | true, false -> getEdgeIntersection startPoint endPoint
+                                 //TODO: replace @ with prepending
                                  | false, true -> getEdgeIntersection startPoint endPoint @ [ endPoint ]
                                  | false, false -> [])
                     }

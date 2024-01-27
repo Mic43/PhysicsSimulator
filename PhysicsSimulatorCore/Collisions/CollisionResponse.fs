@@ -27,8 +27,8 @@ module ContactPointImpulseData =
               * (offset |> Matrix3.hatOperator).Get
 
         let normal = contactPoint.Normal.Get.Get
-        let offsetTarget = contactPoint.Position - targetBody.GetMassCenterPosition
-        let offsetOther = contactPoint.Position - otherBody.GetMassCenterPosition
+        let offsetTarget = contactPoint.Position - targetBody.MassCenterPosition
+        let offsetOther = contactPoint.Position - otherBody.MassCenterPosition
 
         let totalM = (K targetBody offsetTarget) + (K otherBody offsetOther)
         let massNormal = normal * (totalM * normal)
@@ -46,6 +46,24 @@ type CollisionManifold =
 module CollisionResponse =
     let frictionApplier = Friction.applyNoFriction
 
+    let private clampImpulseValue impulseValue : State<ContactPointImpulseData, float> =
+        monad {
+            let! impulseAccOld = State.gets (_.AccumulatedNormalImpulse)
+
+            do!
+                State.modify (fun oldState ->
+                    { oldState with
+                        AccumulatedNormalImpulse = max (oldState.AccumulatedNormalImpulse + impulseValue) 0.0 })
+            
+            let! newAccumulated = State.gets (_.AccumulatedNormalImpulse)
+            return newAccumulated - impulseAccOld
+            //return max impulseValue 0.0
+        }
+
+    let private calculateBaumgarteBias config (timeInterval: TimeSpan) penetration =
+        -config.baumgarteTerm / timeInterval.TotalSeconds
+        * ((penetration |> abs) - config.allowedPenetration |> max 0.0)
+
     let private calculateRigidBodyImpulse
         targetBody
         otherBody
@@ -58,30 +76,25 @@ module CollisionResponse =
             let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
             let normal = contactPoint.Normal.Get
 
-            let offset1 = cpImpulseData.PositionOffsetFromTarget
-            let offset2 = cpImpulseData.PositionOffsetFromOther
-
-            let vRelLinear =
-                targetBody.MassCenter.Variables.Velocity
-                - otherBody.MassCenter.Variables.Velocity
+            let vRelLinear = otherBody.MassCenterVelocity - targetBody.MassCenterVelocity
 
             let vRelAngular =
-                (offset1 |> crossProduct (targetBody.CalcAngularVelocity()))
-                - (offset2 |> crossProduct (otherBody.CalcAngularVelocity()))
+                (cpImpulseData.PositionOffsetFromOther
+                 |> RigidBody.getLinearVelocityAtOffset otherBody)
+                - cpImpulseData.PositionOffsetFromTarget
+                |> (RigidBody.getLinearVelocityAtOffset targetBody)
 
             let vRel = vRelLinear + vRelAngular
             let vRelNorm = vRel |> dotProduct normal
 
-            return
-                if vRelNorm < 0 then
-                    zero
-                else
-                    let bias = cpImpulseData.BaumgarteBias
+            let bias = 0.0 //cpImpulseData.BaumgarteBias
 
-                    let impulseValue =
-                        (-(compoundElasticity + 1.0) * vRelNorm + bias) / cpImpulseData.MassNormal
+            let impulseValue =
+                (-(compoundElasticity + 1.0) * vRelNorm + bias) / cpImpulseData.MassNormal
 
-                    impulseValue * normal
+            let! clampedImpulseValue = impulseValue |> clampImpulseValue
+
+            clampedImpulseValue * normal
         // |> frictionApplier (totalM |> Matrix3.ofMatrix) compoundElasticity compoundFriction normal vRel vRelNorm
         }
 
@@ -90,10 +103,6 @@ module CollisionResponse =
         (collisionData: CollisionData)
         (objects: PhysicalObject SetOf2)
         : Reader<Configuration, SetOf2<PhysicalObject>> =
-
-        let calculateBaumgarteBias config (timeInterval: TimeSpan) penetration =
-            -config.baumgarteTerm / timeInterval.TotalSeconds
-            * ((penetration |> abs) - config.allowedPenetration |> max 0.0)
 
         let createCollisionManifold collisionData target other config =
             { Bodies = (target, other) ||> create
@@ -113,11 +122,11 @@ module CollisionResponse =
                         State.gets (fun pointImpulseData ->
                             (pointImpulseData.PositionOffsetFromTarget, pointImpulseData.PositionOffsetFromOther)
                             ||> create)
-
+                    
                     let! impulse = contactPoint |> calculateRigidBodyImpulse (objects |> fst) (objects |> snd)
-
+                    impulse |> printfn "impulse value: %A"
                     return
-                        ([ impulse; -impulse ] |> ofList, offsets, objects)
+                        ([ -impulse; impulse ] |> ofList, offsets, objects)
                         |||> zip3
                         |> map (fun (impulse, offset, rigidBody) ->
                             rigidBody |> RigidBodyMotion.applyImpulse impulse offset)

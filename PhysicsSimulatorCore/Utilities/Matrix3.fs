@@ -2,6 +2,7 @@ namespace PhysicsSimulator.Utilities
 
 open MathNet.Numerics.LinearAlgebra
 
+[<RequireQualifiedAccess>]
 type Matrix3 =
     private
     | Value of Matrix<float>
@@ -13,7 +14,7 @@ type Matrix3 =
 
 module Matrix3 =
     //open Vector3D
-    let (|Matrix3|) (Value value) = value
+    let (|Matrix3|) (Matrix3.Value value) = value
 
     let ofMatrix (matrix: Matrix<float>) =
         if matrix.RowCount <> 3 || matrix.ColumnCount <> 3 then

@@ -3,6 +3,7 @@ namespace PhysicsSimulator
 open System
 open FSharpPlus
 open FSharpPlus.Data
+open Microsoft.FSharp.Collections
 open PhysicsSimulator.Collisions
 open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
@@ -12,12 +13,8 @@ type SimulatorState =
         { Objects: Map<SimulatorObjectIdentifier, SimulatorObject>
           ExternalForces: Map<SimulatorObjectIdentifier, Vector3D ValueSupplier>
           ExternalTorque: Map<SimulatorObjectIdentifier, Vector3D>
+          Collisions: Map<SimulatorObjectIdentifier Set, CollisionData>
           Configuration: Configuration }
-
-    member this.GetObjects = this.Objects
-    member this.GetExternalForces = this.ExternalForces
-    member this.GetExternalTorque = this.ExternalTorque
-    member this.GetConfiguration = this.Configuration
 
 module SimulatorStateBuilder =
     let private earthGAcceleration = Vector3D.create 0.0 0.0 -9.81
@@ -52,7 +49,8 @@ module SimulatorStateBuilder =
         { Objects = objectMap
           ExternalForces = externalForces
           ExternalTorque = identifiers |> Seq.map (fun i -> (i, Vector3D.zero)) |> Map.ofSeq
-          Configuration = Configuration.getDefault }
+          Configuration = Configuration.getDefault
+          Collisions = Map.empty }
 
 module SimulatorState =
     let private particleIntegrator = ParticleIntegrators.forwardEuler
@@ -65,7 +63,7 @@ module SimulatorState =
         let newObjectState =
             objectUpdater
                 dt
-                (simulatorState.GetExternalForces[id].GetValue())
+                (simulatorState.ExternalForces[id].GetValue())
                 simulatorState.ExternalTorque[id]
                 simulatorState.Objects[id].PhysicalObject
 
@@ -111,11 +109,6 @@ module SimulatorState =
                 match collisionData with
                 | None -> None
                 | Some collisionData ->
-                    // $"Collision detected between target: {(nextStates |> SetOf2.fst).Id} and other: {(nextStates |> SetOf2.snd).Id}"
-                    // |> printfn "%A"
-
-                    //collisionData |> printfn "%A"
-
                     let! resolvedObjects =
                         CollisionResponse.resolveCollision
                             dt
@@ -128,7 +121,13 @@ module SimulatorState =
                         |> SetOf2.map (fun p -> p ||> SimulatorObject.withPhysicalObject)
                         |> SetOf2.toList
 
-                    curSimulationState |> changeSimulatorObjects resolved |> Some
+                    let objectsIds = collidingObjectsCandidates |> SetOf2.map _.Id |> SetOf2.toSet
+
+                    let simulatorState = curSimulationState |> changeSimulatorObjects resolved
+
+                    { simulatorState with
+                        Collisions = simulatorState.Collisions |> Map.add objectsIds collisionData }
+                    |> Some
             }
 
         curSimulationState.Configuration |> Reader.run simulatorState
@@ -145,6 +144,10 @@ module SimulatorState =
         let withCollisionResponse simulatorState objectIdentifiers =
             objectIdentifiers |> SetOf2.ofSet |> withCollisionResponse dt simulatorState
 
+        let withClearedOldCollisions =
+            { curSimulationState with
+                Collisions = Map.empty }
+
         collidingObjectsCandidates
         |> subSetsOf2Tail
-        |> Set.fold withCollisionResponse curSimulationState
+        |> Set.fold withCollisionResponse withClearedOldCollisions

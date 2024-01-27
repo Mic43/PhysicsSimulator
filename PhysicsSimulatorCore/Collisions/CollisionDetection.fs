@@ -81,14 +81,22 @@ module CollisionDetection =
         match separationAxis with
         | None -> None |> Reader.Return
         | Some separationAxis ->
-            (match separationAxis with
-             | { Origin = origin
-                 Reference = reference
-                 Incident = incident
-                 CollisionNormalFromReference = normal } as res when origin = Faces1 || origin = Faces2 ->
+            match separationAxis with
+            | { Origin = Faces1
+                Reference = reference
+                Incident = incident
+                CollisionNormalFromReference = normal } ->
 
-                 printfn $"Reference: {separationAxis.Origin}"
-                 (reference.Faces, incident.Faces) ||> generateFaceContactPoints normal)
+                (reference.Faces, incident.Faces) ||> generateFaceContactPoints normal
+            | { Origin = Faces2
+                Reference = reference
+                Incident = incident
+                CollisionNormalFromReference = normal } ->
+
+                (reference.Faces, incident.Faces)
+                ||> generateFaceContactPoints normal
+                    // we need to invert normals so it points from body1 to body2 regardless of the separation axis
+                |> Reader.map (Option.map (_.WithInvertedNormals())) 
 
     open SetOf2
 

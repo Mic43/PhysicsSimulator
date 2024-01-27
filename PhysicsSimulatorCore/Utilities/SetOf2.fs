@@ -1,15 +1,17 @@
 namespace PhysicsSimulator.Utilities
 
+
+[<RequireQualifiedAccess>]
 type SetOf2<'t> =
     private
-    | Value of List<'t> 
+    | Value of List<'t>
 
     member this.Get =
         match this with
         | Value v -> v
 
 module SetOf2 =
-    let create fst second = [ fst; second ] |> Value
+    let create fst second = [ fst; second ] |>SetOf2.Value
 
     let ofList lst =
         match lst with
@@ -17,7 +19,8 @@ module SetOf2 =
         | _ -> invalidArg "lst" "lst must be of size 2"
 
     let ofSet set = set |> Set.toList |> ofList
-    let toList (set:SetOf2<'t>) = set.Get 
+    let toList (set: SetOf2<'t>) = set.Get
+    let toSet (set: SetOf2<'t>) = set |> toList |> Set.ofList
     let fst (set: SetOf2<'t>) = set.Get[0]
     let snd (set: SetOf2<'t>) = set.Get[1]
 
@@ -28,6 +31,3 @@ module SetOf2 =
         (set1.Get, set2.Get, set3.Get) |||> List.zip3 |> ofList
 
     let flip set = set |> toList |> List.rev |> ofList
-
-
-

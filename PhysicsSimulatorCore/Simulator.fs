@@ -22,7 +22,7 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0) =
     let mutable taskState = SimulatorTaskState.Stopped
 
     let broadPhaseCollisions (simulatorState: SimulatorState) =
-        (simulatorState.GetObjects |> Map.keys |> Set.ofSeq)
+        (simulatorState.Objects |> Map.keys |> Set.ofSeq)
 
     let updateSimulation =
         async {
@@ -41,13 +41,17 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0) =
 
     let cancellationTokenSource = new CancellationTokenSource()
 
-    member this.ObjectIdentifiers = simulatorState.Value.GetObjects.Keys |> set
+    member this.ObjectIdentifiers = simulatorState.Value.Objects.Keys |> set
+    member this.CollisionsIdentifiers = simulatorState.Value.Collisions.Keys
 
     member this.SimulatorObject
-        with get identifier = simulatorState.Value.GetObjects[identifier]
+        with get identifier = simulatorState.Value.Objects[identifier]
 
     member this.PhysicalObject
         with get identifier = this.SimulatorObject(identifier).PhysicalObject
+
+    member this.Collision
+        with get identifier = simulatorState.Value.Collisions[identifier]
 
     member this.Configuration = simulatorState.Value.Configuration
 

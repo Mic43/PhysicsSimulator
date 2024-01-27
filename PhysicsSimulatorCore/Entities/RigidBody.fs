@@ -25,7 +25,8 @@ type RigidBody =
     member this.CalcRotationalInertiaInverse() =
         RigidBody.CalcFullRotationalInertia this.Variables.Orientation this.PrincipalRotationalInertiaInverse
 
-    member this.GetMassCenterPosition = this.MassCenter.Variables.Position
+    member this.MassCenterPosition = this.MassCenter.Variables.Position
+    member this.MassCenterVelocity = this.MassCenter.Variables.Velocity
 
     member this.CalcAngularVelocity() =
         this.CalcRotationalInertiaInverse().Get * this.Variables.AngularMomentum.Get
@@ -35,6 +36,10 @@ type RigidBody =
 type RigidBodyIntegrator = TimeSpan -> Torque -> RotationalInertiaInverse -> RigidBodyVariables -> RigidBodyVariables
 
 module RigidBody =
+
+    let getLinearVelocityAtOffset (rigidBody: RigidBody) offset =
+        offset |> Vector3D.crossProduct (rigidBody.CalcAngularVelocity())
+
     let create
         initialOrientation
         initialVelocity
