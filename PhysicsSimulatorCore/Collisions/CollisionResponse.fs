@@ -61,7 +61,7 @@ module CollisionResponse =
 
     let private calculateBaumgarteBias config (timeInterval: TimeSpan) penetration =
         -config.baumgarteTerm / timeInterval.TotalSeconds
-        * ((penetration |> abs) - config.allowedPenetration |> max 0.0)
+        * ((penetration) - config.allowedPenetration |> min 0.0)
 
     let private calculateRigidBodyImpulse
         targetBody
