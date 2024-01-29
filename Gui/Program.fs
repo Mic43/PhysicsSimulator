@@ -43,9 +43,9 @@ let prepareSimulator () =
               UseGravity = true
               Position = Vector3D.create 0 0 3
               ElasticityCoeff = 0.3 }
-          { createCube () with
-              UseGravity = false
-              ElasticityCoeff = 0.3 }
+          // { createCube () with
+          //     UseGravity = false
+          //     ElasticityCoeff = 0.3 }
 
           // SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 0 0 0)
           // SimulatorObject.createDefaultCube (radius * 2.0) (mass) (Vector3D.create 3 0 0)

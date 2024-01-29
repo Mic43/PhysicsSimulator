@@ -84,7 +84,7 @@ module CollisionResponse =
             let vRel = vRelLinear + vRelAngular
             let vRelNorm = vRel |> dotProduct normal
 
-            let bias = 0.0 //cpImpulseData.BaumgarteBias
+            let bias = cpImpulseData.BaumgarteBias
 
             let impulseValue =
                 (-(compoundElasticity + 1.0) * vRelNorm + bias) / cpImpulseData.MassNormal

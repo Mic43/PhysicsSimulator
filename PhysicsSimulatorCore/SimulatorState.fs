@@ -52,6 +52,10 @@ module SimulatorStateBuilder =
           Configuration = Configuration.getDefault
           Collisions = Map.empty }
 
+    let withConfiguration configuration state =
+        { state with
+            Configuration = configuration }
+
 module SimulatorState =
     let private particleIntegrator = ParticleIntegrators.forwardEuler
     let private rigidBodyIntegrator = RigidBodyIntegrators.firstOrder

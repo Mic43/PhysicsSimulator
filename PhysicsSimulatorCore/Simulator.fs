@@ -11,11 +11,15 @@ type SimulatorTaskState =
     | Started
     | Stopped
 
-type Simulator(simulatorObjects, ?simulationSpeedMultiplier0) =
+type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
     let simulationSpeedMultiplier = defaultArg simulationSpeedMultiplier0 1.0
+    let configuration = defaultArg configuration0 Configuration.getDefault
 
     let simulatorState: SimulatorState ref =
-        simulatorObjects |> SimulatorStateBuilder.fromPrototypes |> ref
+        simulatorObjects
+        |> SimulatorStateBuilder.fromPrototypes
+        |> SimulatorStateBuilder.withConfiguration configuration
+        |> ref
 
     let simulationStepInterval = TimeSpan.FromMilliseconds(10.0)
 
