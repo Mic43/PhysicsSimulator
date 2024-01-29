@@ -54,10 +54,9 @@ module CollisionResponse =
                 State.modify (fun oldState ->
                     { oldState with
                         AccumulatedNormalImpulse = max (oldState.AccumulatedNormalImpulse + impulseValue) 0.0 })
-            
+
             let! newAccumulated = State.gets (_.AccumulatedNormalImpulse)
             return newAccumulated - impulseAccOld
-            //return max impulseValue 0.0
         }
 
     let private calculateBaumgarteBias config (timeInterval: TimeSpan) penetration =
@@ -79,10 +78,8 @@ module CollisionResponse =
             let vRelLinear = otherBody.MassCenterVelocity - targetBody.MassCenterVelocity
 
             let vRelAngular =
-                (cpImpulseData.PositionOffsetFromOther
-                 |> RigidBody.getLinearVelocityAtOffset otherBody)
-                - cpImpulseData.PositionOffsetFromTarget
-                |> (RigidBody.getLinearVelocityAtOffset targetBody)
+                (RigidBody.getLinearVelocityAtOffset otherBody cpImpulseData.PositionOffsetFromOther)
+                - (RigidBody.getLinearVelocityAtOffset targetBody cpImpulseData.PositionOffsetFromTarget)
 
             let vRel = vRelLinear + vRelAngular
             let vRelNorm = vRel |> dotProduct normal
@@ -122,9 +119,10 @@ module CollisionResponse =
                         State.gets (fun pointImpulseData ->
                             (pointImpulseData.PositionOffsetFromTarget, pointImpulseData.PositionOffsetFromOther)
                             ||> create)
-                    
+
                     let! impulse = contactPoint |> calculateRigidBodyImpulse (objects |> fst) (objects |> snd)
                     impulse |> printfn "impulse value: %A"
+
                     return
                         ([ -impulse; impulse ] |> ofList, offsets, objects)
                         |||> zip3

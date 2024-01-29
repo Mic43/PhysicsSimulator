@@ -158,7 +158,7 @@ module RigidBodyIntegrators =
 module RigidBodyMotion =
 
     let applyImpulse impulse (offset: Vector3D) rigidBody =
-
+        //TODO: angular momentum change is wrong, should depend on cur intertia matrix
         { rigidBody with
             MassCenter = impulse |> ParticleMotion.applyImpulse rigidBody.MassCenter
             Variables.AngularMomentum = rigidBody.Variables.AngularMomentum + (impulse |> Vector3D.crossProduct offset) }
