@@ -59,7 +59,7 @@ module SimulatorState =
     let private objectUpdater =
         SimulatorObject.update particleIntegrator rigidBodyIntegrator
 
-    let private updateObjectById (simulatorState: SimulatorState) dt id =
+    let internal updateObjectById (simulatorState: SimulatorState) dt id =
         let newObjectState =
             objectUpdater
                 dt
@@ -70,7 +70,7 @@ module SimulatorState =
         { simulatorState.Objects[id] with
             PhysicalObject = newObjectState }
 
-    let private changeSimulatorObject objectIdentifier newPhysicalObject (simulationState: SimulatorState) =
+    let internal changeSimulatorObject objectIdentifier newPhysicalObject (simulationState: SimulatorState) =
         { simulationState with
             Objects =
                 simulationState.Objects.Change(
@@ -82,7 +82,7 @@ module SimulatorState =
                         newPhysicalObject |> Some)
                 ) }
 
-    let private changeSimulatorObjects simulatorObjects simulationState =
+    let internal changeSimulatorObjects simulatorObjects simulationState =
         simulatorObjects
         |> List.fold (fun state obj -> state |> changeSimulatorObject obj.Id obj) simulationState
 
@@ -99,55 +99,3 @@ module SimulatorState =
 
         simulatorState
         |> changeSimulatorObject objectIdentifier (simulatorObject |> applyImpulseToObject)
-
-    /// returns simulator state with handled collisions for colliding objects or None if there was no collision
-    let private tryHandleCollision dt (collidingObjectsCandidates: SetOf2<SimulatorObject>) curSimulationState =
-        let simulatorState =
-            monad {
-                let! collisionData = collidingObjectsCandidates |> CollisionDetection.areColliding
-
-                match collisionData with
-                | None -> None
-                | Some collisionData ->
-                    let! resolvedObjects =
-                        CollisionResponse.resolveCollision
-                            dt
-                            collisionData
-                            (collidingObjectsCandidates |> SetOf2.map (_.PhysicalObject))
-
-                    let resolved =
-                        (collidingObjectsCandidates, resolvedObjects)
-                        ||> SetOf2.zip
-                        |> SetOf2.map (fun p -> p ||> SimulatorObject.withPhysicalObject)
-                        |> SetOf2.toList
-
-                    let objectsIds = collidingObjectsCandidates |> SetOf2.map _.Id |> SetOf2.toSet
-
-                    let simulatorState = curSimulationState |> changeSimulatorObjects resolved
-
-                    { simulatorState with
-                        Collisions = simulatorState.Collisions |> Map.add objectsIds collisionData }
-                    |> Some
-            }
-
-        curSimulationState.Configuration |> Reader.run simulatorState
-
-    let private withCollisionResponse dt (curSimulationState: SimulatorState) candidatesIds =
-
-        let collidingObjectsCandidates: SetOf2<SimulatorObject> =
-            candidatesIds |> SetOf2.map (updateObjectById curSimulationState dt)
-
-        tryHandleCollision dt collidingObjectsCandidates curSimulationState
-        |> Option.defaultValue curSimulationState
-
-    let withCollisionResponseGlobal dt collidingObjectsCandidates (curSimulationState: SimulatorState) =
-        let withCollisionResponse simulatorState objectIdentifiers =
-            objectIdentifiers |> SetOf2.ofSet |> withCollisionResponse dt simulatorState
-
-        let withClearedOldCollisions =
-            { curSimulationState with
-                Collisions = Map.empty }
-
-        collidingObjectsCandidates
-        |> subSetsOf2Tail
-        |> Set.fold withCollisionResponse withClearedOldCollisions

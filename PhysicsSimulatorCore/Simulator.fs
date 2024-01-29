@@ -30,7 +30,7 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0) =
 
             let newState =
                 simulatorState.Value
-                |> SimulatorState.withCollisionResponseGlobal simulationStepInterval collidingObjectsCandidates
+                |> CollisionResolver.withCollisionResponseGlobal simulationStepInterval collidingObjectsCandidates
                 |> SimulatorState.update simulationStepInterval
 
             //            if newState <> simulatorState.Value then
