@@ -1,6 +1,7 @@
 ﻿// For more information see https://aka.ms/fsharp-console-apps
 open System
 open PhysicsSimulator
+open PhysicsSimulator.Collisions
 open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
 
@@ -27,29 +28,87 @@ let createSphere () =
     (radius |> RigidBodyPrototype.createDefaultSphere)
 
 let prepareSimulator () =
-    [ { ((15.0, 15.0, 0.5)
-         |||> Box.create
-         |> RigidBodyKind.Box
-         |> RigidBodyPrototype.createDefault) with
-          Mass = Mass.Infinite
-          UseGravity = false
-          // Yaw =   -0.5           
-          Position = Vector3D.create 0 0 -2 }
-      // { createSphere () with
-      //     UseGravity = true }
-      { createCube () with UseGravity = false;Position = Vector3D.create 0 0 2; ElasticityCoeff = 0.3}
-      { createCube () with UseGravity = false; ElasticityCoeff = 0.3; }
+    let rigidBodyPrototypes =
+        [ { ((15.0, 15.0, 0.5)
+             |||> Box.create
+             |> RigidBodyKind.Box
+             |> RigidBodyPrototype.createDefault) with
+              Mass = Mass.Infinite
+              UseGravity = false
+              // Yaw =   -0.5
+              Position = Vector3D.create 0 0 -2 }
+          // { createSphere () with
+          //     UseGravity = true }
+          { createCube () with
+              UseGravity = true
+              Position = Vector3D.create 0 0 3
+              ElasticityCoeff = 0.3 }
+          { createCube () with
+              UseGravity = false
+              ElasticityCoeff = 0.3 }
 
-      // SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 0 0 0)
-      // SimulatorObject.createDefaultCube (radius * 2.0) (mass) (Vector3D.create 3 0 0)
-      //
-      // SimulatorObject.createDefaultSphere radius mass Vector3D.zero
-      // SimulatorObject.createDefaultSphere (radius) mass (Vector3D.create 3 0.0 0)
-      // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 6 0.0 0.0)
-      // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 9 1.0 -1.0)
+          // SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 0 0 0)
+          // SimulatorObject.createDefaultCube (radius * 2.0) (mass) (Vector3D.create 3 0 0)
+          //
+          // SimulatorObject.createDefaultSphere radius mass Vector3D.zero
+          // SimulatorObject.createDefaultSphere (radius) mass (Vector3D.create 3 0.0 0)
+          // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 6 0.0 0.0)
+          // SimulatorObject.createDefaultSphere radius mass (Vector3D.create 9 1.0 -1.0)
 
-      ]
-    |> Simulator
+          ]
+
+    Simulator(rigidBodyPrototypes, 0.2)
+
+let objectToRenderable (simulator: Simulator) (id: SimulatorObjectIdentifier) =
+    let physicalObj = (simulator.SimulatorObject id)
+
+    let color =
+        if id = groundId then
+            C4b(00, 100, 00)
+        else
+            C4b(100, 100, 100)
+
+    (match physicalObj.Collider with
+     | PhysicsSimulator.Entities.Sphere s -> Sg.sphere' 5 color s.Radius
+     | PhysicsSimulator.Entities.Box b ->
+         let position = physicalObj.PhysicalObject.AsParticle().Variables.Position
+         let bounds = Box3d.FromCenterAndSize(V3d(0, 0, 0), V3d(b.XSize, b.YSize, b.ZSize))
+
+         Sg.box' color bounds)
+
+let collisionToRenderable (simulator: Simulator) collisionId =
+    let collision = simulator.Collision collisionId
+    collisionId |> printfn "%A"
+    collision.ContactPoints
+    |> List.map (fun cp ->
+        let color = C4b(200, 0, 00)
+        let pos = cp.Position
+        let normal = cp.Normal.Get
+        
+        let obj = Sg.sphere' 5 color 0.05
+        let point = Sg.translate pos.X pos.Y pos.Z obj
+
+        let start = V3d(pos.X, pos.Y, pos.Z)
+        let endPos = start + V3d(normal.X, normal.Y, normal.Z)
+        //let line = Line3d(start, endPos)
+        let point2 = Sg.cone' 5 color 0.05 0.1 |> Sg.translation' endPos 
+      //  let a = Sg.cylinder' 5 color 0.02 1 |> Sg. 
+        //let lines = Sg.lines' color [| line |]
+        
+        [ point;point2] |> Sg.ofList)
+    |> Sg.ofList
+
+let collisionsIds: cset<SimulatorObjectIdentifier Set> = cset []
+
+let onKeyDown (simulator: Simulator) (key: Keys) =
+    match key with
+    | Keys.Space ->
+        transact (fun () ->
+            let physicalObjectIdentifier = impulsedObjectId |> SimulatorObjectIdentifier.fromInt
+            simulator.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset)
+ 
+    | Keys.Pause -> transact (fun () -> simulator.PauseResume())
+    | _ -> ()
 
 let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifier) =
     let toTranslation (v3d: Vector3D) =
@@ -74,43 +133,36 @@ let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifie
 
     let rotationalComponent =
         match simObj with
-        | RigidBody rb ->
-            //rb.RigidBodyVariables |> printfn "%A"
-            rb.Variables.Orientation |> toRotation
+        | RigidBody rb -> rb.Variables.Orientation |> toRotation
         | Particle _ -> Trafo3d(Rot3d.Identity)
 
     //linearComponent |> printfn "%A"
-    let transformation = linearComponent.Position |> toTranslation
+    transact (fun () ->
+        collisionsIds.Clear()
+        // simulator.CollisionsIdentifiers |> printfn "%A"
+        collisionsIds.AddRange simulator.CollisionsIdentifiers)
 
+    let transformation = linearComponent.Position |> toTranslation
     rotationalComponent * transformation
 
-let toRenderable (simulator: Simulator) (id: SimulatorObjectIdentifier) =
-    let physicalObj = (simulator.SimulatorObject id)
+let prepareScene (win: Aardvark.Glfw.Window) sim renderablesDict =
+    let getObjectTransformation = getObjectTransformation sim
 
-    //  let transformation = getObjectTransformation simulator id
-    let color =
-        if id = groundId then
-            C4b(00, 100, 00)
-        else
-            C4b(100, 100, 100)
+    let objects =
+        renderablesDict
+        |> Map.map (fun id renderable ->
+            renderable
+            |> Sg.trafo (win.Time |> AVal.map (fun _ -> getObjectTransformation id)))
 
-    (match physicalObj.Collider with
-     | PhysicsSimulator.Entities.Sphere s -> Sg.sphere' 5 color s.Radius
-     | PhysicsSimulator.Entities.Box b ->
-         let position = physicalObj.PhysicalObject.AsParticle().Variables.Position
-         let bounds = Box3d.FromCenterAndSize(V3d(0, 0, 0), V3d(b.XSize, b.YSize, b.ZSize))
+        |> Map.values
 
-         Sg.box' color bounds)
+    let collisions = (collisionsIds |> ASet.map (collisionToRenderable sim) |> Sg.set)
 
-let onKeyDown (simulator: Simulator) (key: Keys) =
-    match key with
-    | Keys.Space ->
-        transact (fun () ->
-            let physicalObjectIdentifier = impulsedObjectId |> SimulatorObjectIdentifier.fromInt
-            simulator.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset)
-
-    | Keys.Pause ->  transact (fun () -> simulator.PauseResume())
-    | _ -> ()
+    seq {
+        yield collisions
+        yield! objects
+    }
+    |> Sg.ofSeq
 
 [<EntryPoint>]
 let main _ =
@@ -119,6 +171,13 @@ let main _ =
 
     use app = new OpenGlApplication()
     let win = app.CreateGameWindow(samples = 8)
+    let sim = prepareSimulator ()
+
+    let renderablesDict =
+        sim.ObjectIdentifiers
+        |> Set.toSeq
+        |> Seq.map (fun key -> (key, objectToRenderable sim key))
+        |> Map.ofSeq
 
     let initialView = CameraView.LookAt(V3d(0.0, -2.0, 2.0), V3d.Zero, V3d.OOI)
 
@@ -129,32 +188,12 @@ let main _ =
     let cameraView =
         DefaultCameraController.control win.Mouse win.Keyboard win.Time initialView
 
-    let sim = prepareSimulator ()
-
-    let renderablesDict =
-        sim.ObjectIdentifiers
-        |> Set.toSeq
-        |> Seq.map (fun key -> (key, toRenderable sim key))
-        |> Map.ofSeq
-
-    sim.Start()
-
-    let getObjectTransformation = getObjectTransformation sim
-
     let sg =
         renderablesDict
-        |> Map.map (fun id renderable ->
-            renderable
-            |> Sg.trafo (win.Time |> AVal.map (fun _ -> getObjectTransformation id)))
-        |> Map.values
-        |> Sg.ofSeq
+        |> prepareScene win sim
         |> Sg.effect
             [ DefaultSurfaces.trafo |> toEffect
-              // DefaultSurfaces.constantColor C4f.Red |> toEffect
-              DefaultSurfaces.simpleLighting |> toEffect
-              //  DefaultSurfaces.vertexColor |> toEffect
-              //DefaultSurfaces.lighting true |> toEffect
-              ]
+              DefaultSurfaces.simpleLighting |> toEffect ]
         |> Sg.viewTrafo (cameraView |> AVal.map CameraView.viewTrafo)
         |> Sg.projTrafo (frustum |> AVal.map Frustum.projTrafo)
 
@@ -164,5 +203,6 @@ let main _ =
 
     (onKeyDown sim) |> win.Keyboard.Down.Values.Add
 
+    sim.Start()
     win.Run()
     0
