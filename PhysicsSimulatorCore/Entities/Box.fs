@@ -2,7 +2,7 @@ namespace PhysicsSimulator.Entities
 
 open MathNet.Numerics.LinearAlgebra
 open PhysicsSimulator.Utilities
-
+open Vector3D
 
 type Box =
     { XSize: float
@@ -20,14 +20,14 @@ type Box =
 
 module Box =
     let private vertices =
-        [ (-1.0, -1.0, -1.0) |||> Vector3D.create 
-          (-1.0, 1.0, -1.0) |||> Vector3D.create
-          (1.0, 1.0, -1.0) |||> Vector3D.create
-          (1.0, -1.0, -1.0) |||> Vector3D.create
-          (-1.0, -1.0, 1.0) |||> Vector3D.create
-          (-1.0, 1.0, 1.0) |||> Vector3D.create
-          (1.0, 1.0, 1.0) |||> Vector3D.create
-          (1.0, -1.0, 1.0) |||> Vector3D.create ]
+        [ (-1.0, -1.0, -1.0) |||> create
+          (-1.0, 1.0, -1.0) |||> create
+          (1.0, 1.0, -1.0) |||> create
+          (1.0, -1.0, -1.0) |||> create
+          (-1.0, -1.0, 1.0) |||> create
+          (-1.0, 1.0, 1.0) |||> create
+          (1.0, 1.0, 1.0) |||> create
+          (1.0, -1.0, 1.0) |||> create ]
 
     let private faces =
         [ [ 0; 1; 2; 3 ]
@@ -54,6 +54,7 @@ module Box =
         { XSize = xSize
           YSize = ySize
           ZSize = zSize }
+
     let createCube size = (size, size, size) |||> create
 
     let getVertices (box: Box) =
@@ -73,27 +74,25 @@ module Box =
         let scaleVector =
             (box.XSize / 2.0, box.YSize / 2.0, box.ZSize / 2.0)
             |||> Vector3D.create
-            |> Vector3D.toVector
+            |> toVector
 
         normals
         |> List.mapi (fun i normal ->
             { Vertices =
                 faces[i]
-                |> List.map (
-                    (fun i -> vertices[i].Get)
-                    >> (_.PointwiseMultiply(scaleVector))
-                    >> Vector3D.ofVector
-                )
+                |> List.map ((fun i -> vertices[i].Get) >> (_.PointwiseMultiply(scaleVector)) >> ofVector)
               Normal = normal |> NormalVector.createUnsafe })
         |> List.toSeq
 
-    let findFaceByNormal normal (faces:Face seq) =
+    let findFaceByNormal normal (faces: Face seq) =
         faces |> Seq.find (fun face -> face.Normal = normal)
 
     let findAdjacentFaces epsilon (boxFaces: Face seq) (targetFace: Face) =
-        boxFaces
-        |> Seq.filter (fun f -> f.Normal.Get - targetFace.Normal.Get |> Vector3D.l2Norm |> (equals epsilon 0.0))
-        |> Seq.filter (fun face ->
-            face.Vertices
-            |> Seq.allPairs targetFace.Vertices
-            |> Seq.exists (fun (v1, v2) -> v1 - v2 |> Vector3D.l2Norm |> (equals epsilon 0.0)))
+        boxFaces // take only faces that have their normals anti parallel to given face normal
+        |> Seq.filter (
+            (_.Normal.Get)
+            >> (dotProduct targetFace.Normal.Get)
+            >> abs
+            >> (equals epsilon 1.0)
+            >> not
+        )
