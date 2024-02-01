@@ -39,8 +39,7 @@ module CollisionDetection =
             monad {
                 let! (config: Configuration) = ask
                 let epsilon = config.epsilon
-                let faceToPlane = Face.toPlane
-
+                
                 let findIncidentFace (referenceFace: Face) (facesCandidates: Face seq) =
                     facesCandidates
                     |> Seq.minBy (fun f -> f.Normal.Get |> dotProduct referenceFace.Normal.Get)
@@ -48,25 +47,33 @@ module CollisionDetection =
                 let referenceFace = referenceFaces |> Box.findFaceByNormal normal
                 let incidentFace = otherFaces |> findIncidentFace referenceFace
 
-                let adjacentFaces =
-                    referenceFace |> Box.findAdjacentFaces epsilon referenceFaces |> Seq.toList
-
-                let clipAgainstReferencePlane vertices =
-                    vertices
-                    |> List.filter (GraphicsUtils.isPointInPlane (referenceFace |> faceToPlane |> Plane.invertNormal))
-
                 let calculatePenetration cpPosition =
                     cpPosition
                     - GraphicsUtils.getClosestPointToPoly cpPosition (referenceFace.Vertices |> Seq.toList)
                     |> dotProduct normal.Get
 
-                let contactPoints =
-                    incidentFace.Vertices
+                let clipped incidentFaceVertices =
+                    let adjacentFaces =
+                        referenceFace |> Box.findAdjacentFaces epsilon referenceFaces |> Seq.toList
+
+                    // keep only vertices below reference face
+                    let clipAgainstReferencePlane vertices =
+                        let clipPlane = referenceFace |> Face.toPlane |> Plane.inverted
+                        vertices
+                        |> List.filter (
+                            GraphicsUtils.isPointInPlane clipPlane
+                        )
+
+                    incidentFaceVertices
                     |> Seq.toList
                     |> GraphicsUtils.SutherlandHodgmanClipping
                         epsilon
-                        (adjacentFaces |> List.map (faceToPlane >> Plane.invertNormal))
+                        (adjacentFaces |> List.map (Face.toPlane >> Plane.inverted))
                     |> clipAgainstReferencePlane
+
+                let contactPoints =
+                    incidentFace.Vertices
+                    |> clipped
                     |> Seq.map (fun cpPosition ->
                         ContactPoint.Create (cpPosition |> calculatePenetration) normal cpPosition)
 
@@ -95,8 +102,8 @@ module CollisionDetection =
 
                 (reference.Faces, incident.Faces)
                 ||> generateFaceContactPoints normal
-                    // we need to invert normals so it points from body1 to body2 regardless of the separation axis
-                |> Reader.map (Option.map (_.WithInvertedNormals())) 
+                // we need to invert normals so it points from body1 to body2 regardless of the separation axis
+                |> Reader.map (Option.map (_.WithInvertedNormals()))
 
     open SetOf2
 

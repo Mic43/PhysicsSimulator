@@ -13,12 +13,12 @@ open Aardvark.Application
 open Aardvark.Application.Slim
 open FSharpPlus
 
-let impulsedObjectId = 1
+let impulsedObjectId = 4
 let groundId = 0
 let radius = 1.0
 let mass = 1.0
-let impulseValue = Vector3D.create 0 0 -2
-let impulseOffset = Vector3D.create 0 0 0
+let impulseValue = (Vector3D.create 0.5 -0.5 0 |> Vector3D.normalized).Get
+let impulseOffset = Vector3D.create 0.2 0.2 1
 //let epsilon = 0.001
 
 let createCube () =
@@ -26,6 +26,22 @@ let createCube () =
 
 let createSphere () =
     (radius |> RigidBodyPrototype.createDefaultSphere)
+
+let toTranslation (v3d: Vector3D) =
+    Trafo3d.Translation(v3d.X, v3d.Y, v3d.Z)
+
+let toRotation (simulator: Simulator) (orientationMatrix: Matrix3) =
+    let matrix = orientationMatrix.Get
+    let tmp = matrix.ToArray()
+
+    let mutable m33d = tmp |> M33d.op_Explicit
+
+    let fromM33d = Rot3d.FromM33d(m33d, simulator.Configuration.epsilon)
+    //let foo = fromM33d.GetEulerAngles()
+    // printfn $"Angles: %A{foo.Elements.ToListOfT()}"
+    //printfn $"Matrix: %A{matrix}"
+
+    Trafo3d(fromM33d)
 
 let prepareSimulator () =
     let rigidBodyPrototypes =
@@ -35,17 +51,27 @@ let prepareSimulator () =
              |> RigidBodyPrototype.createDefault) with
               Mass = Mass.Infinite
               UseGravity = false
-              // Yaw =   -0.5
+              Pitch = -0.2
               Position = Vector3D.create 0 0 -2 }
           // { createSphere () with
           //     UseGravity = true }
-          { createCube () with
-              UseGravity = true
-              Position = Vector3D.create 0 0 3
-              ElasticityCoeff = 0.3 }
           // { createCube () with
-          //     UseGravity = false
-          //     ElasticityCoeff = 0.3 }
+          //     UseGravity = true
+          //     Position = Vector3D.create 2 2 -1
+          //     ElasticityCoeff = 0.0 }
+          // { createCube () with
+          //     UseGravity = true
+          //     Position = Vector3D.create 2 2 0
+          //     ElasticityCoeff = 0.0 }
+          // { createCube () with
+          //     UseGravity = true
+          //     Position = Vector3D.create 2 2 1
+          //     ElasticityCoeff = 0.0 }
+          { RigidBodyPrototype.createDefault (Box.create 3 0.5 1 |> RigidBodyKind.Box) with
+              UseGravity = true
+              Pitch = -0.2
+              Position = Vector3D.create -7.2 0 -2.6
+              ElasticityCoeff = 0.0 }
 
           // SimulatorObject.createDefaultCube (radius * 2.0) mass (Vector3D.create 0 0 0)
           // SimulatorObject.createDefaultCube (radius * 2.0) (mass) (Vector3D.create 3 0 0)
@@ -76,26 +102,33 @@ let objectToRenderable (simulator: Simulator) (id: SimulatorObjectIdentifier) =
 
          Sg.box' color bounds)
 
-let collisionToRenderable (simulator: Simulator) collisionId =
+let collisionToRenderable (win: Aardvark.Glfw.Window) (simulator: Simulator) collisionId =
     let collision = simulator.Collision collisionId
-    collisionId |> printfn "%A"
+
+
     collision.ContactPoints
     |> List.map (fun cp ->
         let color = C4b(200, 0, 00)
         let pos = cp.Position
         let normal = cp.Normal.Get
-        
-        let obj = Sg.sphere' 5 color 0.05
-        let point = Sg.translate pos.X pos.Y pos.Z obj
 
-        let start = V3d(pos.X, pos.Y, pos.Z)
-        let endPos = start + V3d(normal.X, normal.Y, normal.Z)
-        //let line = Line3d(start, endPos)
-        let point2 = Sg.cone' 5 color 0.05 0.1 |> Sg.translation' endPos 
-      //  let a = Sg.cylinder' 5 color 0.02 1 |> Sg. 
+        let obj =
+            Sg.sphere' 5 color 0.05
+            |> Sg.trafo (win.Time |> AVal.map (fun _ -> pos |> toTranslation))
+        // let point = Sg.translate pos.X pos.Y pos.Z obj
+        //
+        // let start = V3d(pos.X, pos.Y, pos.Z)
+        // let endPos = start + V3d(normal.X, normal.Y, normal.Z)
+        // //let line = Line3d(start, endPos)
+        // let point2 = Sg.cone' 5 color 0.05 0.1 |> Sg.translation' endPos
+        //  let a = Sg.cylinder' 5 color 0.02 1 |> Sg.
         //let lines = Sg.lines' color [| line |]
-        
-        [ point;point2] |> Sg.ofList)
+
+        [ obj
+          // point2
+          ]
+        |> Sg.ofList)
+
     |> Sg.ofList
 
 let collisionsIds: cset<SimulatorObjectIdentifier Set> = cset []
@@ -106,48 +139,42 @@ let onKeyDown (simulator: Simulator) (key: Keys) =
         transact (fun () ->
             let physicalObjectIdentifier = impulsedObjectId |> SimulatorObjectIdentifier.fromInt
             simulator.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset)
- 
+
     | Keys.Pause -> transact (fun () -> simulator.PauseResume())
     | _ -> ()
 
+// let getCollisionTransformation simulator id =
+//     let collision = simulator.Collision collisionId
+//
+//
 let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifier) =
-    let toTranslation (v3d: Vector3D) =
-        Trafo3d.Translation(v3d.X, v3d.Y, v3d.Z)
-
-    let toRotation (orientationMatrix: Matrix3) =
-        let matrix = orientationMatrix.Get
-        let tmp = matrix.ToArray()
-
-        let mutable m33d = tmp |> M33d.op_Explicit
-
-        let fromM33d = Rot3d.FromM33d(m33d, simulator.Configuration.epsilon)
-        //let foo = fromM33d.GetEulerAngles()
-        // printfn $"Angles: %A{foo.Elements.ToListOfT()}"
-        //printfn $"Matrix: %A{matrix}"
-
-        Trafo3d(fromM33d)
-
     let simObj = simulator.PhysicalObject id
 
     let linearComponent = simObj.AsParticle().Variables
 
     let rotationalComponent =
         match simObj with
-        | RigidBody rb -> rb.Variables.Orientation |> toRotation
+        | RigidBody rb -> rb.Variables.Orientation |> toRotation simulator
         | Particle _ -> Trafo3d(Rot3d.Identity)
 
     //linearComponent |> printfn "%A"
+
     transact (fun () ->
         collisionsIds.Clear()
-        // simulator.CollisionsIdentifiers |> printfn "%A"
-        collisionsIds.AddRange simulator.CollisionsIdentifiers)
+        collisionsIds.AddRange simulator.CollisionsIdentifiers
+
+        if simulator.State = SimulatorTaskState.Started then
+            simulator.CollisionsIdentifiers
+            |> List.map (fun collisionId ->
+                printfn $"ColId: {collisionId} Points:{simulator.Collision(collisionId).ContactPoints.Length}")
+            |> ignore)
 
     let transformation = linearComponent.Position |> toTranslation
     rotationalComponent * transformation
 
 let prepareScene (win: Aardvark.Glfw.Window) sim renderablesDict =
     let getObjectTransformation = getObjectTransformation sim
-
+    //let getCollisionTransformation
     let objects =
         renderablesDict
         |> Map.map (fun id renderable ->
@@ -156,7 +183,9 @@ let prepareScene (win: Aardvark.Glfw.Window) sim renderablesDict =
 
         |> Map.values
 
-    let collisions = (collisionsIds |> ASet.map (collisionToRenderable sim) |> Sg.set)
+    let collisions = collisionsIds |> ASet.map (collisionToRenderable win sim) |> Sg.set
+    //  let collisions = ASet.map (Sg.trafo (AVal.constant))
+
 
     seq {
         yield collisions
@@ -204,5 +233,6 @@ let main _ =
     (onKeyDown sim) |> win.Keyboard.Down.Values.Add
 
     sim.Start()
+    sim.PauseResume()
     win.Run()
     0

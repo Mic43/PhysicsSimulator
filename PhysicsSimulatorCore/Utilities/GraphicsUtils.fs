@@ -46,7 +46,7 @@ module GraphicsUtils =
 
         if abs ab_p > epsilon then
             //Generate a random point on the plane (any point on the plane will suffice)
-            let p_co = plane.Normal.Get * (-plane.DistanceFromOrigin)
+            let p_co = plane.Normal.Get * (plane.DistanceFromOrigin)
             let fac = -(plane.Normal.Get |> dotProduct (startPoint - p_co)) / ab_p
 
             //Stop any large floating point divide issues with almost parallel planes
@@ -58,7 +58,7 @@ module GraphicsUtils =
             None
 
     let isPointInPlane plane (point: Vector3D) =
-        (point |> dotProduct plane.Normal.Get) + plane.DistanceFromOrigin >= 0.0
+        (point |> dotProduct plane.Normal.Get) - plane.DistanceFromOrigin >= 0.0
 
     /// Planes normals must point to polygon parts that should be left after clipping
     let SutherlandHodgmanClipping

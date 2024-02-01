@@ -13,4 +13,5 @@ module Plane =
         { Normal = normal
           DistanceFromOrigin = distance }
 
-    let invertNormal (plane: Plane) = { plane with Normal = -plane.Normal }
+    let inverted (plane: Plane) = {  Normal = -plane.Normal
+                                     DistanceFromOrigin = -plane.DistanceFromOrigin }
