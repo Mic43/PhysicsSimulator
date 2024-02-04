@@ -71,7 +71,7 @@ module SimulatorObject =
     let update particleIntegrator rigidBodyIntegrator dt (totalForce: Vector3D) totalTorque =
         function
         | Particle p ->
-            let acceleration = totalForce.Get / p.Mass
+            let acceleration = totalForce.Get / p.Mass.GetValue
 
             let particleIntegrator = particleIntegrator dt (acceleration |> Vector3D.ofVector)
 

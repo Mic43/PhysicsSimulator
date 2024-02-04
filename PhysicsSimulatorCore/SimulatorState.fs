@@ -22,7 +22,7 @@ module SimulatorStateBuilder =
 
     let private getExternalForceSupplier proto =
         (match proto.UseGravity with
-         | true -> proto.Mass.GetValue() |> gravityForce
+         | true -> proto.Mass.GetValue |> gravityForce
          | false -> Vector3D.zero)
         |> ValueSupplier.Constant
 

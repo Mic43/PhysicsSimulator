@@ -81,7 +81,7 @@ module RigidBody =
             frictionCoeff
             mass
             position
-            (box.CreateRotationalInertia(mass))
+            (box.CreateRotationalInertia(mass.GetValue))
 
     let createDefaultBox = createBox RotationMatrix3D.zero Vector3D.zero
 
@@ -95,7 +95,7 @@ module RigidBody =
             frictionCoeff
             mass
             position
-            (spehere.CreateRotationalInertia(mass))
+            (spehere.CreateRotationalInertia(mass.GetValue))
 
     let createDefaultSphere = createSphere RotationMatrix3D.zero Vector3D.zero
 
@@ -170,7 +170,7 @@ module RigidBodyMotion =
         dt
         (rigidBody: RigidBody)
         =
-        let acceleration = totalForce / rigidBody.MassCenter.Mass
+        let acceleration = totalForce / rigidBody.MassCenter.Mass.GetValue
 
         let newLinearComponent =
             particleIntegrator dt acceleration rigidBody.MassCenter.Variables

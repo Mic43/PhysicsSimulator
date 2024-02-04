@@ -9,11 +9,12 @@ type Torque = Vector3D
 
 type RotationalInertiaInverse = Matrix3
 
+[<RequireQualifiedAccess>]
 type Mass =
     | Infinite
     | Value of float
 
-    member this.GetValue() =
+    member this.GetValue =
         match this with
         | Infinite -> infinity
         | Value v -> v

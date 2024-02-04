@@ -11,10 +11,10 @@ type ParticleVariables =
 
 type Particle =
     { Variables: ParticleVariables
-      Mass: float }
+      Mass: Mass }
 
     member this.GetInverseMassMatrix() =
-        Matrix.Build.Diagonal(3, 3, 1.0 / this.Mass) |> Matrix3.ofMatrix
+        Matrix.Build.Diagonal(3, 3, 1.0 / this.Mass.GetValue) |> Matrix3.ofMatrix
 
 type ParticleIntegrator = TimeSpan -> Acceleration -> ParticleVariables -> ParticleVariables
 
@@ -33,4 +33,4 @@ module ParticleMotion =
 
     let applyImpulse particle (impulse: Vector3D) : Particle =
         { particle with
-            Variables.Velocity = particle.Variables.Velocity + impulse / particle.Mass }
+            Variables.Velocity = particle.Variables.Velocity + impulse / particle.Mass.GetValue }
