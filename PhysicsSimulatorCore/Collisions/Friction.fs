@@ -1,55 +1,96 @@
 namespace PhysicsSimulator.Collisions
 
+open FSharpPlus
+open FSharpPlus.Data
+open PhysicsSimulator.Entities
 open PhysicsSimulator.Utilities
 
 module Friction =
     open Vector3D
 
-    let isImpulseInFrictionCone (collisionNormal: NormalVector) (frictionCoeff: float) (impulse: Vector3D) =
+    let private compoundFrictionCoeff coeff1 coeff2 = max coeff1 coeff2
 
-        let impulseNormal = (collisionNormal.Get |> dotProduct impulse) * collisionNormal.Get
-        let impulseTg = impulse - impulseNormal
-        //let temp = impulse.DotProduct(normal)
-        //   (impulse - temp * normal).L2Norm() <= frictionCoeff * impulse.DotProduct(normal)
-        let tmp = impulse |> dotProduct collisionNormal.Get
-        (impulseTg |> l2Norm) <= frictionCoeff * tmp
+    let private clamped impulseValue maxFriction : State<ContactPointImpulseData, float> =
+        monad {
+            let! impulseAccOld = State.gets (_.AccumulatedFrictionImpulse)
 
-    let applySlidingFriction
-        (massMatrix: Matrix3)
-        compoundElasticity
-        compoundFriction
-        (collisionNormal: NormalVector)
-        (vRel: Vector3D)
-        (vRelNormal: float)
-        impulse
-        =
+            let clampedImpulseValue, newAccumulatedFrictionImpulse =
+                impulseAccOld
+                |> State.run (
+                    impulseValue
+                    |> ContactPointImpulseData.clampImpulseValue -maxFriction (maxFriction |> Some)
+                )
 
-        let includeSlidingFriction () =
-            let uTan = vRel - vRelNormal * collisionNormal.Get            
-            let t = (uTan |> normalized).Get
+            do!
+                State.modify (fun oldState ->
+                    { oldState with
+                        AccumulatedFrictionImpulse = newAccumulatedFrictionImpulse })
 
-            let jn =
-                -(compoundElasticity + 1.0) * vRelNormal
-                / (collisionNormal.Get.Get
-                   * massMatrix.Get
-                   * (collisionNormal.Get.Get - compoundFriction * t.Get))
+            return clampedImpulseValue
+        }
 
-            jn * collisionNormal.Get// - (compoundFriction * jn * t)
+    let private shouldApplyKineticFriction normal normalImpulse compoundStaticFriction = true
 
-        if impulse |> isImpulseInFrictionCone collisionNormal compoundFriction then
-            impulse
-        else
-            includeSlidingFriction ()
+    ///normalImpulse - normal part of the collision response applied before in the same iteration of the solver
+    let calculateImpulse
+        (bodies: RigidBody SetOf2)
+        (contactPoint: ContactPoint)
+        : State<ContactPointImpulseData, Vector3D> =
 
-    let applyNoFriction
-        (_: Matrix3)
-        _
-        _
-        (_: Vector3D)
-        (_: Vector3D)
-        (_: float)
-        impulse
-        =
-        impulse
+        let targetBody = bodies |> SetOf2.fst
+        let otherBody = bodies |> SetOf2.snd
+        let normal = contactPoint.Normal.Get
 
+        let compoundStaticFriction =
+            targetBody.StaticFrictionCoeff
+            |> compoundFrictionCoeff otherBody.StaticFrictionCoeff
 
+        let compoundDynamicFriction =
+            targetBody.KineticFrictionCoeff
+            |> compoundFrictionCoeff otherBody.KineticFrictionCoeff
+
+        monad {
+            let! cpImpulseData = State.get
+
+            let vRel =
+                (cpImpulseData.PositionOffsetFromOther
+                 |> RigidBodyMotion.calculateVelocityAtOffset otherBody)
+                - (cpImpulseData.PositionOffsetFromTarget
+                   |> RigidBodyMotion.calculateVelocityAtOffset targetBody)
+
+            let vRelNorm = vRel |> dotProduct normal
+            let vRelTan = vRel - vRelNorm * normal
+            let tangentDir = vRelTan |> normalized
+
+            if tangentDir.Get |> isZero || cpImpulseData.MassTangent = 0 then
+                return zero
+            else
+                // let K body (offset: Vector3D) =
+                //     match body.MassCenter.Mass with
+                //     | Mass.Infinite -> Matrix3.zero.Get
+                //     | Mass.Value _ ->
+                //         body.MassCenter.GetInverseMassMatrix().Get
+                //         + (offset |> Matrix3.hatOperator).Get.Transpose()
+                //           * body.CalcRotationalInertiaInverse().Get
+                //           * (offset |> Matrix3.hatOperator).Get
+                //
+                // let massTangent =
+                //     (K targetBody cpImpulseData.PositionOffsetFromTarget)
+                //     + (K otherBody cpImpulseData.PositionOffsetFromOther)
+
+                let massTangent = cpImpulseData.MassTangent //tangentDir.Get.Get * (massTangent * tangentDir.Get.Get)
+
+                // printfn $"vRel: {vRel} tan dir: {tangentDir}"
+
+                let impulseValueBase =
+                    // if shouldApplyKineticFriction normal normalImpulse compoundStaticFriction then
+                    //     compoundDynamicFriction * (normalImpulse |> l2Norm)
+                    // else
+                    (vRelTan |> l2Norm) / massTangent
+
+                let maxFriction = compoundDynamicFriction * cpImpulseData.AccumulatedNormalImpulse
+
+                let! impulseValue = -impulseValueBase |> clamped maxFriction
+
+                return impulseValue * tangentDir.Get
+        }

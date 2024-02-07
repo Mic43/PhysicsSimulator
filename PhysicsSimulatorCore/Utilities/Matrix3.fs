@@ -11,9 +11,7 @@ type Matrix3 =
         match this with
         | Value v -> v
 
-
-module Matrix3 =
-    //open Vector3D
+module Matrix3 =    
     let (|Matrix3|) (Matrix3.Value value) = value
 
     let ofMatrix (matrix: Matrix<float>) =
@@ -21,6 +19,8 @@ module Matrix3 =
             invalidArg "matrix" "matrix must be of size 3"
 
         matrix |> Matrix3.Value
+
+    let zero = Matrix<float>.Build.Dense(3, 3) |> ofMatrix
 
     let hatOperator (vector: Vector3D) =
         matrix
@@ -30,10 +30,8 @@ module Matrix3 =
         |> Matrix3.Value
 
     let orthonormalize (matrix: Matrix3) =
-
         let matrix = matrix.Get
-        // printfn "Before normalization %A" matrix
-
+      
         let deltaCol (c1: Vector<float>) c2 =
             c1.DotProduct(c2) / c1.DotProduct(c1) * c1
 
@@ -58,12 +56,8 @@ module RotationMatrix3D =
     let zero = Matrix<float>.Build.DenseIdentity 3 |> Matrix3.Value
 
     let fromAxisAndAngle (NormalVector.Value axis) angle =
-        let  axis = axis.Get 
-        // let len = axis.Norm(2.0)
-        //
-        // if axis <> Vector3D.zero.Get && equals epsilon len 1.0 |> not then
-        //     invalidArg "axis" "axis must be unit vector"
-
+        let axis = axis.Get
+        
         let ux = axis.Item(0)
         let uy = axis.Item(1)
         let uz = axis.Item(2)
@@ -71,7 +65,6 @@ module RotationMatrix3D =
         let cosA = angle |> cos
         let cosInv = 1.0 - cosA
         let sinA = angle |> sin
-
 
         matrix
             [ [ cosA + ux * ux * cosInv
@@ -94,7 +87,6 @@ module RotationMatrix3D =
 
         let cosG = roll |> cos
         let sinG = roll |> sin
-
 
         matrix
             [ [ cosB * cosG

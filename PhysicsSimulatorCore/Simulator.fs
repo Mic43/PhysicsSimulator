@@ -5,7 +5,6 @@ open System.Threading
 open FSharpPlus
 open Microsoft.FSharp.Control
 
-
 type SimulatorTaskState =
     | Paused
     | Started
@@ -37,16 +36,14 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
                 |> CollisionResolver.withCollisionResponseGlobal simulationStepInterval collidingObjectsCandidates
                 |> SimulatorState.update simulationStepInterval
 
-            //            if newState <> simulatorState.Value then
-            //                newState |> printfn "%A"
-
             simulatorState.Value <- newState
         }
 
     let cancellationTokenSource = new CancellationTokenSource()
 
+    member this.State = taskState
     member this.ObjectIdentifiers = simulatorState.Value.Objects.Keys |> set
-    member this.CollisionsIdentifiers = simulatorState.Value.Collisions.Keys
+    member this.CollisionsIdentifiers = simulatorState.Value.Collisions.Keys |> List.ofSeq
 
     member this.SimulatorObject
         with get identifier = simulatorState.Value.Objects[identifier]
@@ -55,7 +52,7 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
         with get identifier = this.SimulatorObject(identifier).PhysicalObject
 
     member this.Collision
-        with get identifier = simulatorState.Value.Collisions[identifier]
+        with get identifier = simulatorState.Value.Collisions |> Map.tryFind identifier
 
     member this.Configuration = simulatorState.Value.Configuration
 

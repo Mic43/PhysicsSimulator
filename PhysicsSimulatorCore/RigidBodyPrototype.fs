@@ -21,13 +21,14 @@ type RigidBodyPrototype =
       AngularVelocity: Vector3D
 
       ElasticityCoeff: float
-      FrictionCoeff: float
+      StaticFrictionCoeff: float
+      KineticFrictionCoeff: float
       UseGravity: bool }
 
-module RigidBodyPrototype =    
-    let private defaultElasticityCoeff = 0.9
+module RigidBodyPrototype =
+    let private defaultElasticityCoeff = 0.2
     let private defaultFrictionCoeff = 0.5
-    
+
     let createDefault kind =
         let collider =
             match kind with
@@ -44,8 +45,12 @@ module RigidBodyPrototype =
           Roll = 0
           AngularVelocity = Vector3D.zero
           ElasticityCoeff = defaultElasticityCoeff
-          FrictionCoeff = defaultFrictionCoeff
-          UseGravity = false }
+          UseGravity = true
+          StaticFrictionCoeff = defaultFrictionCoeff
+          KineticFrictionCoeff = defaultFrictionCoeff + 0.1 }
+
+    let createDefaultBox xSize ySize zSize =
+        (xSize, ySize, zSize) |||> Box.create |> RigidBodyKind.Box |> createDefault
 
     let createDefaultCube size =
         size |> Box.createCube |> RigidBodyKind.Box |> createDefault
@@ -56,16 +61,17 @@ module RigidBodyPrototype =
     let internal build prototype id : SimulatorObject =
         let inertiaMatrix =
             (match prototype.Kind with
-             | Sphere sphere -> sphere.CreateRotationalInertia(prototype.Mass.GetValue())
-             | Box box -> box.CreateRotationalInertia(prototype.Mass.GetValue()))
+             | Sphere sphere -> sphere.CreateRotationalInertia(prototype.Mass.GetValue)
+             | Box box -> box.CreateRotationalInertia(prototype.Mass.GetValue))
 
         let rigidBody =
             RigidBody.create
                 (RotationMatrix3D.fromYawPitchRoll prototype.Yaw prototype.Pitch prototype.Roll)
                 prototype.Velocity
                 prototype.ElasticityCoeff
-                prototype.FrictionCoeff
-                (prototype.Mass.GetValue())
+                prototype.StaticFrictionCoeff
+                prototype.KineticFrictionCoeff
+                prototype.Mass
                 prototype.Position
                 inertiaMatrix
 

@@ -7,9 +7,9 @@ open Microsoft.FSharp.Core
 //     let epsilon = 0.00001
 //     let defaultElasticityCoeff = 0.9
 //     let defaultFrictionCoeff = 0.5
-//     let infiniteMass  = infinity    
+//     let infiniteMass  = infinity
 //     let baumgarteTerm = 0.2
-//     let collisionSolverIterationCount = 10    
+//     let collisionSolverIterationCount = 10
 //     let allowedPenetration = 0.01
 
 [<AutoOpen>]
@@ -17,6 +17,7 @@ module Utils =
     let throwIfNegative value name =
         if value < 0.0 then
             "Must be positive" |> invalidArg name
+
     let rec subSetsOf2<'t when 't: comparison> (set: 't Set) =
         if (set.Count < 2) then
             Set.empty
@@ -48,3 +49,5 @@ module Utils =
         [ 1..n ] |> List.fold (fun obj _ -> obj |> f) object
 
     let equals epsilon (a: float) b = (b - a |> abs) <= epsilon
+
+    let clamp low high value = high |> min value |> max low

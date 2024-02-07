@@ -99,7 +99,6 @@ module SAT =
         }
 
     let tryFindSeparatingAxis (objects: (Box * RigidBody) SetOf2) : SATResult option =
-
         let faces = objects |> SetOf2.map getOrientedFaces
 
         let vertices =

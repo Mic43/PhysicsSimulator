@@ -11,7 +11,8 @@ type RigidBody =
     { Variables: RigidBodyVariables
       MassCenter: Particle
       ElasticityCoeff: float
-      FrictionCoeff: float
+      StaticFrictionCoeff: float
+      KineticFrictionCoeff: float
       PrincipalRotationalInertia: Matrix3
       PrincipalRotationalInertiaInverse: Matrix3 }
 
@@ -36,15 +37,12 @@ type RigidBody =
 type RigidBodyIntegrator = TimeSpan -> Torque -> RotationalInertiaInverse -> RigidBodyVariables -> RigidBodyVariables
 
 module RigidBody =
-
-    let getLinearVelocityAtOffset (rigidBody: RigidBody) offset =
-        offset |> Vector3D.crossProduct (rigidBody.CalcAngularVelocity())
-
     let create
         initialOrientation
         initialVelocity
         elasticityCoeff
-        frictionCoeff
+        staticFrictionCoeff
+        kineticFrictionCoeff
         mass
         position
         principalRotationalInertia
@@ -52,8 +50,11 @@ module RigidBody =
         if elasticityCoeff < 0.0 || elasticityCoeff > 1.0 then
             "Invalid value " |> invalidArg (nameof elasticityCoeff)
 
-        if frictionCoeff < 0.0 || frictionCoeff > 1.0 then
-            "Invalid value " |> invalidArg (nameof frictionCoeff)
+        if staticFrictionCoeff < 0.0 then
+            "Invalid value " |> invalidArg (nameof staticFrictionCoeff)
+        
+        if kineticFrictionCoeff < 0.0  then
+            "Invalid value " |> invalidArg (nameof staticFrictionCoeff)
 
         { Variables =
             { Orientation = initialOrientation
@@ -66,9 +67,10 @@ module RigidBody =
           PrincipalRotationalInertia = principalRotationalInertia
           PrincipalRotationalInertiaInverse = principalRotationalInertia.Get.Inverse() |> Matrix3.ofMatrix
           ElasticityCoeff = elasticityCoeff
-          FrictionCoeff = frictionCoeff }
+          StaticFrictionCoeff = staticFrictionCoeff
+          KineticFrictionCoeff = kineticFrictionCoeff }
 
-    let createBox initialOrientation initialVelocity elasticityCoeff frictionCoeff sizeX sizeY sizeZ mass position =
+    let createBox initialOrientation initialVelocity elasticityCoeff staticFrictionCoeff kineticFrictionCoeff sizeX sizeY sizeZ mass position =
         let box =
             { XSize = sizeX
               YSize = sizeY
@@ -78,21 +80,23 @@ module RigidBody =
             initialOrientation
             initialVelocity
             elasticityCoeff
-            frictionCoeff
+            staticFrictionCoeff
+            kineticFrictionCoeff
             mass
             position
             (box.CreateRotationalInertia(mass.GetValue))
 
     let createDefaultBox = createBox RotationMatrix3D.zero Vector3D.zero
 
-    let createSphere initialOrientation initialVelocity elasticityCoeff frictionCoeff radius mass position =
+    let createSphere initialOrientation initialVelocity elasticityCoeff staticFrictionCoeff kineticFrictionCoeff radius mass position =
         let spehere = { Radius = radius }
 
         create
             initialOrientation
             initialVelocity
             elasticityCoeff
-            frictionCoeff
+            staticFrictionCoeff
+            kineticFrictionCoeff
             mass
             position
             (spehere.CreateRotationalInertia(mass.GetValue))
@@ -181,3 +185,12 @@ module RigidBodyMotion =
         { rigidBody with
             Variables = newRotComponent
             MassCenter.Variables = newLinearComponent }
+    
+
+    let calculateVelocityAtOffset (body: RigidBody) offset =        
+        let getLinearVelocityAtOffset (rigidBody: RigidBody) =
+            offset |> Vector3D.crossProduct (rigidBody.CalcAngularVelocity())
+            
+        let linearV = body.MassCenterVelocity
+        let angularComponent = getLinearVelocityAtOffset body
+        linearV + angularComponent
