@@ -13,9 +13,8 @@ module CollisionResolver =
     let private tryHandleCollision dt (collidingObjectsCandidates: SetOf2<SimulatorObject>) curSimulationState =
         let simulatorState =
             monad {
-                let! collisionData = collidingObjectsCandidates |> CollisionDetection.areColliding
-
-                match collisionData with
+                // let! collisionData =
+                match! collidingObjectsCandidates |> CollisionDetection.areColliding with
                 | None -> None
                 | Some collisionData ->
                     let! resolvedObjects =

@@ -20,10 +20,12 @@ type Mass =
         | Value v -> v
 
 type Face =
-    { Vertices: Vector3D seq
+    { Vertices: Vector3D list
       Normal: NormalVector }
 
 module Face =
     let toPlane face =
         face.Normal
         |> Plane.create  (face.Vertices |> Seq.head |> Vector3D.dotProduct face.Normal.Get)
+    let getEdges face =
+        face.Vertices |> List.pairwise |> List.map SetOf2.ofPair 

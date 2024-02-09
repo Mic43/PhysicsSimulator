@@ -39,7 +39,7 @@ module CollisionDetection =
             monad {
                 let! (config: Configuration) = ask
                 let epsilon = config.epsilon
-                
+
                 let findIncidentFace (referenceFace: Face) (facesCandidates: Face seq) =
                     facesCandidates
                     |> Seq.minBy (fun f -> f.Normal.Get |> dotProduct referenceFace.Normal.Get)
@@ -59,10 +59,7 @@ module CollisionDetection =
                     // keep only vertices below reference face
                     let clipAgainstReferencePlane vertices =
                         let clipPlane = referenceFace |> Face.toPlane |> Plane.inverted
-                        vertices
-                        |> List.filter (
-                            GraphicsUtils.isPointInPlane clipPlane
-                        )
+                        vertices |> List.filter (GraphicsUtils.isPointInPlane clipPlane)
 
                     incidentFaceVertices
                     |> Seq.toList
@@ -80,6 +77,64 @@ module CollisionDetection =
                 return { ContactPoints = contactPoints |> Seq.toList } |> Some
             }
 
+        let generateEdgeContactPoints collisionNormal penetration boxes edgeAxes =
+            let getSupportingEdge epsilon collisionNormal orientedBox axis =
+
+                let edgesCandidates =
+                    orientedBox
+                    |> OrientedBox.getEdges
+                    |> List.filter (fun edge ->
+                        (edge |> SetOf2.fst) - (edge |> SetOf2.snd)
+                        |> areParallel epsilon (axis |> NormalVector.toVector3D))
+
+                edgesCandidates
+                |> List.maxBy (
+                    SetOf2.map (dotProduct (collisionNormal |> NormalVector.toVector3D))
+                    >> SetOf2.max
+                )
+
+            let getContactPoint (edge1: Vector3D SetOf2) (edge2: Vector3D SetOf2) =
+                let pOne = edge1 |> SetOf2.fst
+                let pTwo = edge2 |> SetOf2.fst
+
+                let dOne = (edge1 |> SetOf2.snd) - pOne
+                let dTwo = (edge2 |> SetOf2.snd) - pTwo
+
+                let smOne = pOne.X * pOne.X + pOne.Y * pOne.Y + pOne.Z * pOne.Z
+                let smTwo = pTwo.X * pTwo.X + pTwo.Y * pTwo.Y + pTwo.Z * pTwo.Z
+                let dpOneTwo = dTwo |> dotProduct dOne
+
+                let toSt = pOne - pTwo
+                let dpStaOne = dOne |> dotProduct toSt
+                let dpStaTwo = dTwo |> dotProduct toSt
+
+                let denom = smOne * smTwo - dpOneTwo * dpOneTwo
+                let mua = (dpOneTwo * dpStaTwo - smTwo * dpStaOne) / denom
+                let mub = (smOne * dpStaTwo - dpOneTwo * dpStaOne) / denom
+
+                let cOne = pOne + dOne * mua
+                let cTwo = pTwo + dTwo * mub
+
+                cOne * 0.5 + cTwo * 0.5
+
+            monad {
+                let! config = ask
+
+                let edges =
+                    (boxes, edgeAxes)
+                    ||> SetOf2.zip
+                    |> SetOf2.map (fun (box, axis) -> axis |> getSupportingEdge config.epsilon collisionNormal box)
+
+                let cp = getContactPoint (edges |> SetOf2.fst) (edges |> SetOf2.snd)
+
+                { ContactPoints =
+                    { Normal = collisionNormal
+                      Position = cp
+                      Penetration = penetration }
+                    |> List.singleton }
+                |> Some
+            }
+
         let separationAxis =
             [ (boxCollider1, body1); (boxCollider2, body2) ]
             |> SetOf2.ofList
@@ -89,13 +144,13 @@ module CollisionDetection =
         | None -> None |> Reader.Return
         | Some separationAxis ->
             match separationAxis with
-            | { Origin = Faces1
+            | { Origin = Face1
                 Reference = reference
                 Incident = incident
                 CollisionNormalFromReference = normal } ->
 
                 (reference.Faces, incident.Faces) ||> generateFaceContactPoints normal
-            | { Origin = Faces2
+            | { Origin = Face2
                 Reference = reference
                 Incident = incident
                 CollisionNormalFromReference = normal } ->
@@ -104,6 +159,14 @@ module CollisionDetection =
                 ||> generateFaceContactPoints normal
                 // we need to invert normals so it points from body1 to body2 regardless of the separation axis
                 |> Reader.map (Option.map (_.WithInvertedNormals()))
+            | { Origin = Edge(axes)
+                Reference = refBox
+                Incident = incidentBox
+                Penetration = penetration
+                CollisionNormalFromReference = normal } ->
+
+                // Option.None |> Reader.Return
+                generateEdgeContactPoints normal penetration ([ refBox; incidentBox ] |> SetOf2.ofList) axes.EdgesAxes
 
     open SetOf2
 

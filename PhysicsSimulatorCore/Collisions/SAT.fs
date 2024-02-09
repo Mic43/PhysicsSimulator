@@ -1,24 +1,21 @@
 namespace PhysicsSimulator.Collisions
 
-open FSharpPlus.Internals
 open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
 
-open MathNet.Numerics.LinearAlgebra
 open FSharpPlus
-open FSharpPlus.Data
+open FSharpPlus.Operators
 
 module SAT =
     open Vector3D
 
-    type SATAxisOrigin =
-        | Faces1
-        | Faces2
-        | Edges
+    /// axes on both boxes that make this edge separating axis
+    type EdgeSATAxisData = { EdgesAxes: NormalVector SetOf2 }
 
-    type OrientedBox =
-        { Faces: Face seq
-          Vertices: Vector3D seq }
+    type SATAxisOrigin =
+        | Face1 // face of first box
+        | Face2
+        | Edge of EdgeSATAxisData
 
     type PossibleCollisionData =
         { NormalFromTarget: NormalVector
@@ -28,30 +25,26 @@ module SAT =
         { Origin: SATAxisOrigin
           Reference: OrientedBox
           Incident: OrientedBox
+          Penetration:float
           CollisionNormalFromReference: NormalVector }
 
     // axis must correspond to one of the target's vertices
-    let private tryGetCollisionDataForAxis
-        (polyhedronTarget: OrientedBox)
-        (polyhedronOther: OrientedBox)
-        (axis: NormalVector)
-        : PossibleCollisionData option =
+    let private tryGetCollisionDataForAxis polyhedrons (axis: NormalVector) : PossibleCollisionData option =
         let withProjection (vertices: Vector3D seq) =
             vertices |> Seq.map (fun v -> (v, v |> dotProduct axis.Get))
 
-        let v1 = polyhedronTarget.Vertices |> withProjection
-        let v2 = polyhedronOther.Vertices |> withProjection
+        let vertices = polyhedrons |> SetOf2.map (_.Vertices >> withProjection)
 
         let minMax =
-            [ v1; v2 ]
-            |> List.map (fun s ->
+            vertices
+            |> SetOf2.map (fun s ->
                 {| Min = s |> Seq.minBy snd
                    Max = s |> Seq.maxBy snd |})
 
-        let _, a = minMax[0].Min
-        let _, b = minMax[0].Max
-        let _, c = minMax[1].Min
-        let _, d = minMax[1].Max
+        let _, a = (minMax |> SetOf2.fst).Min
+        let _, b = (minMax |> SetOf2.fst).Max
+        let _, c = (minMax |> SetOf2.snd).Min
+        let _, d = (minMax |> SetOf2.snd).Max
 
         // a    c  b           d
         if a <= c && b >= c then
@@ -66,75 +59,51 @@ module SAT =
         else
             None
 
-    let private getOrientedFaces (colliderBox, rigidBody: RigidBody) =
-        let getOrientedVertex =
-            GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation rigidBody.MassCenter.Variables.Position
-
-        colliderBox
-        |> Box.getFaces
-        |> Seq.map (fun face ->
-            { Vertices = face.Vertices |> Seq.map getOrientedVertex
-              Normal =
-                face.Normal.Get
-                |> (GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation zero)
-                |> NormalVector.createUnsafe })
-
-    let private chooseSeparationAxis bestAxes =
+    let private chooseSeparationAxis axes =
         monad' {
-            let! bestAxes =
-                bestAxes
-                |> Map.toList
-                |> List.map (fun (key, value) -> value |> Option.map (fun v -> (key, v)))
-                |> sequence
+            let! bestAxes = axes |> sequence
 
-            let origin, collisionData, polyhedrons =
-                bestAxes
-                |> List.map (fun (axis, (cd, polyhedron)) -> (axis, cd, polyhedron))
-                |> List.minBy (fun (_, cd, _) -> cd.Penetration)
+            let origin, (collisionData:PossibleCollisionData), boxes =
+                bestAxes |> Seq.minBy (fun (_, cd, _) -> cd.Penetration)
 
-            { Origin = origin
-              Reference = polyhedrons |> SetOf2.fst
-              Incident = polyhedrons |> SetOf2.snd
-              CollisionNormalFromReference = collisionData.NormalFromTarget }
+            return
+                { Origin = origin
+                  Reference = boxes |> SetOf2.fst
+                  Incident = boxes |> SetOf2.snd
+                  CollisionNormalFromReference = collisionData.NormalFromTarget
+                  Penetration = collisionData.Penetration }
         }
 
     let tryFindSeparatingAxis (objects: (Box * RigidBody) SetOf2) : SATResult option =
-        let faces = objects |> SetOf2.map getOrientedFaces
+        let bodies = objects |> SetOf2.map snd
+        let boxes = objects |> SetOf2.map (fun p -> p ||> OrientedBox.create)
+        let facesAxes = boxes |> SetOf2.map _.Faces |> SetOf2.map (Seq.map (_.Normal))
 
-        let vertices =
-            faces |> SetOf2.map (Seq.bind (fun face -> face.Vertices |> Seq.distinct))
-
-        let polyhedrons =
-            (faces, vertices)
-            ||> SetOf2.zip
-            |> SetOf2.map (fun (f, v) -> { Faces = f; Vertices = v })
-
-        let facesAxes = faces |> SetOf2.map (Seq.map (_.Normal))
-
-        let edgesAxes =
-            facesAxes
-            |> SetOf2.snd |> Seq.map _.Get
-            |> Seq.apply (facesAxes |> SetOf2.fst |> Seq.map (_.Get >> crossProduct))
-            |> Seq.map (fun v -> v |> normalized)
+        let edgeAxes =
+            seq {
+                for firstAxis in bodies |> SetOf2.fst |> RigidBody.getAxes  do
+                    for secondAxis in bodies |> SetOf2.snd |> RigidBody.getAxes do
+                        yield
+                            ([firstAxis; secondAxis] |> SetOf2.ofList,
+                             firstAxis.Get |> crossProduct secondAxis.Get |> NormalVector.createUnsafe)
+            } |> Seq.filter (fun (_, axis) -> axis.Get |> isZero 0.0001 |> not)
 
         let axesWithData =
-            [ (Faces1, (polyhedrons, facesAxes |> SetOf2.fst))
-              (Faces2, (polyhedrons |> SetOf2.flip, facesAxes |> SetOf2.snd))
-              //TODO: finish fo edges
-              //(Edges, (polyhedrons, edgesAxes))
-              ]
-            |> Map.ofList
+            seq {
+                for axis in facesAxes |> SetOf2.fst do
+                    yield (Face1, boxes, axis)
 
-        let bestAxes = // bestAxes for given origin
+                for axis in facesAxes |> SetOf2.snd do
+                    yield (Face2, boxes |> SetOf2.flip, axis)
+
+                for edge, edgeSepAxis in edgeAxes do 
+                    yield ({ EdgeSATAxisData.EdgesAxes = edge } |> Edge, boxes, edgeSepAxis)
+            }
+
+        let possibleCollisions =
             axesWithData
-            |> Map.mapValues (
-                (fun (polyhedrons, axes) ->
-                    axes
-                    |> Seq.map (
-                        tryGetCollisionDataForAxis (polyhedrons |> SetOf2.fst) (polyhedrons |> SetOf2.snd)
-                        >> Option.map (fun cd -> (cd, polyhedrons))
-                    ))
-                >> (Seq.sequence >> Option.map (Seq.minBy (fun (cd, _) -> cd.Penetration)))
-            )
+            |> Seq.map (fun (origin, boxes, axis) ->
+                tryGetCollisionDataForAxis boxes axis
+                |> Option.map (fun collisionData -> (origin, collisionData, boxes)))
 
-        bestAxes |> chooseSeparationAxis
+        possibleCollisions |> chooseSeparationAxis

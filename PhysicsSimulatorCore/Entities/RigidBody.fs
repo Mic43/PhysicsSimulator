@@ -33,10 +33,19 @@ type RigidBody =
         this.CalcRotationalInertiaInverse().Get * this.Variables.AngularMomentum.Get
         |> Vector3D.ofVector
 
+    member this.Axes =
+        [ (1.0, 0.0, 0.0); (0.0, 1.0, 0.0); (0.0, 0.0, 1.0) ]
+        |> List.map (
+            (|||>)
+            >> (fun f -> Vector3D.create |> f)
+            >> (GraphicsUtils.toWorldCoordinates this.Variables.Orientation Vector3D.zero)
+            >> NormalVector.createUnsafe
+        )
 
 type RigidBodyIntegrator = TimeSpan -> Torque -> RotationalInertiaInverse -> RigidBodyVariables -> RigidBodyVariables
 
 module RigidBody =
+    let getAxes (rigidBody:RigidBody) = rigidBody.Axes
     let create
         initialOrientation
         initialVelocity
@@ -52,8 +61,8 @@ module RigidBody =
 
         if staticFrictionCoeff < 0.0 then
             "Invalid value " |> invalidArg (nameof staticFrictionCoeff)
-        
-        if kineticFrictionCoeff < 0.0  then
+
+        if kineticFrictionCoeff < 0.0 then
             "Invalid value " |> invalidArg (nameof staticFrictionCoeff)
 
         { Variables =
@@ -70,7 +79,18 @@ module RigidBody =
           StaticFrictionCoeff = staticFrictionCoeff
           KineticFrictionCoeff = kineticFrictionCoeff }
 
-    let createBox initialOrientation initialVelocity elasticityCoeff staticFrictionCoeff kineticFrictionCoeff sizeX sizeY sizeZ mass position =
+    let createBox
+        initialOrientation
+        initialVelocity
+        elasticityCoeff
+        staticFrictionCoeff
+        kineticFrictionCoeff
+        sizeX
+        sizeY
+        sizeZ
+        mass
+        position
+        =
         let box =
             { XSize = sizeX
               YSize = sizeY
@@ -88,7 +108,16 @@ module RigidBody =
 
     let createDefaultBox = createBox RotationMatrix3D.zero Vector3D.zero
 
-    let createSphere initialOrientation initialVelocity elasticityCoeff staticFrictionCoeff kineticFrictionCoeff radius mass position =
+    let createSphere
+        initialOrientation
+        initialVelocity
+        elasticityCoeff
+        staticFrictionCoeff
+        kineticFrictionCoeff
+        radius
+        mass
+        position
+        =
         let spehere = { Radius = radius }
 
         create
@@ -185,12 +214,12 @@ module RigidBodyMotion =
         { rigidBody with
             Variables = newRotComponent
             MassCenter.Variables = newLinearComponent }
-    
 
-    let calculateVelocityAtOffset (body: RigidBody) offset =        
+
+    let calculateVelocityAtOffset (body: RigidBody) offset =
         let getLinearVelocityAtOffset (rigidBody: RigidBody) =
             offset |> Vector3D.crossProduct (rigidBody.CalcAngularVelocity())
-            
+
         let linearV = body.MassCenterVelocity
         let angularComponent = getLinearVelocityAtOffset body
         linearV + angularComponent

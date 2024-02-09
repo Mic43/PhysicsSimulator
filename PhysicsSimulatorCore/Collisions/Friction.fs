@@ -20,7 +20,6 @@ module Friction =
                     impulseValue
                     |> ContactPointImpulseData.clampImpulseValue -maxFriction (maxFriction |> Some)
                 )
-
             do!
                 State.modify (fun oldState ->
                     { oldState with
@@ -62,7 +61,7 @@ module Friction =
             let vRelTan = vRel - vRelNorm * normal
             let tangentDir = vRelTan |> normalized
 
-            if tangentDir.Get |> isZero || cpImpulseData.MassTangent = 0 then
+            if tangentDir.Get |> isZero 0.0001 || cpImpulseData.MassTangent = 0 then
                 return zero
             else
                 // let K body (offset: Vector3D) =

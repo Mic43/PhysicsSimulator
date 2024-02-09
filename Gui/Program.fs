@@ -20,7 +20,7 @@ let mass = 100.0
 let impulseStrenght = 300.0
 let impulseDir = Vector3D.create 0 1 0
 let impulseValue = (impulseDir |> Vector3D.normalized).Get * impulseStrenght
-let impulseOffset = Vector3D.create 0.0 0.0 0
+let impulseOffset = Vector3D.create 0.1 0.1 0
 //let epsilon = 0.001
 
 let createCube () =
@@ -52,10 +52,10 @@ let prepareSimulator () =
 
     Simulator(
         rigidBodyPrototypes,
-        1.0,
+        0.3,
         { Configuration.getDefault with
             baumgarteTerm = 0.2
-            enableFriction = true }
+            enableFriction = false }
     )
 
 let toTranslation (v3d: Vector3D) =
@@ -131,10 +131,6 @@ let onKeyDown (simulator: Simulator) (key: Keys) =
     | Keys.Pause -> transact (fun () -> simulator.PauseResume())
     | _ -> ()
 
-// let getCollisionTransformation simulator id =
-//     let collision = simulator.Collision collisionId
-//
-//
 let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifier) =
     let simObj = simulator.PhysicalObject id
 
@@ -145,19 +141,19 @@ let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifie
         | RigidBody rb -> rb.Variables.Orientation |> toRotation simulator
         | Particle _ -> Trafo3d(Rot3d.Identity)
 
-    //linearComponent |> printfn "%A"
-
     transact (fun () ->
         collisionsIds.Clear()
         collisionsIds.AddRange simulator.CollisionsIdentifiers
 
-    // if simulator.State = SimulatorTaskState.Started then
-    //     simulator.CollisionsIdentifiers
-    //     |> List.map (fun collisionId ->
-    //         printfn
-    //             $"ColId: {collisionId}
-    //             Pens:{simulator.Collision(collisionId).ContactPoints |> List.map _.Penetration}")
-    //     |> ignore
+        if simulator.State = SimulatorTaskState.Started then
+            simulator.CollisionsIdentifiers
+            |> List.map (fun collisionId ->
+                simulator.Collision(collisionId) |> Option.map (
+                    fun collision -> 
+                    printfn
+                        $"ColId: {collisionId}
+                        Pens:{collision.ContactPoints |> List.map _.Penetration}"))
+            |> ignore
     )
 
     let transformation = linearComponent.Position |> toTranslation

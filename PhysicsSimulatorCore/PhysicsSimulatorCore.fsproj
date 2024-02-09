@@ -26,6 +26,7 @@
         <Compile Include="Entities\Sphere.fs" />
         <Compile Include="Entities\Particle.fs" />
         <Compile Include="Entities\RigidBody.fs" />
+        <Compile Include="Entities\OrientedBox.fs" />
         <Compile Include="Entities\Collider.fs" />
         <Compile Include="Entities\SimulatorObject.fs" />
         <Compile Include="Collisions\SAT.fs" />

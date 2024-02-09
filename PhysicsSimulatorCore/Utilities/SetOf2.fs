@@ -11,7 +11,8 @@ type SetOf2<'t> =
         | Value v -> v
 
 module SetOf2 =
-    let create fst second = [ fst; second ] |>SetOf2.Value
+    let create fst second = [ fst; second ] |> SetOf2.Value
+    let ofPair pair = pair ||> create
 
     let ofList lst =
         match lst with
@@ -31,3 +32,4 @@ module SetOf2 =
         (set1.Get, set2.Get, set3.Get) |||> List.zip3 |> ofList
 
     let flip set = set |> toList |> List.rev |> ofList
+    let max set = set |> toList |> List.max

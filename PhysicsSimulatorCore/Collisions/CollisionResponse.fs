@@ -48,7 +48,7 @@ module CollisionResponse =
         monad {
             let! cpImpulseData = State.get
 
-            if cpImpulseData.MassNormal |> equals 0.00001 0.0 then
+            if cpImpulseData.MassNormal = 0.0 then
                 return zero
             else                
                 let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
