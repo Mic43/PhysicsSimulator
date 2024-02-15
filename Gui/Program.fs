@@ -87,39 +87,33 @@ let objectToRenderable (simulator: Simulator) (id: SimulatorObjectIdentifier) =
 
          Sg.box' color bounds)
 
-let collisionToRenderable (win: Aardvark.Glfw.Window) (simulator: Simulator) collisionId =
+let collisionToRenderable (win: Aardvark.Glfw.Window) (simulator: Simulator) collision =   
+    collision.ContactPoints
+    |> List.map (fun cp ->
+        let color = C4b(200, 0, 00)
+        let pos = cp.Position
+        let normal = cp.Normal.Get
 
-    monad' {
-        let! collision = simulator.Collision collisionId
+        let obj =
+            Sg.sphere' 5 color 0.05
+            |> Sg.trafo (win.Time |> AVal.map (fun _ -> pos |> toTranslation))
+        // let point = Sg.translate pos.X pos.Y pos.Z obj
+        //
+        let start = V3d(pos.X, pos.Y, pos.Z)
+        let endPos = start + V3d(normal.X, normal.Y, normal.Z)  / 5.0
+        // //let line = Line3d(start, endPos)
+        let point2 = Sg.cone' 5 color 0.05 0.1 |> Sg.translation' endPos
+        //  let a = Sg.cylinder' 5 color 0.02 1 |> Sg.
+        //let lines = Sg.lines' color [| line |]
 
-        return
-            collision.ContactPoints
-            |> List.map (fun cp ->
-                let color = C4b(200, 0, 00)
-                let pos = cp.Position
-                let normal = cp.Normal.Get
+        [ obj
+          point2
+          ]
+        |> Sg.ofList)
 
-                let obj =
-                    Sg.sphere' 5 color 0.05
-                    |> Sg.trafo (win.Time |> AVal.map (fun _ -> pos |> toTranslation))
-                // let point = Sg.translate pos.X pos.Y pos.Z obj
-                //
-                // let start = V3d(pos.X, pos.Y, pos.Z)
-                // let endPos = start + V3d(normal.X, normal.Y, normal.Z)
-                // //let line = Line3d(start, endPos)
-                // let point2 = Sg.cone' 5 color 0.05 0.1 |> Sg.translation' endPos
-                //  let a = Sg.cylinder' 5 color 0.02 1 |> Sg.
-                //let lines = Sg.lines' color [| line |]
+    |> Sg.ofList
 
-                [ obj
-                  // point2
-                  ]
-                |> Sg.ofList)
-
-            |> Sg.ofList
-    }
-
-let collisionsIds: cset<SimulatorObjectIdentifier Set> = cset []
+let collisions: cset<CollisionData> = cset []
 
 let onKeyDown (simulator: Simulator) (key: Keys) =
     match key with
@@ -128,7 +122,7 @@ let onKeyDown (simulator: Simulator) (key: Keys) =
             let physicalObjectIdentifier = impulsedObjectId |> SimulatorObjectIdentifier.fromInt
             simulator.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset)
 
-    | Keys.Pause -> transact (fun () -> simulator.PauseResume())
+    | Keys.Pause -> transact (fun () -> simulator.PauseResume())  
     | _ -> ()
 
 let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifier) =
@@ -142,26 +136,25 @@ let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifie
         | Particle _ -> Trafo3d(Rot3d.Identity)
 
     transact (fun () ->
-        collisionsIds.Clear()
-        collisionsIds.AddRange simulator.CollisionsIdentifiers
+        collisions.Clear())
+    transact (fun () ->
+        collisions.AddRange simulator.AllCollisions)
 
-        // if simulator.State = SimulatorTaskState.Started then
-        //     simulator.CollisionsIdentifiers
-        //     |> List.map (fun collisionId ->
-        //         simulator.Collision(collisionId) |> Option.map (
-        //             fun collision -> 
-        //             printfn
-        //                 $"ColId: {collisionId}
-        //                 Pens:{collision.ContactPoints |> List.map _.Penetration}"))
-        //     |> ignore
-    )
-
+    // if simulator.State = SimulatorTaskState.Started then
+    //     simulator.CollisionsIdentifiers
+    //     |> List.map (fun collisionId ->
+    //         simulator.Collision(collisionId) |> Option.map (
+    //             fun collision ->
+    //             printfn
+    //                 $"ColId: {collisionId}
+    //                 Pens:{collision.ContactPoints |> List.map _.Penetration}"))
+    //     |> ignore
+    
     let transformation = linearComponent.Position |> toTranslation
     rotationalComponent * transformation
 
 let prepareScene (win: Aardvark.Glfw.Window) sim renderablesDict =
-    let getObjectTransformation = getObjectTransformation sim
-    //let getCollisionTransformation
+    let getObjectTransformation = getObjectTransformation sim    
     let objects =
         renderablesDict
         |> Map.map (fun id renderable ->
@@ -171,9 +164,7 @@ let prepareScene (win: Aardvark.Glfw.Window) sim renderablesDict =
         |> Map.values
 
     let collisions =
-        collisionsIds |> ASet.choose (collisionToRenderable win sim) |> Sg.set
-    //  let collisions = ASet.map (Sg.trafo (AVal.constant))
-
+        collisions |> ASet.map (collisionToRenderable win sim) |> Sg.set
 
     seq {
         yield collisions

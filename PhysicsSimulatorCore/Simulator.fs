@@ -53,7 +53,7 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
 
     member this.Collision
         with get identifier = simulatorState.Value.Collisions |> Map.tryFind identifier
-
+    member this.AllCollisions = simulatorState.Value.Collisions |> Map.values |> List.ofSeq        
     member this.Configuration = simulatorState.Value.Configuration
 
     member this.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset =
