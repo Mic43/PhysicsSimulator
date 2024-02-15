@@ -71,7 +71,7 @@ module Box =
                         yield Vector3D.create x y z
         }
 
-    let getFaces (box: Box) : Face seq =
+    let getFaces (box: Box) : Face list =
         let scaleVector =
             (box.XSize / 2.0, box.YSize / 2.0, box.ZSize / 2.0)
             |||> Vector3D.create
@@ -82,8 +82,7 @@ module Box =
             { Vertices =
                 faces[i]
                 |> List.map ((fun i -> vertices[i].Get) >> (_.PointwiseMultiply(scaleVector)) >> ofVector)
-              Normal = normal |> NormalVector.createUnsafe })
-        |> List.toSeq
+              Normal = normal |> NormalVector.createUnsafe })        
 
     let findFaceByNormal normal (faces: Face seq) =
         faces |> Seq.find (fun face -> face.Normal = normal)

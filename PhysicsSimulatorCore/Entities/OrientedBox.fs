@@ -6,7 +6,6 @@ type OrientedBox =
     { Faces: Face list
       Vertices: Vector3D list }
 
-
 module OrientedBox =
     let private getOrientedFaces colliderBox rigidBody =
         let getOrientedVertex =
@@ -14,7 +13,7 @@ module OrientedBox =
 
         colliderBox
         |> Box.getFaces
-        |> Seq.map (fun face ->
+        |> List.map (fun face ->
             { Vertices = face.Vertices |> List.map getOrientedVertex
               Normal =
                 face.Normal.Get
@@ -22,8 +21,8 @@ module OrientedBox =
                 |> NormalVector.createUnsafe })
 
     let create box rigidBody =
-        let faces = getOrientedFaces box rigidBody |> List.ofSeq
-        let vertices = faces |> List.collect (fun face -> face.Vertices |> List.distinct)
+        let faces = getOrientedFaces box rigidBody 
+        let vertices = faces |> List.collect (_.Vertices) |> List.distinct
 
         { Faces = faces; Vertices = vertices }
     let getEdges orientedBox = 

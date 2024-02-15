@@ -10,8 +10,8 @@ type Configuration =
 
 module Configuration =
     let getDefault =
-        { epsilon = 0.00001            
+        { epsilon = 0.01            
           baumgarteTerm = 0.2
           collisionSolverIterationCount = 10
-          allowedPenetration = 0.01
+          allowedPenetration = 0.001
           enableFriction = true }

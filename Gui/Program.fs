@@ -18,7 +18,7 @@ let groundId = 0
 let radius = 1.0
 let mass = 100.0
 let impulseStrenght = 300.0
-let impulseDir = Vector3D.create 0 1 0
+let impulseDir = Vector3D.create 0.2 1 0.5
 let impulseValue = (impulseDir |> Vector3D.normalized).Get * impulseStrenght
 let impulseOffset = Vector3D.create 0.1 0.1 0
 //let epsilon = 0.001
@@ -145,15 +145,15 @@ let getObjectTransformation (simulator: Simulator) (id: SimulatorObjectIdentifie
         collisionsIds.Clear()
         collisionsIds.AddRange simulator.CollisionsIdentifiers
 
-        if simulator.State = SimulatorTaskState.Started then
-            simulator.CollisionsIdentifiers
-            |> List.map (fun collisionId ->
-                simulator.Collision(collisionId) |> Option.map (
-                    fun collision -> 
-                    printfn
-                        $"ColId: {collisionId}
-                        Pens:{collision.ContactPoints |> List.map _.Penetration}"))
-            |> ignore
+        // if simulator.State = SimulatorTaskState.Started then
+        //     simulator.CollisionsIdentifiers
+        //     |> List.map (fun collisionId ->
+        //         simulator.Collision(collisionId) |> Option.map (
+        //             fun collision -> 
+        //             printfn
+        //                 $"ColId: {collisionId}
+        //                 Pens:{collision.ContactPoints |> List.map _.Penetration}"))
+        //     |> ignore
     )
 
     let transformation = linearComponent.Position |> toTranslation

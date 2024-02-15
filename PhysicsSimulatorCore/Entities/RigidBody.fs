@@ -39,7 +39,7 @@ type RigidBody =
             (|||>)
             >> (fun f -> Vector3D.create |> f)
             >> (GraphicsUtils.toWorldCoordinates this.Variables.Orientation Vector3D.zero)
-            >> NormalVector.createUnsafe
+            >> Vector3D.normalized          
         )
 
 type RigidBodyIntegrator = TimeSpan -> Torque -> RotationalInertiaInverse -> RigidBodyVariables -> RigidBodyVariables

@@ -1,17 +1,32 @@
 namespace PhysicsSimulator.Utilities
 
+open System
+open System.Collections.Generic
+
 
 [<RequireQualifiedAccess>]
-type SetOf2<'t> =
+[<CustomEquality; NoComparison>]
+type SetOf2<'t when 't: equality> =
     private
-    | Value of List<'t>
+    | Value of list<'t>
 
     member this.Get =
         match this with
         | Value v -> v
 
+    override this.Equals other =
+        match other with
+        | :? SetOf2<'t> as s ->
+            (s.Get[0] = this.Get[0] && s.Get[1] = this.Get[1])
+            || (s.Get[0] = this.Get[1] && s.Get[1] = this.Get[0])
+        | _ -> false
+
+    override this.GetHashCode() =
+        this.Get[0].GetHashCode() + this.Get[1].GetHashCode()
+
 module SetOf2 =
-    let create fst second = [ fst; second ] |> SetOf2.Value
+    let create fst second = [ fst; second ]
+                            |> SetOf2.Value
     let ofPair pair = pair ||> create
 
     let ofList lst =

@@ -28,4 +28,4 @@ module Face =
         face.Normal
         |> Plane.create  (face.Vertices |> Seq.head |> Vector3D.dotProduct face.Normal.Get)
     let getEdges face =
-        face.Vertices |> List.pairwise |> List.map SetOf2.ofPair 
+        (face.Vertices |> List.last) :: face.Vertices |> List.pairwise |> List.map SetOf2.ofPair 

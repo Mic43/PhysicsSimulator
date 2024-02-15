@@ -67,40 +67,43 @@ module GraphicsUtils =
 
     /// Planes normals must point to polygon parts that should be left after clipping
     let SutherlandHodgmanClipping epsilon (clipPlanes: Plane list) (inputPolygon: Vector3D list) : Vector3D list =
-
         let rec loop (inputPolygon: Vector3D list) (planes: Plane list) =
-            match planes with
-            | [] -> inputPolygon
-            | plane :: planesTail ->
-                let edges =
-                    (inputPolygon |> List.last, inputPolygon |> List.head)
-                    :: (inputPolygon |> List.pairwise)
+            if inputPolygon |> List.isEmpty then
+                printfn $"clipping error"
+                List.empty
+            else
+                match planes with
+                | [] -> inputPolygon
+                | plane :: planesTail ->
+                    let edges =
+                        (inputPolygon |> List.last, inputPolygon |> List.head)
+                        :: (inputPolygon |> List.pairwise)
 
-                let clippedPolygon =
-                    seq {
-                        for startPoint, endPoint in edges do
-                            yield!
-                                (let isPointInCurPlane = isPointInPlane plane
+                    let clippedPolygon =
+                        seq {
+                            for startPoint, endPoint in edges do
+                                yield!
+                                    (let isPointInCurPlane = isPointInPlane plane
 
-                                 let getEdgeIntersection startPoint endPoint =
-                                     (startPoint, endPoint)
-                                     ||> tryGetPlaneEdgeIntersection epsilon plane
-                                     |> Option.map List.singleton
-                                     |> Option.defaultValue []
+                                     let getEdgeIntersection startPoint endPoint =
+                                         (startPoint, endPoint)
+                                         ||> tryGetPlaneEdgeIntersection epsilon plane
+                                         |> Option.map List.singleton
+                                         |> Option.defaultValue []
 
-                                 let iStartIn, isEndIn =
-                                     startPoint |> isPointInCurPlane, endPoint |> isPointInCurPlane
+                                     let iStartIn, isEndIn =
+                                         startPoint |> isPointInCurPlane, endPoint |> isPointInCurPlane
 
-                                 match (iStartIn, isEndIn) with
-                                 | true, true -> [ endPoint ]
-                                 | true, false -> getEdgeIntersection startPoint endPoint
-                                 //TODO: replace @ with prepending
-                                 | false, true -> getEdgeIntersection startPoint endPoint @ [ endPoint ]
-                                 | false, false -> [])
-                    }
-                    |> Seq.toList
+                                     match (iStartIn, isEndIn) with
+                                     | true, true -> [ endPoint ]
+                                     | true, false -> getEdgeIntersection startPoint endPoint
+                                     //TODO: replace @ with prepending
+                                     | false, true -> getEdgeIntersection startPoint endPoint @ [ endPoint ]
+                                     | false, false -> [])
+                        }
+                        |> Seq.toList
 
-                loop clippedPolygon planesTail
+                    loop clippedPolygon planesTail
 
         loop inputPolygon clipPlanes |> List.distinct
 
@@ -108,4 +111,3 @@ module GraphicsUtils =
         v
         |> ((fun v -> rotationMatrix.Get * v.Get) >> (fun v -> v + translationVector.Get))
         |> ofVector
-    

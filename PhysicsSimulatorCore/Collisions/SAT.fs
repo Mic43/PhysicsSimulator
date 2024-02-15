@@ -25,7 +25,7 @@ module SAT =
         { Origin: SATAxisOrigin
           Reference: OrientedBox
           Incident: OrientedBox
-          Penetration:float
+          Penetration: float
           CollisionNormalFromReference: NormalVector }
 
     // axis must correspond to one of the target's vertices
@@ -63,7 +63,7 @@ module SAT =
         monad' {
             let! bestAxes = axes |> sequence
 
-            let origin, (collisionData:PossibleCollisionData), boxes =
+            let origin, (collisionData: PossibleCollisionData), boxes =
                 bestAxes |> Seq.minBy (fun (_, cd, _) -> cd.Penetration)
 
             return
@@ -76,28 +76,36 @@ module SAT =
 
     let tryFindSeparatingAxis (objects: (Box * RigidBody) SetOf2) : SATResult option =
         let bodies = objects |> SetOf2.map snd
-        let boxes = objects |> SetOf2.map (fun p -> p ||> OrientedBox.create)
-        let facesAxes = boxes |> SetOf2.map _.Faces |> SetOf2.map (Seq.map (_.Normal))
+        let orientedBoxes = objects |> SetOf2.map (fun p -> p ||> OrientedBox.create)
+
+        let fromFirst =
+            (bodies |> SetOf2.snd).MassCenterPosition
+            - (bodies |> SetOf2.fst).MassCenterPosition
+
+        let facesAxes =
+            orientedBoxes |> SetOf2.map _.Faces |> SetOf2.map (Seq.map (_.Normal))
 
         let edgeAxes =
             seq {
-                for firstAxis in bodies |> SetOf2.fst |> RigidBody.getAxes  do
+                for firstAxis in bodies |> SetOf2.fst |> RigidBody.getAxes do
                     for secondAxis in bodies |> SetOf2.snd |> RigidBody.getAxes do
                         yield
-                            ([firstAxis; secondAxis] |> SetOf2.ofList,
-                             firstAxis.Get |> crossProduct secondAxis.Get |> NormalVector.createUnsafe)
-            } |> Seq.filter (fun (_, axis) -> axis.Get |> isZero 0.0001 |> not)
+                            ([ firstAxis; secondAxis ] |> SetOf2.ofList,
+                             firstAxis.Get |> crossProduct secondAxis.Get |> normalized)
+            }
+            |> Seq.filter (fun (_, axis) -> axis.Get |> isZero 0.01 |> not)
+            |> Seq.map (Tuple2.mapItem2 (fun axis -> if fromFirst |> dotProduct axis.Get < 0 then -axis else axis))
 
         let axesWithData =
             seq {
                 for axis in facesAxes |> SetOf2.fst do
-                    yield (Face1, boxes, axis)
+                    yield (Face1, orientedBoxes, axis)
 
                 for axis in facesAxes |> SetOf2.snd do
-                    yield (Face2, boxes |> SetOf2.flip, axis)
+                    yield (Face2, orientedBoxes |> SetOf2.flip, axis)
 
-                for edge, edgeSepAxis in edgeAxes do 
-                    yield ({ EdgeSATAxisData.EdgesAxes = edge } |> Edge, boxes, edgeSepAxis)
+                for edge, edgeSepAxis in edgeAxes do
+                    yield ({ EdgeSATAxisData.EdgesAxes = edge } |> Edge, orientedBoxes, edgeSepAxis)
             }
 
         let possibleCollisions =

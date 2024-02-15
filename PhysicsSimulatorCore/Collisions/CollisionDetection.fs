@@ -74,18 +74,21 @@ module CollisionDetection =
                     |> Seq.map (fun cpPosition ->
                         ContactPoint.Create (cpPosition |> calculatePenetration) normal cpPosition)
 
-                return { ContactPoints = contactPoints |> Seq.toList } |> Some
+                if contactPoints |> Seq.isEmpty then
+                    None
+                else
+                    return { ContactPoints = contactPoints |> Seq.toList } |> Some
             }
 
-        let generateEdgeContactPoints collisionNormal penetration boxes edgeAxes =
-            let getSupportingEdge epsilon collisionNormal orientedBox axis =
+        let generateEdgeContactPoints collisionNormalFromFirstBox penetration boxes edgeAxes =
+            let getSupportingEdge epsilon collisionNormal orientedBox edgeAxis =
 
                 let edgesCandidates =
                     orientedBox
                     |> OrientedBox.getEdges
                     |> List.filter (fun edge ->
-                        (edge |> SetOf2.fst) - (edge |> SetOf2.snd)
-                        |> areParallel epsilon (axis |> NormalVector.toVector3D))
+                        (edge |> SetOf2.snd) - (edge |> SetOf2.fst)
+                        |> areParallel epsilon (edgeAxis |> NormalVector.toVector3D))
 
                 edgesCandidates
                 |> List.maxBy (
@@ -120,15 +123,17 @@ module CollisionDetection =
             monad {
                 let! config = ask
 
-                let edges =
-                    (boxes, edgeAxes)
-                    ||> SetOf2.zip
-                    |> SetOf2.map (fun (box, axis) -> axis |> getSupportingEdge config.epsilon collisionNormal box)
+                let collidingEdges =
+                    (boxes, edgeAxes, [ collisionNormalFromFirstBox; -collisionNormalFromFirstBox ] |> SetOf2.ofList)
+                    |||> SetOf2.zip3
+                    |> SetOf2.map (fun (box, edgeAxis, normal) ->
+                        edgeAxis |> getSupportingEdge config.epsilon normal box)
 
-                let cp = getContactPoint (edges |> SetOf2.fst) (edges |> SetOf2.snd)
+                let cp =
+                    getContactPoint (collidingEdges |> SetOf2.fst) (collidingEdges |> SetOf2.snd)
 
                 { ContactPoints =
-                    { Normal = collisionNormal
+                    { Normal = collisionNormalFromFirstBox
                       Position = cp
                       Penetration = penetration }
                     |> List.singleton }
@@ -165,7 +170,7 @@ module CollisionDetection =
                 Penetration = penetration
                 CollisionNormalFromReference = normal } ->
 
-                // Option.None |> Reader.Return
+                //Option.None |> Reader.Return
                 generateEdgeContactPoints normal penetration ([ refBox; incidentBox ] |> SetOf2.ofList) axes.EdgesAxes
 
     open SetOf2
