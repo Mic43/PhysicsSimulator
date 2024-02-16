@@ -42,15 +42,13 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
     let cancellationTokenSource = new CancellationTokenSource()
 
     member this.State = taskState
-    member this.ObjectIdentifiers = simulatorState.Value.Objects.Keys |> set
+    member this.ObjectsIdentifiers = simulatorState.Value.Objects.Keys |> set
     member this.CollisionsIdentifiers = simulatorState.Value.Collisions.Keys |> List.ofSeq
 
     member this.SimulatorObject
         with get identifier = simulatorState.Value.Objects[identifier]
-
     member this.PhysicalObject
         with get identifier = this.SimulatorObject(identifier).PhysicalObject
-
     member this.Collision
         with get identifier = simulatorState.Value.Collisions |> Map.tryFind identifier
     member this.AllCollisions = simulatorState.Value.Collisions |> Map.values |> List.ofSeq        

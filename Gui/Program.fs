@@ -48,7 +48,7 @@ let prepareSimulator () =
           { ((0.5, 0.5, 0.5) |||> RigidBodyPrototype.createDefaultBox) with
               Mass = 50.0 |> Mass.Value
               Position = Vector3D.create 0 -3 0.25 } ]
-        @ createVerticalStack ((0.0, 0.0, 0.5) |||> Vector3D.create) 2 1.0 mass
+        @ createVerticalStack ((0.0, 0.0, 0.5) |||> Vector3D.create) 3 1.0 mass
 
     Simulator(
         rigidBodyPrototypes,
@@ -182,7 +182,7 @@ let main _ =
     let sim = prepareSimulator ()
 
     let renderablesDict =
-        sim.ObjectIdentifiers
+        sim.ObjectsIdentifiers
         |> Set.toSeq
         |> Seq.map (fun key -> (key, objectToRenderable sim key))
         |> Map.ofSeq

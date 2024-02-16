@@ -96,29 +96,27 @@ module CollisionDetection =
                     >> SetOf2.max
                 )
 
+            ///get closest point between two edges
             let getContactPoint (edge1: Vector3D SetOf2) (edge2: Vector3D SetOf2) =
-                let pOne = edge1 |> SetOf2.fst
-                let pTwo = edge2 |> SetOf2.fst
+                let DA = (edge1 |> SetOf2.snd) - (edge1 |> SetOf2.fst)
+                let DB = (edge2 |> SetOf2.snd) - (edge2 |> SetOf2.fst)
 
-                let dOne = (edge1 |> SetOf2.snd) - pOne
-                let dTwo = (edge2 |> SetOf2.snd) - pTwo
+                let r = (edge1 |> SetOf2.fst) - (edge2 |> SetOf2.fst)
+                let a = DA |> dotProduct DA
+                let e = DB |> dotProduct DB
+                let f = DB |> dotProduct r
+                let c = DA |> dotProduct r
 
-                let smOne = pOne.X * pOne.X + pOne.Y * pOne.Y + pOne.Z * pOne.Z
-                let smTwo = pTwo.X * pTwo.X + pTwo.Y * pTwo.Y + pTwo.Z * pTwo.Z
-                let dpOneTwo = dTwo |> dotProduct dOne
+                let b = DA |> dotProduct DB
+                let denom = a * e - b * b
 
-                let toSt = pOne - pTwo
-                let dpStaOne = dOne |> dotProduct toSt
-                let dpStaTwo = dTwo |> dotProduct toSt
+                let TA = (b * f - c * e) / denom
+                let TB = (b * TA + f) / e
 
-                let denom = smOne * smTwo - dpOneTwo * dpOneTwo
-                let mua = (dpOneTwo * dpStaTwo - smTwo * dpStaOne) / denom
-                let mub = (smOne * dpStaTwo - dpOneTwo * dpStaOne) / denom
+                let CA = (edge1 |> SetOf2.fst) + DA * TA
+                let CB = (edge2 |> SetOf2.fst) + DB * TB
 
-                let cOne = pOne + dOne * mua
-                let cTwo = pTwo + dTwo * mub
-
-                cOne * 0.5 + cTwo * 0.5
+                CA * 0.5 + CB * 0.5
 
             monad {
                 let! config = ask
@@ -132,12 +130,13 @@ module CollisionDetection =
                 let cp =
                     getContactPoint (collidingEdges |> SetOf2.fst) (collidingEdges |> SetOf2.snd)
 
-                { ContactPoints =
+                let contactPoints =
                     { Normal = collisionNormalFromFirstBox
                       Position = cp
-                      Penetration = penetration }
-                    |> List.singleton }
-                |> Some
+                      Penetration = -penetration }
+                    |> List.singleton
+
+                { ContactPoints = contactPoints } |> Some
             }
 
         let separationAxis =
@@ -170,7 +169,6 @@ module CollisionDetection =
                 Penetration = penetration
                 CollisionNormalFromReference = normal } ->
 
-                //Option.None |> Reader.Return
                 generateEdgeContactPoints normal penetration ([ refBox; incidentBox ] |> SetOf2.ofList) axes.EdgesAxes
 
     open SetOf2
