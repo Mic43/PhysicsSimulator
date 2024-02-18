@@ -37,10 +37,12 @@ module Utils =
             accumulator
         else
             let maximumElement = rest |> Set.toSeq |> Seq.head
-
-            //TODO: fix tailcall
-            subSetsOf2Ag (processed |> Set.add maximumElement) (rest |> Set.remove maximumElement) accumulator
-            |> Set.union (processed |> Set.map (fun el -> [ el; maximumElement ] |> Set.ofList))
+            
+            subSetsOf2Ag
+                (processed |> Set.add maximumElement)
+                (rest |> Set.remove maximumElement)
+                (accumulator
+                 |> Set.union (processed |> Set.map (fun el -> [ el; maximumElement ] |> Set.ofList)))
 
     let subSetsOf2Tail set = subSetsOf2Ag Set.empty set Set.empty
 
