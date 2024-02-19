@@ -1,6 +1,10 @@
 namespace PhysicsSimulator.Utilities
 
 open Microsoft.FSharp.Core
+open FSharpPlus
+open FSharpPlus.Data
+open FSharpPlus.Control
+
 
 // [<AutoOpen>]
 // module Configuration =
@@ -37,7 +41,7 @@ module Utils =
             accumulator
         else
             let maximumElement = rest |> Set.toSeq |> Seq.head
-            
+
             subSetsOf2Ag
                 (processed |> Set.add maximumElement)
                 (rest |> Set.remove maximumElement)
@@ -53,3 +57,6 @@ module Utils =
     let equals epsilon (a: float) b = (b - a |> abs) <= epsilon
 
     let clamp low high value = high |> min value |> max low
+
+    let inline mapWith (f: 'T -> 'U) (collection: '``Functor<'T>``) : '``Functor<<'T*'U>>`` =
+        collection |> map (fun t -> (t, f t))

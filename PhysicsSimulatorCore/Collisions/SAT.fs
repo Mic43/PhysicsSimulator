@@ -4,7 +4,6 @@ open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
 
 open FSharpPlus
-open FSharpPlus.Operators
 
 module SAT =
     open Vector3D
@@ -27,6 +26,59 @@ module SAT =
           Incident: OrientedBox
           Penetration: float
           CollisionNormalFromReference: NormalVector }
+
+    module SphereBox =
+        type SATResult =
+            { CollidedFace: Face
+              SphereCenter:Vector3D
+              Penetration: float
+              CollisionNormalFromBox: NormalVector }
+        
+        let tryFindSeparatingAxis (object1: Sphere * RigidBody) (object2: Box * RigidBody) =
+            let orientedBox = object2 ||> OrientedBox.create
+            let spherePosition = (object1 |> snd).MassCenterPosition
+            let sphereRadius = (object1 |> fst).Radius
+            let facesAxes = orientedBox.Faces |> mapWith (_.Normal)
+
+            let tryGetCollisionDataForAxis (axis: NormalVector) : PossibleCollisionData option =
+                let vertices = orientedBox.Vertices |> List.map (dotProduct axis.Get)
+
+                let a = vertices |> List.min
+                let b = vertices |> List.max
+
+                let c = spherePosition |> dotProduct axis.Get
+                let c1 = c + sphereRadius
+                let c2 = c - sphereRadius
+
+                if c1 >= a && c1 <= b then
+                    { NormalFromTarget = axis
+                      Penetration = c1 - a }
+                    |> Some
+                elif c2 >= a && c2 <= b then
+                    { NormalFromTarget = axis
+                      Penetration = c2 - b }
+                    |> Some
+                else
+                    None
+
+            let possibleCollisions =
+                facesAxes
+                |> Seq.map (fun (face, axis) ->
+                    axis
+                    |> tryGetCollisionDataForAxis
+                    |> Option.map (fun collisionData -> (face, collisionData)))
+
+            possibleCollisions
+            |> sequence
+            |> Option.map (
+                Seq.minBy (fun (_, cd) -> cd.Penetration)
+                >> (fun (face, cd) ->
+                    { CollidedFace = face
+                      Penetration = cd.Penetration
+                      CollisionNormalFromBox = cd.NormalFromTarget
+                      SphereCenter = spherePosition })
+            )
+
 
     // axis must correspond to one of the target's vertices
     let private tryGetCollisionDataForAxis polyhedrons (axis: NormalVector) : PossibleCollisionData option =
@@ -74,6 +126,12 @@ module SAT =
                   Penetration = collisionData.Penetration }
         }
 
+    let private getPossibleCollisions axesWithData =
+        axesWithData
+        |> Seq.map (fun (origin, boxes, axis) ->
+            tryGetCollisionDataForAxis boxes axis
+            |> Option.map (fun collisionData -> (origin, collisionData, boxes)))
+
     let tryFindSeparatingAxis (objects: (Box * RigidBody) SetOf2) : SATResult option =
         let bodies = objects |> SetOf2.map snd
         let orientedBoxes = objects |> SetOf2.map (fun p -> p ||> OrientedBox.create)
@@ -83,7 +141,7 @@ module SAT =
             - (bodies |> SetOf2.fst).MassCenterPosition
 
         let facesAxes =
-            orientedBoxes |> SetOf2.map _.Faces |> SetOf2.map (Seq.map (_.Normal))
+            orientedBoxes |> SetOf2.map _.Faces |> SetOf2.map (List.map (_.Normal))
 
         let edgeAxes =
             seq {
@@ -108,10 +166,4 @@ module SAT =
                     yield ({ EdgeSATAxisData.EdgesAxes = edge } |> Edge, orientedBoxes, edgeSepAxis)
             }
 
-        let possibleCollisions =
-            axesWithData
-            |> Seq.map (fun (origin, boxes, axis) ->
-                tryGetCollisionDataForAxis boxes axis
-                |> Option.map (fun collisionData -> (origin, collisionData, boxes)))
-
-        possibleCollisions |> chooseSeparationAxis
+        axesWithData |> getPossibleCollisions |> chooseSeparationAxis

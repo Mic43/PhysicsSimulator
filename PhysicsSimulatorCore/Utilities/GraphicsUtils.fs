@@ -6,7 +6,7 @@ open FSharpPlus
 module GraphicsUtils =
     open Vector3D
 
-    let getClosestPointTo (vertex1: Vector3D, vertex2: Vector3D) position =
+    let getClosestPointToEdge (vertex1: Vector3D, vertex2: Vector3D) position =
         let diff_AP = position - vertex1
         let diff_AB = vertex2 - vertex1
 
@@ -29,7 +29,7 @@ module GraphicsUtils =
 
         seq {
             for startPoint, endPoint in edges do
-                let edgeClosestPoint = position |> getClosestPointTo (startPoint, endPoint)
+                let edgeClosestPoint = position |> getClosestPointToEdge (startPoint, endPoint)
                 let diff = position - edgeClosestPoint
                 yield (diff |> dotProduct diff, edgeClosestPoint)
         }
