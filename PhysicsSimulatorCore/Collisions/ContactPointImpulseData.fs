@@ -22,14 +22,14 @@ module ContactPointImpulseData =
     let init (targetBody: RigidBody) (otherBody: RigidBody) baumgarteBias (contactPoint: ContactPoint) =
         let K body (offset: Vector3D) =
             match body.MassCenter.Mass with
-            | Mass.Infinite -> Matrix3.zero.Get
+            | Mass.Infinite -> Matrix3.zero
             | Mass.Value _ ->
-                body.MassCenter.GetInverseMassMatrix().Get
-                + (offset |> Matrix3.hatOperator).Get.Transpose()
-                  * body.CalcRotationalInertiaInverse().Get
-                  * (offset |> Matrix3.hatOperator).Get
+                body.MassCenter.GetInverseMassMatrix()
+                + (offset |> Matrix3.hatOperator |> Matrix3.transposed)
+                  * body.CalcRotationalInertiaInverse()
+                  * (offset |> Matrix3.hatOperator)
 
-        let normal = contactPoint.Normal.Get.Get
+        let normal = contactPoint.Normal.Get
         let offsetTarget = contactPoint.Position - targetBody.MassCenterPosition
         let offsetOther = contactPoint.Position - otherBody.MassCenterPosition
 
@@ -44,7 +44,7 @@ module ContactPointImpulseData =
         let vRelTan = vRel - vRelNorm * contactPoint.Normal.Get
         let tangentDir = vRelTan |> Vector3D.normalized
 
-        let massTangent = tangentDir.Get.Get * (totalM * tangentDir.Get.Get)
+        let massTangent = tangentDir.Get * (totalM * tangentDir.Get)
 
         { BaumgarteBias = baumgarteBias
           AccumulatedNormalImpulse = 0

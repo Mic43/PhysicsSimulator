@@ -4,8 +4,6 @@ open FSharpPlus.Data
 open PhysicsSimulator
 open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
-
-open MathNet.Numerics.LinearAlgebra
 open FSharpPlus
 
 type ContactPoint =
@@ -28,11 +26,7 @@ module CollisionDetection =
     open Vector3D
     open SAT
 
-    let private detectBoxBoxCollision
-        (boxCollider1, body1)
-        (boxCollider2, body2)
-        : Reader<Configuration, CollisionData Option> =
-
+    let private detectBoxBoxCollision (boxCollider1, body1) (boxCollider2, body2) =
         let generateFaceContactPoints normal referenceFaces otherFaces : Reader<Configuration, CollisionData Option> =
             monad {
                 let! (config: Configuration) = ask
@@ -176,7 +170,7 @@ module CollisionDetection =
             SphereBox.tryFindSeparatingAxis (sphere, bodySphere) (box, bodyBox)
             |> Option.map (fun result ->
                 let startP = result.SphereCenter
-                let endP = result.SphereCenter + result.CollisionNormalFromBox.Get * sphere.Radius
+                let endP = result.SphereCenter - result.CollisionNormalFromBox.Get * sphere.Radius
 
                 let position =
                     (startP, endP)
@@ -210,13 +204,10 @@ module CollisionDetection =
             |> Some
         |> Reader.Return
 
-    open SetOf2
-
     /// Collision Normal vector points from the first to the second object in pair
-    let areColliding (pair: SimulatorObject SetOf2) : Reader<Configuration, CollisionData Option> =
-        let objects = pair |> map _.PhysicalObject
-        let first = pair |> fst
-        let second = pair |> snd
+    let areColliding (pair: SimulatorObject SetOf2) : Reader<Configuration, CollisionData Option> =      
+        let first = pair |> SetOf2.fst
+        let second = pair |> SetOf2.snd
 
         match (first.PhysicalObject, second.PhysicalObject) with
         | RigidBody body1, RigidBody body2 ->

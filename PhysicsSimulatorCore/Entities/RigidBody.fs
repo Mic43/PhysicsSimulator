@@ -17,8 +17,7 @@ type RigidBody =
       PrincipalRotationalInertiaInverse: Matrix3 }
 
     static member CalcFullRotationalInertia (orientation: Matrix3) (inertiaMatrix: Matrix3) =
-        let orientation = orientation.Get
-        orientation * inertiaMatrix.Get * orientation.Transpose() |> Matrix3.ofMatrix
+        orientation * inertiaMatrix * (orientation |> Matrix3.transposed)
 
     member this.CalcRotationalInertia() =
         RigidBody.CalcFullRotationalInertia this.Variables.Orientation this.PrincipalRotationalInertia
@@ -30,8 +29,7 @@ type RigidBody =
     member this.MassCenterVelocity = this.MassCenter.Variables.Velocity
 
     member this.CalcAngularVelocity() =
-        this.CalcRotationalInertiaInverse().Get * this.Variables.AngularMomentum.Get
-        |> Vector3D.ofVector
+        this.CalcRotationalInertiaInverse() * this.Variables.AngularMomentum
 
     member this.Axes =
         [ (1.0, 0.0, 0.0); (0.0, 1.0, 0.0); (0.0, 0.0, 1.0) ]
@@ -39,13 +37,14 @@ type RigidBody =
             (|||>)
             >> (fun f -> Vector3D.create |> f)
             >> (GraphicsUtils.toWorldCoordinates this.Variables.Orientation Vector3D.zero)
-            >> Vector3D.normalized          
+            >> Vector3D.normalized
         )
 
 type RigidBodyIntegrator = TimeSpan -> Torque -> RotationalInertiaInverse -> RigidBodyVariables -> RigidBodyVariables
 
 module RigidBody =
-    let getAxes (rigidBody:RigidBody) = rigidBody.Axes
+    let getAxes (rigidBody: RigidBody) = rigidBody.Axes
+
     let create
         initialOrientation
         initialVelocity
@@ -74,7 +73,7 @@ module RigidBody =
                   Velocity = initialVelocity }
               Particle.Mass = mass }
           PrincipalRotationalInertia = principalRotationalInertia
-          PrincipalRotationalInertiaInverse = principalRotationalInertia.Get.Inverse() |> Matrix3.ofMatrix
+          PrincipalRotationalInertiaInverse = principalRotationalInertia |> Matrix3.inverted
           ElasticityCoeff = elasticityCoeff
           StaticFrictionCoeff = staticFrictionCoeff
           KineticFrictionCoeff = kineticFrictionCoeff }
@@ -144,34 +143,34 @@ module RigidBodyIntegrators =
 
             let newAngMomentum = old.AngularMomentum + angMomentumChange
 
-            let angularVelocity = inertiaInverse.Get * newAngMomentum.Get |> ofVector
+            let angularVelocity = inertiaInverse * newAngMomentum
 
             let axis = angularVelocity * totalSeconds
             let angle = axis |> l2Norm
 
             let newOrientation =
-                (angle |> RotationMatrix3D.fromAxisAndAngle (axis |> normalized)).Get
-                * old.Orientation.Get
+                (angle |> RotationMatrix3D.fromAxisAndAngle (axis |> normalized))
+                * old.Orientation
 
-            { Orientation = newOrientation |> ofMatrix |> orthonormalize
+            { Orientation = newOrientation |> orthonormalize
               AngularMomentum = newAngMomentum }
 
 
     let (augmentedSecondOrder: RigidBodyIntegrator) =
-        fun dt (Vector3D torque) inertiaInverse old ->
+        fun dt torque inertiaInverse old ->
             let totalSeconds = dt.TotalSeconds
 
             let angMomentumChange = torque * totalSeconds
 
-            let oldAngMomentum = old.AngularMomentum.Get
+            let oldAngMomentum = old.AngularMomentum
 
-            let angularVelocity = inertiaInverse.Get * oldAngMomentum
+            let angularVelocity = inertiaInverse * oldAngMomentum
 
-            let v = oldAngMomentum |> crossProductV angularVelocity
+            let v = oldAngMomentum |> crossProduct angularVelocity
 
-            let deriv = inertiaInverse.Get * (torque - v)
+            let deriv = inertiaInverse * (torque - v)
 
-            let comp1 = angularVelocity |> crossProductV deriv
+            let comp1 = angularVelocity |> crossProduct deriv
 
             let axisAverage =
                 angularVelocity
@@ -179,14 +178,13 @@ module RigidBodyIntegrators =
                 + (totalSeconds * totalSeconds / 12.0) * comp1
 
             let axis = axisAverage * totalSeconds
-            let angle = axis.Norm(2.0)
+            let angle = axis |> l2Norm
 
             let newOrientation =
-                (RotationMatrix3D.fromAxisAndAngle (axis |> ofVector |> normalized) angle).Get
-                * old.Orientation.Get
+                (RotationMatrix3D.fromAxisAndAngle (axis |> normalized) angle) * old.Orientation
 
-            { Orientation = newOrientation |> ofMatrix |> orthonormalize
-              AngularMomentum = old.AngularMomentum + (angMomentumChange |> ofVector) }
+            { Orientation = newOrientation |> orthonormalize
+              AngularMomentum = old.AngularMomentum + angMomentumChange }
 
 module RigidBodyMotion =
 

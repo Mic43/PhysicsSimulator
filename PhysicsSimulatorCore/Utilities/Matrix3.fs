@@ -11,7 +11,14 @@ type Matrix3 =
         match this with
         | Value v -> v
 
-module Matrix3 =    
+    static member (*)(scalar: float, m: Matrix3) = scalar * m.Get |> Value
+    static member (*)(m1: Matrix3, m2: Matrix3) = m1.Get * m2.Get |> Value
+    static member (*)(v: Vector3D, m: Matrix3) = v.Get * m.Get |> Vector3D.ofVector
+    static member (*)(m: Matrix3, v: Vector3D) = m.Get * v.Get |> Vector3D.ofVector
+    static member (+)(m1: Matrix3, m2: Matrix3) = m1.Get + m2.Get |> Value
+    static member (-)(m1: Matrix3, m2: Matrix3) = m1.Get - m2.Get |> Value
+
+module Matrix3 =
     let (|Matrix3|) (Matrix3.Value value) = value
 
     let ofMatrix (matrix: Matrix<float>) =
@@ -29,9 +36,11 @@ module Matrix3 =
               [ -vector.Y; vector.X; 0.0 ] ]
         |> Matrix3.Value
 
+    let transposed (matrix: Matrix3) = matrix.Get.Transpose() |> Matrix3.Value
+    let inverted (matrix: Matrix3) = matrix.Get.Inverse() |> Matrix3.Value
     let orthonormalize (matrix: Matrix3) =
         let matrix = matrix.Get
-      
+
         let deltaCol (c1: Vector<float>) c2 =
             c1.DotProduct(c2) / c1.DotProduct(c1) * c1
 
@@ -57,7 +66,7 @@ module RotationMatrix3D =
 
     let fromAxisAndAngle (NormalVector.Value axis) angle =
         let axis = axis.Get
-        
+
         let ux = axis.Item(0)
         let uy = axis.Item(1)
         let uz = axis.Item(2)

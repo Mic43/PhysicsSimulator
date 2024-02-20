@@ -97,7 +97,7 @@ module GraphicsUtils =
                                      match (iStartIn, isEndIn) with
                                      | true, true -> [ endPoint ]
                                      | true, false -> getEdgeIntersection startPoint endPoint
-                                     | false, true ->  endPoint :: getEdgeIntersection startPoint endPoint
+                                     | false, true -> endPoint :: getEdgeIntersection startPoint endPoint
                                      | false, false -> [])
                         }
                         |> Seq.toList
@@ -107,6 +107,4 @@ module GraphicsUtils =
         loop inputPolygon clipPlanes |> List.distinct
 
     let toWorldCoordinates (rotationMatrix: Matrix3) (translationVector: Vector3D) (v: Vector3D) =
-        v
-        |> ((fun v -> rotationMatrix.Get * v.Get) >> (fun v -> v + translationVector.Get))
-        |> ofVector
+        v |> ((fun v -> rotationMatrix * v) >> (fun v -> v + translationVector))

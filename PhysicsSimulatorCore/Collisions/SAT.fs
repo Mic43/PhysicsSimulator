@@ -47,16 +47,16 @@ module SAT =
                 let b = vertices |> List.max
 
                 let c = spherePosition |> dotProduct axis.Get
-                let c1 = c + sphereRadius
-                let c2 = c - sphereRadius
+                let c1 = [c + sphereRadius;c - sphereRadius] |> List.min
+                let c2 = [c + sphereRadius;c - sphereRadius] |> List.max
 
                 if c1 >= a && c1 <= b then
                     { NormalFromTarget = axis
-                      Penetration = c1 - a }
+                      Penetration = b - c1 }
                     |> Some
-                elif c2 >= a && c2 <= b then
+                elif  c1 <= a && c2 >= a then
                     { NormalFromTarget = axis
-                      Penetration = c2 - b }
+                      Penetration = c2 - a }
                     |> Some
                 else
                     None
