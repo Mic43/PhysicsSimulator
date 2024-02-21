@@ -10,16 +10,21 @@ module Friction =
 
     let private compoundFrictionCoeff coeff1 coeff2 = max coeff1 coeff2
 
-    let private clamped impulseValue maxFriction : State<ContactPointImpulseData, float> =
+    let private clamped maxFriction (impulseValue: float SetOf2) : State<ContactPointImpulseData, float SetOf2> =
         monad {
             let! impulseAccOld = State.gets (_.AccumulatedFrictionImpulse)
 
             let clampedImpulseValue, newAccumulatedFrictionImpulse =
-                impulseAccOld
-                |> State.run (
-                    impulseValue
-                    |> ContactPointImpulseData.clampImpulseValue -maxFriction (maxFriction |> Some)
-                )
+                (impulseAccOld, impulseValue)
+                ||> SetOf2.zip
+                |> SetOf2.map (fun (accumulated, impulse) ->
+                    accumulated
+                    |> State.run (
+                        impulse
+                        |> (ContactPointImpulseData.clampImpulseValue -maxFriction (maxFriction |> Some))
+                    ))
+                |> SetOf2.unzip
+
             do!
                 State.modify (fun oldState ->
                     { oldState with
@@ -34,7 +39,7 @@ module Friction =
     let calculateImpulse
         (bodies: RigidBody SetOf2)
         (contactPoint: ContactPoint)
-        : State<ContactPointImpulseData, Vector3D> =
+        : State<ContactPointImpulseData, Vector3D SetOf2> =
 
         let targetBody = bodies |> SetOf2.fst
         let otherBody = bodies |> SetOf2.snd
@@ -57,12 +62,13 @@ module Friction =
                 - (cpImpulseData.PositionOffsetFromTarget
                    |> RigidBodyMotion.calculateVelocityAtOffset targetBody)
 
-            let vRelNorm = vRel |> dotProduct normal
-            let vRelTan = vRel - vRelNorm * normal
+            let vRelNorm = (vRel |> dotProduct normal) * normal
+            let vRelTan = vRel - vRelNorm
             let tangentDir = vRelTan |> normalized
+            let tangentDir2 = vRelTan |> crossProduct vRelNorm |> normalized
 
-            if tangentDir.Get |> isZero 0.00001  || cpImpulseData.MassTangent = 0 then
-                return zero
+            if tangentDir.Get |> isZero 0.00001 then
+                return (zero, zero) |> SetOf2.ofPair
             else
                 // let K body (offset: Vector3D) =
                 //     match body.MassCenter.Mass with
@@ -72,24 +78,30 @@ module Friction =
                 //         + (offset |> Matrix3.hatOperator).Get.Transpose()
                 //           * body.CalcRotationalInertiaInverse().Get
                 //           * (offset |> Matrix3.hatOperator).Get
-                //
+
                 // let massTangent =
                 //     (K targetBody cpImpulseData.PositionOffsetFromTarget)
                 //     + (K otherBody cpImpulseData.PositionOffsetFromOther)
+                // let massTangent = massTangent |> Matrix3.ofMatrix
+                // let massTangent = tangentDir.Get * (massTangent * tangentDir.Get)
 
-                let massTangent = cpImpulseData.MassTangent //tangentDir.Get.Get * (massTangent * tangentDir.Get.Get)
+                let massTangent = cpImpulseData.MassTangent
 
                 // printfn $"vRel: {vRel} tan dir: {tangentDir}"
 
-                let impulseValueBase =
+                let impulsesValueBase =
                     // if shouldApplyKineticFriction normal normalImpulse compoundStaticFriction then
                     //     compoundDynamicFriction * (normalImpulse |> l2Norm)
                     // else
-                    (vRelTan |> l2Norm) / massTangent
+                    massTangent |> SetOf2.map (fun mt -> (vRelTan |> l2Norm) / mt)
 
                 let maxFriction = compoundDynamicFriction * cpImpulseData.AccumulatedNormalImpulse
 
-                let! impulseValue = -impulseValueBase |> clamped maxFriction
+                let! impulseValue = impulsesValueBase |> SetOf2.map (~-) |> (clamped maxFriction)
 
-                return impulseValue * tangentDir.Get
+                return
+                    (tangentDir, tangentDir2)
+                    |> SetOf2.ofPair
+                    |> SetOf2.zip impulseValue
+                    |> SetOf2.map (fun (value, dir) -> value * dir.Get)
         }
