@@ -188,10 +188,13 @@ module RigidBodyIntegrators =
 
 module RigidBodyMotion =
 
-    let applyImpulse impulse (offset: Vector3D) rigidBody =
+    let applyImpulse (offset: Vector3D) rigidBody impulse =
         { rigidBody with
             MassCenter = impulse |> ParticleMotion.applyImpulse rigidBody.MassCenter
             Variables.AngularMomentum = rigidBody.Variables.AngularMomentum + (impulse |> Vector3D.crossProduct offset) }
+
+    let applyImpulses (impulses: Vector3D list) offset (rigidBody: RigidBody) =
+        impulses |> List.fold (applyImpulse offset) rigidBody
 
     let update
         (particleIntegrator: ParticleIntegrator)

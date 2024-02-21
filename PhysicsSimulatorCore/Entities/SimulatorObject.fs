@@ -62,7 +62,7 @@ module SimulatorObject =
     let applyImpulse impulse offset object =
         let applyImpulseToObject object =
             match object with
-            | RigidBody rigidBody -> RigidBodyMotion.applyImpulse impulse offset rigidBody |> RigidBody
+            | RigidBody rigidBody -> impulse |> RigidBodyMotion.applyImpulse offset rigidBody |> RigidBody
             | Particle particle -> impulse |> ParticleMotion.applyImpulse particle |> Particle
 
         { object with

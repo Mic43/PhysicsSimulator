@@ -98,20 +98,20 @@ module CollisionResponse =
                         ([ normalImpulse; -normalImpulse ] |> ofList, offsets, bodies)
                         |||> zip3
                         |> map (fun (impulse, offset, rigidBody) ->
-                            rigidBody |> RigidBodyMotion.applyImpulse impulse offset)
+                            impulse |> RigidBodyMotion.applyImpulse offset rigidBody)
                 }
 
             let resolveFriction contactPoint bodies =
                 monad {
                     let! offsets = State.gets ContactPointImpulseData.offsets
-                    let! tangentImpulse = contactPoint |> Friction.calculateImpulse bodies
+                    let! tangentImpulses = contactPoint |> Friction.calculateImpulse bodies
 
                     // tangentImpulse |> printfn "tangent impulse value: %A"
 
-                    ([ tangentImpulse; -tangentImpulse ] |> ofList, offsets, bodies)
+                    ([ tangentImpulses; tangentImpulses |> map(~-)] |> ofList, offsets, bodies)
                     |||> zip3
-                    |> map (fun (impulse, offset, rigidBody) ->
-                        rigidBody |> RigidBodyMotion.applyImpulse impulse offset)
+                    |> map (fun (impulses, offset, rigidBody) ->
+                        rigidBody |> RigidBodyMotion.applyImpulses (impulses |> toList) offset)
                 }
 
             let dummyFriction bodies = bodies |> State.Return
