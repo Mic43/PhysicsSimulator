@@ -12,7 +12,7 @@ type SimulatorState =
     private
         { Objects: Map<SimulatorObjectIdentifier, SimulatorObject>
           ExternalForces: Map<SimulatorObjectIdentifier, Vector3D ValueSupplier>
-          ExternalTorque: Map<SimulatorObjectIdentifier, Vector3D>
+          ExternalTorques: Map<SimulatorObjectIdentifier, Vector3D>
           Collisions: Map<SimulatorObjectIdentifier Set, CollisionData>
           Configuration: Configuration }
 
@@ -48,13 +48,27 @@ module SimulatorStateBuilder =
 
         { Objects = objectMap
           ExternalForces = externalForces
-          ExternalTorque = identifiers |> Seq.map (fun i -> (i, Vector3D.zero)) |> Map.ofSeq
+          ExternalTorques = identifiers |> Seq.map (fun i -> (i, Vector3D.zero)) |> Map.ofSeq
           Configuration = Configuration.getDefault
           Collisions = Map.empty }
 
-    let withConfiguration configuration state =
-        { state with
+    let withConfiguration configuration simulatorState =
+        { simulatorState with
             Configuration = configuration }
+
+    let withPrototype objectProto simulatorState =
+        let id =
+            (simulatorState.Objects |> Map.keys |> Seq.max).Get + 1
+            |> SimulatorObjectIdentifier.fromInt
+
+        let object = id |> RigidBodyPrototype.build objectProto
+
+        { simulatorState with
+            Objects = simulatorState.Objects |> Map.add id object
+            ExternalForces =
+                simulatorState.ExternalForces
+                |> Map.add id (objectProto |> getExternalForceSupplier)
+            ExternalTorques = simulatorState.ExternalTorques |> Map.add id Vector3D.zero }
 
 module SimulatorState =
     let private particleIntegrator = ParticleIntegrators.forwardEuler
@@ -68,7 +82,7 @@ module SimulatorState =
             objectUpdater
                 dt
                 (simulatorState.ExternalForces[id].GetValue())
-                simulatorState.ExternalTorque[id]
+                simulatorState.ExternalTorques[id]
                 simulatorState.Objects[id].PhysicalObject
 
         { simulatorState.Objects[id] with

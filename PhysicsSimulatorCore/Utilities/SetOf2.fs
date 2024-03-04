@@ -43,6 +43,7 @@ module SetOf2 =
     let map f (set: SetOf2<'T>) = set.Get |> List.map f |> ofList
     let join (setOfSets: SetOf2<SetOf2<'T>>) =
         setOfSets |> toList |> List.collect toList
+    let fold folder (state: 'State) s = s |> toList |> List.fold folder state
     let zip (set1: SetOf2<'T>) (set2: SetOf2<'V>) = set2.Get |> List.zip set1.Get |> ofList
 
     let zip3 (set1: SetOf2<'T>) (set2: SetOf2<'V>) (set3: SetOf2<'U>) =
