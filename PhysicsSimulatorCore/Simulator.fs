@@ -13,34 +13,34 @@ type SimulatorTaskState =
 type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
     let simulationSpeedMultiplier = defaultArg simulationSpeedMultiplier0 1.0
     let configuration = defaultArg configuration0 Configuration.getDefault
-
+    let simulationStepInterval = TimeSpan.FromMilliseconds(10.0)
+    let mutable taskState = SimulatorTaskState.Stopped    
+    let simulatorStateChanged = Event<SimulatorState>()
+      
     let simulatorState: SimulatorState ref =
         simulatorObjects
         |> SimulatorStateBuilder.fromPrototypes
         |> SimulatorStateBuilder.withConfiguration configuration
         |> ref
-
-    let simulationStepInterval = TimeSpan.FromMilliseconds(10.0)
-
-    let mutable taskState = SimulatorTaskState.Stopped
-
+        
     let broadPhaseCollisions (simulatorState: SimulatorState) =
         (simulatorState.Objects |> Map.keys |> Set.ofSeq)
-
+    
     let updateSimulation =
         async {
             let collidingObjectsCandidates = simulatorState.Value |> broadPhaseCollisions
 
             let newState =
                 simulatorState.Value
-                |> CollisionResolver.withCollisionResponseGlobal simulationStepInterval collidingObjectsCandidates
+                |> CollisionResolver.resolveAll simulationStepInterval collidingObjectsCandidates
                 |> SimulatorState.update simulationStepInterval
 
             simulatorState.Value <- newState
-        }
-
+            newState |> simulatorStateChanged.Trigger
+        }    
     let cancellationTokenSource = new CancellationTokenSource()
-
+     
+    member this.SimulationStateChanged = simulatorStateChanged.Publish
     member this.State = taskState
     member this.ObjectsIdentifiers = simulatorState.Value.Objects.Keys |> set
     member this.CollisionsIdentifiers = simulatorState.Value.Collisions.Keys |> List.ofSeq
@@ -49,9 +49,12 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
         with get identifier = simulatorState.Value.Objects[identifier]
     member this.PhysicalObject
         with get identifier = this.SimulatorObject(identifier).PhysicalObject
+    member this.AllPhysicalObjects = simulatorState.Value.Objects |> Map.values |> List.ofSeq  
+    
     member this.Collision
         with get identifier = simulatorState.Value.Collisions |> Map.tryFind identifier
     member this.AllCollisions = simulatorState.Value.Collisions |> Map.values |> List.ofSeq        
+    
     member this.Configuration = simulatorState.Value.Configuration
 
     member this.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset =
@@ -68,14 +71,14 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
         let rec updateSingleFrame () =
             async {
                 do!
-                    if taskState = Started then
-                        updateSimulation
+                    if taskState = Started then                                                
+                        updateSimulation                        
                     else
                         async { () }
 
                 do! simulationStepInterval.Divide(simulationSpeedMultiplier) |> Async.Sleep
 
-                return! updateSingleFrame ()
+                return! updateSingleFrame()
             }
 
         Async.Start(updateSingleFrame (), cancellationTokenSource.Token)
