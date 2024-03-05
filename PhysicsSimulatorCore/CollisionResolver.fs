@@ -48,7 +48,7 @@ module CollisionResolver =
         tryHandleCollision dt collidingObjectsCandidates curSimulationState
         |> Option.defaultValue curSimulationState
 
-    let withCollisionResponseGlobal dt collidingObjectsCandidates (curSimulationState: SimulatorState) =
+    let resolveAll dt collidingObjectsCandidates (curSimulationState: SimulatorState) =
         let withCollisionResponse simulatorState objectIdentifiers =
             objectIdentifiers |> SetOf2.ofSet |> withCollisionResponse dt simulatorState
 

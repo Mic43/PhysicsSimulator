@@ -85,7 +85,7 @@ module Friction =
                     // if shouldApplyKineticFriction normal normalImpulse compoundStaticFriction then
                     //     compoundDynamicFriction * (normalImpulse |> l2Norm)
                     // else
-                    (vRelTan |> l2Norm) / massTangent
+                    (vRel  |> dotProduct tangentDir.Get) / massTangent
 
                 let maxFriction = compoundDynamicFriction * cpImpulseData.AccumulatedNormalImpulse
 

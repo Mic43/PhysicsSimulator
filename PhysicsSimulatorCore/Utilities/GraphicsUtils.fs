@@ -108,3 +108,16 @@ module GraphicsUtils =
 
     let toWorldCoordinates (rotationMatrix: Matrix3) (translationVector: Vector3D) (v: Vector3D) =
         v |> ((fun v -> rotationMatrix * v) >> (fun v -> v + translationVector))
+    
+    let computeTangentVectors (normal: NormalVector) =
+        let v = (1.0 / 3.0) |> sqrt
+        let normal = normal.Get
+
+        let tangent =
+            if (normal.X |> abs) >= v then
+                create normal.Y normal.X 0.0
+            else
+                create 0.0 normal.Z -normal.Y
+            |> normalized
+
+        (tangent, tangent.Get |> crossProduct normal |> NormalVector.createUnsafe)
