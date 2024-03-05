@@ -120,4 +120,4 @@ module GraphicsUtils =
                 create 0.0 normal.Z -normal.Y
             |> normalized
 
-        (tangent, tangent.Get |> crossProduct normal |> NormalVector.createUnsafe)
+        (tangent, tangent.Get |> crossProduct normal |> NormalVector.createUnsafe) ||> SetOf2.create

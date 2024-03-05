@@ -43,12 +43,7 @@ module Friction =
 
         let targetBody = bodies |> SetOf2.fst
         let otherBody = bodies |> SetOf2.snd
-        let normal = contactPoint.Normal.Get
-
-        let compoundStaticFriction =
-            targetBody.StaticFrictionCoeff
-            |> compoundFrictionCoeff otherBody.StaticFrictionCoeff
-
+           
         let compoundDynamicFriction =
             targetBody.KineticFrictionCoeff
             |> compoundFrictionCoeff otherBody.KineticFrictionCoeff
@@ -61,47 +56,20 @@ module Friction =
                  |> RigidBodyMotion.calculateVelocityAtOffset otherBody)
                 - (cpImpulseData.PositionOffsetFromTarget
                    |> RigidBodyMotion.calculateVelocityAtOffset targetBody)
-
-            let vRelNorm = (vRel |> dotProduct normal) * normal
-            let vRelTan = vRel - vRelNorm
-            // let tangentDir = vRelTan |> normalized
-            // let tangentDir2 = vRelTan |> crossProduct vRelNorm |> normalized
-
+               
             if (cpImpulseData.TangentDirs |> SetOf2.fst).Get |> isZero 0.00001 then
                 return (zero, zero) |> SetOf2.ofPair
-            else
-                // let K body (offset: Vector3D) =
-                //     match body.MassCenter.Mass with
-                //     | Mass.Infinite -> Matrix3.zero.Get
-                //     | Mass.Value _ ->
-                //         body.MassCenter.GetInverseMassMatrix().Get
-                //         + (offset |> Matrix3.hatOperator).Get.Transpose()
-                //           * body.CalcRotationalInertiaInverse().Get
-                //           * (offset |> Matrix3.hatOperator).Get
-
-                // let massTangent =
-                //     (K targetBody cpImpulseData.PositionOffsetFromTarget)
-                //     + (K otherBody cpImpulseData.PositionOffsetFromOther)
-                // let massTangent = massTangent |> Matrix3.ofMatrix
-                // let massTangent = tangentDir.Get * (massTangent * tangentDir.Get)
-
-                let massTangent = cpImpulseData.MassTangent
-
-                // printfn $"vRel: {vRel} tan dir: {tangentDir}"
-
-                let impulsesValueBase =
-                    // if shouldApplyKineticFriction normal normalImpulse compoundStaticFriction then
-                    //     compoundDynamicFriction * (normalImpulse |> l2Norm)
-                    // else
-                    massTangent |> SetOf2.map (fun mt -> (vRelTan |> l2Norm) / mt)
-
+            else               
                 let maxFriction = compoundDynamicFriction * cpImpulseData.AccumulatedNormalImpulse
 
-                let! impulseValue = impulsesValueBase |> SetOf2.map (~-) |> (clamped maxFriction)
+                let impulsesValueBase =                  
+                    cpImpulseData.MassTangent
+                    |> SetOf2.zip cpImpulseData.TangentDirs
+                    |> SetOf2.map (fun (tanDir, massTangent) -> (vRel |> dotProduct tanDir.Get) / massTangent)
 
-                return
-                    // (tangentDir, tangentDir2)
-                    // |> SetOf2.ofPair
+                let! impulseValue = impulsesValueBase |> (clamped maxFriction)
+
+                return                    
                     cpImpulseData.TangentDirs
                     |> SetOf2.zip impulseValue
                     |> SetOf2.map (fun (value, dir) -> value * dir.Get)

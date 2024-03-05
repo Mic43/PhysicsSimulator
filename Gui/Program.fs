@@ -57,12 +57,12 @@ let prepareSimulator () =
           { (0.5 |> RigidBodyPrototype.createDefaultCube) with
               Mass = 50.0 |> Mass.Value
               Position = Vector3D.create 0 -3 1.25 } ]
-        @ createVerticalStack ((0.0, 0.0, 1.5) |||> Vector3D.create) 0 1.0 mass
+        @ createVerticalStack ((0.0, 0.0, 1.5) |||> Vector3D.create) 3 1.0 mass
 
     let sim =
         Simulator(
             rigidBodyPrototypes,
-            0.5,
+           1,
             { Configuration.getDefault with
                 baumgarteTerm = 0.2
                 enableFriction = true }

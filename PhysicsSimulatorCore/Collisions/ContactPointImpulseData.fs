@@ -37,19 +37,10 @@ module ContactPointImpulseData =
         let totalM = (K targetBody offsetTarget) + (K otherBody offsetOther)
         let massNormal = normal * (totalM * normal)
 
-        let vRel =
-            (offsetOther |> RigidBodyMotion.calculateVelocityAtOffset otherBody)
-            - (offsetTarget |> RigidBodyMotion.calculateVelocityAtOffset targetBody)
-
-        let vRelNorm = (vRel |> Vector3D.dotProduct normal) * normal
-        let vRelTan = vRel - vRelNorm
-        let tangentDir = vRelTan |> Vector3D.normalized
-        let tangentDir2 = tangentDir.Get |> Vector3D.crossProduct normal |> Vector3D.normalized
+        let tangentVectors = GraphicsUtils.computeTangentVectors contactPoint.Normal
 
         let massTangent =
-            (tangentDir, tangentDir2)
-            |> SetOf2.ofPair
-            |> SetOf2.map (_.Get >> (fun dir -> dir * (totalM * dir)))
+            tangentVectors |> SetOf2.map (_.Get >> (fun dir -> dir * (totalM * dir)))
 
         { BaumgarteBias = baumgarteBias
           AccumulatedNormalImpulse = 0
@@ -58,7 +49,7 @@ module ContactPointImpulseData =
           MassNormal = massNormal
           AccumulatedFrictionImpulse = (0.0, 0.0) |> SetOf2.ofPair
           MassTangent = massTangent
-          TangentDirs = [tangentDir;tangentDir2] |> SetOf2.ofList }
+          TangentDirs = tangentVectors }
 
     let offsets (contactPointImpulseData: ContactPointImpulseData) = contactPointImpulseData.Offsets
 
