@@ -9,10 +9,11 @@ open PhysicsSimulator.Entities
 type ContactPointImpulseData =
     { BaumgarteBias: float
       AccumulatedNormalImpulse: float
-      AccumulatedFrictionImpulse: float
+      AccumulatedFrictionImpulse: float SetOf2
       PositionOffsetFromTarget: Vector3D
       PositionOffsetFromOther: Vector3D
-      MassTangent: float
+      MassTangent: float SetOf2
+      TangentDirs: NormalVector SetOf2
       MassNormal: float }
 
     member this.Offsets =
@@ -40,19 +41,24 @@ module ContactPointImpulseData =
             (offsetOther |> RigidBodyMotion.calculateVelocityAtOffset otherBody)
             - (offsetTarget |> RigidBodyMotion.calculateVelocityAtOffset targetBody)
 
-        let vRelNorm = vRel |> Vector3D.dotProduct contactPoint.Normal.Get
-        let vRelTan = vRel - vRelNorm * contactPoint.Normal.Get
+        let vRelNorm = (vRel |> Vector3D.dotProduct normal) * normal
+        let vRelTan = vRel - vRelNorm
         let tangentDir = vRelTan |> Vector3D.normalized
+        let tangentDir2 = tangentDir.Get |> Vector3D.crossProduct normal |> Vector3D.normalized
 
-        let massTangent = tangentDir.Get * (totalM * tangentDir.Get)
+        let massTangent =
+            (tangentDir, tangentDir2)
+            |> SetOf2.ofPair
+            |> SetOf2.map (_.Get >> (fun dir -> dir * (totalM * dir)))
 
         { BaumgarteBias = baumgarteBias
           AccumulatedNormalImpulse = 0
           PositionOffsetFromTarget = offsetTarget
           PositionOffsetFromOther = offsetOther
           MassNormal = massNormal
-          AccumulatedFrictionImpulse = 0
-          MassTangent = massTangent }
+          AccumulatedFrictionImpulse = (0.0, 0.0) |> SetOf2.ofPair
+          MassTangent = massTangent
+          TangentDirs = [tangentDir;tangentDir2] |> SetOf2.ofList }
 
     let offsets (contactPointImpulseData: ContactPointImpulseData) = contactPointImpulseData.Offsets
 
@@ -62,7 +68,7 @@ module ContactPointImpulseData =
         monad {
             let! impulseAccOld = State.get
 
-            do! State.modify (fun oldState -> oldState + impulseValue |> clamp minV maxV)
+            do! State.modify (fun oldAccumulated -> oldAccumulated + impulseValue |> clamp minV maxV)
 
             let! newAccumulated = State.get
             return newAccumulated - impulseAccOld
