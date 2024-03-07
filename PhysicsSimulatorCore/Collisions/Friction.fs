@@ -56,21 +56,18 @@ module Friction =
                  |> RigidBodyMotion.calculateVelocityAtOffset otherBody)
                 - (cpImpulseData.PositionOffsetFromTarget
                    |> RigidBodyMotion.calculateVelocityAtOffset targetBody)
-               
-            if (cpImpulseData.TangentDirs |> SetOf2.fst).Get |> isZero 0.00001 then
-                return (zero, zero) |> SetOf2.ofPair
-            else               
-                let maxFriction = compoundDynamicFriction * cpImpulseData.AccumulatedNormalImpulse
+                
+            let maxFriction = compoundDynamicFriction * cpImpulseData.AccumulatedNormalImpulse
 
-                let impulsesValueBase =                  
-                    cpImpulseData.MassTangent
-                    |> SetOf2.zip cpImpulseData.TangentDirs
-                    |> SetOf2.map (fun (tanDir, massTangent) -> (vRel |> dotProduct tanDir.Get) / massTangent)
+            let impulsesValue =                  
+                cpImpulseData.MassTangent
+                |> SetOf2.zip cpImpulseData.TangentDirs
+                |> SetOf2.map (fun (tanDir, massTangent) -> (vRel |> dotProduct tanDir.Get) / massTangent)
 
-                let! impulseValue = impulsesValueBase |> (clamped maxFriction)
+            let! clamped = impulsesValue |> (clamped maxFriction)
 
-                return                    
-                    cpImpulseData.TangentDirs
-                    |> SetOf2.zip impulseValue
-                    |> SetOf2.map (fun (value, dir) -> value * dir.Get)
+            return                    
+                cpImpulseData.TangentDirs
+                |> SetOf2.zip clamped
+                |> SetOf2.map (fun (value, dir) -> value * dir.Get)
         }

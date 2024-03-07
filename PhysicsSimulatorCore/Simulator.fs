@@ -17,6 +17,8 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
     let mutable taskState = SimulatorTaskState.Stopped
     let simulatorStateChanged = Event<SimulatorState>()
 
+    let gate = new SemaphoreSlim(1)
+
     let simulatorState: SimulatorState ref =
         simulatorObjects
         |> SimulatorStateBuilder.fromPrototypes
@@ -29,17 +31,21 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
     let updateSimulation =
         async {
             let collidingObjectsCandidates = simulatorState.Value |> broadPhaseCollisions
-
+            gate.Wait()
             let newState =
                 simulatorState.Value
                 |> CollisionResolver.resolveAll simulationStepInterval collidingObjectsCandidates
                 |> SimulatorState.update simulationStepInterval
 
             simulatorState.Value <- newState
+            gate.Release() |> ignore
             newState |> simulatorStateChanged.Trigger
         }
 
     let cancellationTokenSource = new CancellationTokenSource()
+
+    interface IDisposable with
+        member _.Dispose() = gate.Dispose()
 
     member this.SimulationStateChanged = simulatorStateChanged.Publish
     member this.State = taskState
@@ -63,14 +69,17 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
     member this.Configuration = simulatorState.Value.Configuration
 
     member this.AddObject object =
+        gate.Wait()        
         simulatorState.Value <- simulatorState.Value |> SimulatorStateBuilder.withPrototype object
-        simulatorState.Value |> simulatorStateChanged.Trigger
-
+        gate.Release() |> ignore
+        
+        simulatorState.Value |> simulatorStateChanged.Trigger        
     member this.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset =
+        gate.Wait()
         simulatorState.Value <-
             simulatorState.Value
             |> SimulatorState.applyImpulse physicalObjectIdentifier impulseValue impulseOffset
-
+        gate.Release() |> ignore
         simulatorState.Value |> simulatorStateChanged.Trigger
 
     member this.Start() =

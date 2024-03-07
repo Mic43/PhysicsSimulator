@@ -12,6 +12,7 @@ open SetOf2
 
 type CollisionManifold =
     { Bodies: RigidBody SetOf2
+      TangentDirs: NormalVector SetOf2
       Contacts: List<ContactPoint * ContactPointImpulseData> }
 
 module CollisionResponse =
@@ -30,7 +31,7 @@ module CollisionResponse =
 
             return clampedImpulseValue
         }
-    
+
     let private calculateBaumgarteBias config (timeInterval: TimeSpan) penetration =
         -config.baumgarteTerm / timeInterval.TotalSeconds
         * ((penetration + config.allowedPenetration) |> min 0.0)
@@ -50,7 +51,7 @@ module CollisionResponse =
 
             if cpImpulseData.MassNormal = 0.0 then
                 return zero
-            else                
+            else
                 let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
                 let normal = contactPoint.Normal.Get
 
@@ -61,11 +62,9 @@ module CollisionResponse =
                        |> RigidBodyMotion.calculateVelocityAtOffset targetBody)
 
                 let vRelNorm = vRel |> dotProduct normal
-
-                let bias = cpImpulseData.BaumgarteBias
-
+                
                 let impulseValue =
-                    (-(compoundElasticity + 1.0) * vRelNorm + bias) / cpImpulseData.MassNormal
+                    (-(compoundElasticity + 1.0) * vRelNorm + cpImpulseData.BaumgarteBias) / cpImpulseData.MassNormal
 
                 let! clampedImpulseValue = impulseValue |> clamped
 
@@ -79,12 +78,16 @@ module CollisionResponse =
         : Reader<Configuration, SetOf2<PhysicalObject>> =
 
         let createCollisionManifold collisionData target other config =
+            let tangentVectors =
+                GraphicsUtils.computeTangentVectors collisionData.ContactPoints.Head.Normal
+
             { Bodies = (target, other) ||> create
+              TangentDirs = tangentVectors
               Contacts =
                 collisionData.ContactPoints
                 |> List.map (fun cp ->
                     let baumgarteBias = calculateBaumgarteBias config dt cp.Penetration
-                    cp, cp |> ContactPointImpulseData.init target other baumgarteBias) }
+                    cp, cp |> ContactPointImpulseData.init target other baumgarteBias tangentVectors) }
 
         let resolveIteration enableFriction (manifold: CollisionManifold) =
             let resolveContactPointNormal contactPoint bodies =
@@ -108,7 +111,7 @@ module CollisionResponse =
 
                     // tangentImpulse |> printfn "tangent impulse value: %A"
 
-                    ([ tangentImpulses; tangentImpulses |> map(~-)] |> ofList, offsets, bodies)
+                    ([ tangentImpulses; tangentImpulses |> map (~-) ] |> ofList, offsets, bodies)
                     |||> zip3
                     |> map (fun (impulses, offset, rigidBody) ->
                         rigidBody |> RigidBodyMotion.applyImpulses (impulses |> toList) offset)
@@ -126,10 +129,11 @@ module CollisionResponse =
 
                     let updatedBodies, updatedCpImpulseData = cpd |> State.run iterationResolver
 
-                    { Bodies = updatedBodies
-                      Contacts = (cp, updatedCpImpulseData) :: manifold.Contacts })
+                    { manifold with
+                        Bodies = updatedBodies
+                        Contacts = (cp, updatedCpImpulseData) :: manifold.Contacts })
                 manifold.Contacts
-        
+
         match ((objects |> fst), (objects |> snd)) with
         | RigidBody targetBody, RigidBody otherBody ->
             monad {

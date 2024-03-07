@@ -20,7 +20,13 @@ type ContactPointImpulseData =
         (this.PositionOffsetFromTarget, this.PositionOffsetFromOther) ||> SetOf2.create
 
 module ContactPointImpulseData =
-    let init (targetBody: RigidBody) (otherBody: RigidBody) baumgarteBias (contactPoint: ContactPoint) =
+    let init
+        (targetBody: RigidBody)
+        (otherBody: RigidBody)
+        baumgarteBias
+        (tangentVectors: NormalVector SetOf2)
+        (contactPoint: ContactPoint)        
+        =
         let K body (offset: Vector3D) =
             match body.MassCenter.Mass with
             | Mass.Infinite -> Matrix3.zero
@@ -36,8 +42,6 @@ module ContactPointImpulseData =
 
         let totalM = (K targetBody offsetTarget) + (K otherBody offsetOther)
         let massNormal = normal * (totalM * normal)
-
-        let tangentVectors = GraphicsUtils.computeTangentVectors contactPoint.Normal
 
         let massTangent =
             tangentVectors |> SetOf2.map (_.Get >> (fun dir -> dir * (totalM * dir)))
