@@ -41,20 +41,7 @@ module SimulatorObject =
     let withPhysicalObject simulatorObject physicalObject =
         { simulatorObject with
             PhysicalObject = physicalObject }
-    // let createDefaultSphere id radius mass position =
-    //     { PhysicalObject =
-    //         (RigidBody.createDefaultSphere defaultElasticityCoeff defaultFrictionCoeff radius mass position)
-    //         |> RigidBody
-    //       Collider = radius |> Collider.createSphere
-    //       Id = id }
-    //
-    // let createDefaultCube id size mass position =
-    //     { PhysicalObject =
-    //         (RigidBody.createDefaultBox defaultElasticityCoeff defaultFrictionCoeff size size size mass position)
-    //         |> RigidBody
-    //       Collider = (size, size, size) |||> Collider.createBox
-    //       Id = id }
-
+        
     let getOffsetFrom (point: Vector3D) (physicalObject: SimulatorObject) =
         (point, physicalObject.PhysicalObject.MassCenterPosition())
         ||> Vector3D.apply2 (-)

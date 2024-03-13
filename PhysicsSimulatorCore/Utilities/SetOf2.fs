@@ -22,6 +22,7 @@ type SetOf2<'t when 't: equality> =
             || (s.Get[0] = this.Get[1] && s.Get[1] = this.Get[0])
         | _ -> false
 
+    //TODO: ?
     override this.GetHashCode() =
         this.Get[0].GetHashCode() + this.Get[1].GetHashCode()
 
@@ -39,6 +40,7 @@ module SetOf2 =
     let toSet (set: SetOf2<'t>) = set |> toList |> Set.ofList
     let fst (set: SetOf2<'t>) = set.Get[0]
     let snd (set: SetOf2<'t>) = set.Get[1]
+    let toTuple (set: SetOf2<'t>) = (set |> fst,set |> snd)
 
     let map f (set: SetOf2<'T>) = set.Get |> List.map f |> ofList
 

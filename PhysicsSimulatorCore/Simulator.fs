@@ -16,7 +16,6 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
     let simulationStepInterval = TimeSpan.FromMilliseconds(10.0)
     let mutable taskState = SimulatorTaskState.Stopped
     let simulatorStateChanged = Event<SimulatorState>()
-
     let gate = new SemaphoreSlim(1)
 
     let simulatorState: SimulatorState ref =
@@ -35,6 +34,7 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
             let newState =
                 simulatorState.Value
                 |> CollisionResolver.resolveAll simulationStepInterval collidingObjectsCandidates
+                |> JointsRestorer.restoreAll simulationStepInterval 
                 |> SimulatorState.update simulationStepInterval
 
             simulatorState.Value <- newState

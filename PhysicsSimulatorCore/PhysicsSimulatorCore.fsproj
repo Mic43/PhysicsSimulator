@@ -35,8 +35,10 @@
         <Compile Include="Collisions\Friction.fs"/>
         <Compile Include="Collisions\CollisionResponse.fs"/>
         <Compile Include="RigidBodyPrototype.fs" />
+        <Compile Include="Joints.fs" />
         <Compile Include="SimulatorState.fs"/>
         <Compile Include="CollisionResolver.fs" />
+        <Compile Include="JointsRestorer.fs" />
         <Compile Include="Simulator.fs"/>
         <None Include="references.fsx"/>
     </ItemGroup>

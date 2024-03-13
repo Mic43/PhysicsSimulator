@@ -26,7 +26,7 @@ type RigidBodyPrototype =
       UseGravity: bool }
 
 module RigidBodyPrototype =
-    let private defaultElasticityCoeff = 0.2
+    let private defaultElasticityCoeff = 0.1
     let private defaultFrictionCoeff = 0.5
 
     let createDefault kind =

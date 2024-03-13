@@ -1,9 +1,6 @@
 ﻿// For more information see https://aka.ms/fsharp-console-apps
 open System
-open PhysicsSimulator
-open PhysicsSimulator.Collisions
-open PhysicsSimulator.Utilities
-open PhysicsSimulator.Entities
+
 
 open Aardvark.Base
 open Aardvark.Rendering
@@ -13,12 +10,17 @@ open Aardvark.Application
 open Aardvark.Application.Slim
 open FSharpPlus
 
+open PhysicsSimulator
+open PhysicsSimulator.Collisions
+open PhysicsSimulator.Utilities
+open PhysicsSimulator.Entities
+
 let impulsedObjectId = 1
 let groundId = 0
 let radius = 1.0
 let mass = 100.0
-let impulseStrenght = 300.0
-let impulseDir = Vector3D.create 0.2 1 0.0
+let impulseStrenght = 1000.0
+let impulseDir = Vector3D.create 0.0 1 0.5
 let impulseValue = (impulseDir |> Vector3D.normalized).Get * impulseStrenght
 let impulseOffset = Vector3D.create 0.0 0.0 0
 //let epsilon = 0.001
@@ -37,15 +39,22 @@ let createVerticalStack position height boxSize mass =
             Mass = mass |> Mass.Value
             Position = position + Vector3D.create 0 0 (i |> float) * (boxSize + 0.01) })
 
-let collisions: cset<CollisionData> = cset []
-let objects: cset<SimulatorObject> = cset []
+let createYAxisHorizontalStack position count (box: PhysicsSimulator.Entities.Box) margin =
+    [ 0 .. count - 1 ]
+    |> List.map (fun i ->
+        { (box |> RigidBodyKind.Box |> RigidBodyPrototype.createDefault) with
+            Mass = mass |> Mass.Value          
+            Position = position + Vector3D.create 0 ((i |> float) * (box.XSize + margin)) 0 })
+
+let collisions: ChangeableIndexList<CollisionData> = ChangeableIndexList []
+let objects: ChangeableIndexList<SimulatorObject> = ChangeableIndexList []
 
 let prepareSimulator () =
     let rigidBodyPrototypes =
+
         [ { ((15.0, 15.0, 0.5) |||> RigidBodyPrototype.createDefaultBox) with
               Mass = Mass.Infinite
               UseGravity = false
-              ElasticityCoeff = 0.1
               Pitch = 0.0
               Position = Vector3D.create 0 0 -0.25 }
           // { ((15.0, 15.0, 0.5) |||> RigidBodyPrototype.createDefaultBox) with
@@ -54,28 +63,30 @@ let prepareSimulator () =
           //     ElasticityCoeff = 0.1
           //     Pitch = 0.2
           //     Position = Vector3D.create -5 0 -3.5 }
-          { (0.5 |> RigidBodyPrototype.createDefaultCube) with
-              Mass = 50.0 |> Mass.Value
-              Position = Vector3D.create 0 -3 1.25 } ]
-        @ createVerticalStack ((0.0, 0.0, 1.5) |||> Vector3D.create) 3 1.0 mass
+          ]
+        // @ createYAxisHorizontalStack ((0.0, -4.0, 1.5) |||> Vector3D.create) 12 (Box.create 0.5 0.2 2) 0.5 
+        // @ createVerticalStack ((0.0, 0.0, 1.5) |||> Vector3D.create) 3 1.0 mass
+        @ [ { (0.5 |> RigidBodyPrototype.createDefaultCube) with
+                Mass = 50.0 |> Mass.Value
+                Position = Vector3D.create 0 -7 1.25 } ]
+        @ [ { (0.5 |> RigidBodyPrototype.createDefaultCube) with
+                Mass = 50.0 |> Mass.Value
+                Position = Vector3D.create 0 -5 1.25 } ]
 
     let sim =
-        Simulator(
+        new Simulator(
             rigidBodyPrototypes,
-           1,
+            0.1,
             { Configuration.getDefault with
                 baumgarteTerm = 0.2
-                enableFriction = true }
+                enableFriction = false }
         )
 
-    sim.SimulationStateChanged.Add(fun _ ->
+    sim.SimulationStateChanged.Add(fun _ ->        
         transact (fun () ->
-            collisions.Clear()
-            collisions.AddRange sim.AllCollisions)
-
-        transact (fun () ->
-            objects.Clear()
-            objects.AddRange sim.AllPhysicalObjects))
+            //     collisions.UpdateTo(sim.AllCollisions) |> ignore
+            objects.UpdateTo sim.AllPhysicalObjects)
+        |> ignore)
 
     sim
 
@@ -110,8 +121,8 @@ let objectToRenderable simulator (win: Aardvark.Glfw.Window) simulatorObject =
             C4b(100, 100, 100)
 
     (match simulatorObject.Collider with
-     | PhysicsSimulator.Entities.Sphere s -> Sg.sphere' 5 color s.Radius
-     | PhysicsSimulator.Entities.Box b ->
+     | Sphere s -> Sg.sphere' 5 color s.Radius
+     | Box b ->
          // let position = simulatorObject.PhysicalObject.AsParticle().Variables.Position
          let bounds = Box3d.FromCenterAndSize(V3d(0, 0, 0), V3d(b.XSize, b.YSize, b.ZSize))
          Sg.box' color bounds)
@@ -140,7 +151,9 @@ let onKeyDown (simulator: Simulator) (key: Keys) =
     match key with
     | Keys.Space ->
         transact (fun () ->
-            let physicalObjectIdentifier = impulsedObjectId |> SimulatorObjectIdentifier.fromInt
+            let physicalObjectIdentifier =
+                simulator.ObjectsIdentifiers.Count - 1 |> SimulatorObjectIdentifier.fromInt
+
             simulator.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset)
 
     | Keys.Pause -> transact (fun () -> simulator.PauseResume())
@@ -153,11 +166,14 @@ let onKeyDown (simulator: Simulator) (key: Keys) =
     | _ -> ()
 
 let prepareScene (win: Aardvark.Glfw.Window) sim =
-    let objects = objects |> ASet.map (objectToRenderable sim win) |> Sg.set
-    let collisions = collisions |> ASet.map (collisionToRenderable win) |> Sg.set
+    let objects =
+        objects |> AList.map (objectToRenderable sim win) |> AList.toASet |> Sg.set
+
+    let collisions =
+        collisions |> AList.map (collisionToRenderable win) |> AList.toASet |> Sg.set
 
     seq {
-        yield collisions
+        // yield collisions
         yield objects
     }
     |> Sg.ofSeq

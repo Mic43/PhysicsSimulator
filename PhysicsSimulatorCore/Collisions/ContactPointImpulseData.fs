@@ -25,22 +25,18 @@ module ContactPointImpulseData =
         (otherBody: RigidBody)
         baumgarteBias
         (tangentVectors: NormalVector SetOf2)
-        (contactPoint: ContactPoint)        
+        (contactPoint: ContactPoint)
         =
-        let K body (offset: Vector3D) =
-            match body.MassCenter.Mass with
-            | Mass.Infinite -> Matrix3.zero
-            | Mass.Value _ ->
-                body.MassCenter.GetInverseMassMatrix()
-                + (offset |> Matrix3.hatOperator |> Matrix3.transposed)
-                  * body.CalcRotationalInertiaInverse()
-                  * (offset |> Matrix3.hatOperator)
-
+     
         let normal = contactPoint.Normal.Get
         let offsetTarget = contactPoint.Position - targetBody.MassCenterPosition
         let offsetOther = contactPoint.Position - otherBody.MassCenterPosition
 
-        let totalM = (K targetBody offsetTarget) + (K otherBody offsetOther)
+        let totalM =
+            (offsetTarget, offsetOther)
+            |> SetOf2.ofPair
+            |> RigidBodyMotion.calculateTranslationConstraintMass ((targetBody, otherBody) |> SetOf2.ofPair)
+
         let massNormal = normal * (totalM * normal)
 
         let massTangent =

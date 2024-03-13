@@ -55,12 +55,7 @@ module CollisionResponse =
                 let compoundElasticity = min targetBody.ElasticityCoeff otherBody.ElasticityCoeff
                 let normal = contactPoint.Normal.Get
 
-                let vRel =
-                    (cpImpulseData.PositionOffsetFromOther
-                     |> RigidBodyMotion.calculateVelocityAtOffset otherBody)
-                    - (cpImpulseData.PositionOffsetFromTarget
-                       |> RigidBodyMotion.calculateVelocityAtOffset targetBody)
-
+                let vRel = cpImpulseData.Offsets |> RigidBodyMotion.calculateRelativeVelocity bodies                                
                 let vRelNorm = vRel |> dotProduct normal
                 
                 let impulseValue =
@@ -104,10 +99,10 @@ module CollisionResponse =
                             impulse |> RigidBodyMotion.applyImpulse offset rigidBody)
                 }
 
-            let resolveFriction contactPoint bodies =
+            let resolveFriction bodies =
                 monad {
                     let! offsets = State.gets ContactPointImpulseData.offsets
-                    let! tangentImpulses = contactPoint |> Friction.calculateImpulse bodies
+                    let! tangentImpulses = bodies|> Friction.calculateImpulse 
 
                     // tangentImpulse |> printfn "tangent impulse value: %A"
 
@@ -122,7 +117,7 @@ module CollisionResponse =
             { manifold with Contacts = [] }
             |> List.foldBack
                 (fun (cp, cpd) manifold ->
-                    let resolveFriction = if enableFriction then resolveFriction cp else dummyFriction
+                    let resolveFriction = if enableFriction then resolveFriction else dummyFriction
 
                     let iterationResolver =
                         manifold.Bodies |> (resolveContactPointNormal cp) |> State.bind resolveFriction
@@ -134,7 +129,7 @@ module CollisionResponse =
                         Contacts = (cp, updatedCpImpulseData) :: manifold.Contacts })
                 manifold.Contacts
 
-        match ((objects |> fst), (objects |> snd)) with
+        match objects |> toTuple with
         | RigidBody targetBody, RigidBody otherBody ->
             monad {
                 let! config = ask

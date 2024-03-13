@@ -14,6 +14,7 @@ type SimulatorState =
           ExternalForces: Map<SimulatorObjectIdentifier, Vector3D ValueSupplier>
           ExternalTorques: Map<SimulatorObjectIdentifier, Vector3D>
           Collisions: Map<SimulatorObjectIdentifier Set, CollisionData>
+          Joints: Joint list
           Configuration: Configuration }
 
 module SimulatorStateBuilder =
@@ -50,7 +51,10 @@ module SimulatorStateBuilder =
           ExternalForces = externalForces
           ExternalTorques = identifiers |> Seq.map (fun i -> (i, Vector3D.zero)) |> Map.ofSeq
           Configuration = Configuration.getDefault
-          Collisions = Map.empty }
+          Collisions = Map.empty
+          Joints =
+            [ Vector3D.create 0 -5 1.25
+              |> Joint.createBallSocket ([ objectMap[1]; objectMap[2] ] |> SetOf2.ofList) ] }
 
     let withConfiguration configuration simulatorState =
         { simulatorState with
@@ -88,7 +92,7 @@ module SimulatorState =
         { simulatorState.Objects[id] with
             PhysicalObject = newObjectState }
 
-    let internal changeSimulatorObject objectIdentifier newPhysicalObject (simulationState: SimulatorState) =
+    let internal changeSimulatorObject objectIdentifier simulatorObject (simulationState: SimulatorState) =
         { simulationState with
             Objects =
                 simulationState.Objects.Change(
@@ -97,12 +101,34 @@ module SimulatorState =
                         if simObj.IsNone then
                             invalidArg (nameof objectIdentifier) "object doest exist in map"
 
-                        newPhysicalObject |> Some)
+                        simulatorObject |> Some)
                 ) }
 
     let internal changeSimulatorObjects simulatorObjects simulationState =
         simulatorObjects
         |> List.fold (fun state obj -> state |> changeSimulatorObject obj.Id obj) simulationState
+
+    /// changes simulationObjects with physicalObjects.
+    /// Physical objects are 'injected' into given simulation objects
+    let internal changePhysicalObjects simulationObjectsIds physicalObjects simulationState =
+        if (simulationObjectsIds |> List.length) <> (physicalObjects |> List.length) then
+            invalidArg "simulationObjectsIds" "simulationObjectsIds and physicalObjects must have same len"
+
+        let changed =
+            (simulationState.Objects
+             |> Map.filter (fun id value -> simulationObjectsIds |> List.contains id)
+             |> Map.values
+             |> List.ofSeq,
+             physicalObjects)
+            ||> List.zip
+            |> List.map (fun p -> p ||> SimulatorObject.withPhysicalObject)
+
+        simulationState |> changeSimulatorObjects changed
+
+    let internal getJointObjects simulatorState joint =
+        (simulatorState.Objects[joint.Identifiers |> SetOf2.fst],
+         simulatorState.Objects[joint.Identifiers |> SetOf2.snd])
+        |> SetOf2.ofPair
 
     let update (dt: TimeSpan) simulatorState : SimulatorState =
         { simulatorState with

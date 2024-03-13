@@ -131,6 +131,10 @@ module RigidBody =
 
     let createDefaultSphere = createSphere RotationMatrix3D.zero Vector3D.zero
 
+    let toWorldCoordinates (rigidBody: RigidBody) offset =
+        offset
+        |> GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation rigidBody.MassCenterPosition
+
 module RigidBodyIntegrators =
     open Vector3D
     open Matrix3
@@ -154,7 +158,6 @@ module RigidBodyIntegrators =
 
             { Orientation = newOrientation |> orthonormalize
               AngularMomentum = newAngMomentum }
-
 
     let (augmentedSecondOrder: RigidBodyIntegrator) =
         fun dt torque inertiaInverse old ->
@@ -216,6 +219,19 @@ module RigidBodyMotion =
             Variables = newRotComponent
             MassCenter.Variables = newLinearComponent }
 
+    let calculateTranslationConstraintMass bodies offsets =
+        let K body (offset: Vector3D) =
+            match body.MassCenter.Mass with
+            | Mass.Infinite -> Matrix3.zero
+            | Mass.Value _ ->
+                body.MassCenter.GetInverseMassMatrix()
+                + (offset |> Matrix3.hatOperator |> Matrix3.transposed)
+                  * body.CalcRotationalInertiaInverse()
+                  * (offset |> Matrix3.hatOperator)
+
+        (bodies, offsets)
+        ||> SetOf2.zip
+        |> SetOf2.fold (fun s (body, offset) -> s + K body offset) Matrix3.zero
 
     let calculateVelocityAtOffset (body: RigidBody) offset =
         let getLinearVelocityAtOffset (rigidBody: RigidBody) =
@@ -224,3 +240,9 @@ module RigidBodyMotion =
         let linearV = body.MassCenterVelocity
         let angularComponent = getLinearVelocityAtOffset body
         linearV + angularComponent
+
+    /// calculates relative velocity between bodies at offsets.
+    /// Returned velocity points from first body to second body 
+    let calculateRelativeVelocity bodies offsets =
+        (offsets |> SetOf2.snd |> calculateVelocityAtOffset (bodies |> SetOf2.snd))
+        - (offsets |> SetOf2.fst |> calculateVelocityAtOffset (bodies |> SetOf2.fst))

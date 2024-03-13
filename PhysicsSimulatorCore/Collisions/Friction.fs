@@ -38,7 +38,6 @@ module Friction =
     ///normalImpulse - normal part of the collision response applied before in the same iteration of the solver
     let calculateImpulse
         (bodies: RigidBody SetOf2)
-        (contactPoint: ContactPoint)
         : State<ContactPointImpulseData, Vector3D SetOf2> =
 
         let targetBody = bodies |> SetOf2.fst
@@ -51,12 +50,8 @@ module Friction =
         monad {
             let! cpImpulseData = State.get
 
-            let vRel =
-                (cpImpulseData.PositionOffsetFromOther
-                 |> RigidBodyMotion.calculateVelocityAtOffset otherBody)
-                - (cpImpulseData.PositionOffsetFromTarget
-                   |> RigidBodyMotion.calculateVelocityAtOffset targetBody)
-                
+            let vRel = cpImpulseData.Offsets |> RigidBodyMotion.calculateRelativeVelocity bodies
+               
             let maxFriction = compoundDynamicFriction * cpImpulseData.AccumulatedNormalImpulse
 
             let impulsesValue =                  
