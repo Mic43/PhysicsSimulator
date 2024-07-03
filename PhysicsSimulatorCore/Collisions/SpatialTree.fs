@@ -16,7 +16,6 @@ type SpatialTree<'T> =
           SpaceBoundaries: (float * float) list }
 
 type private NodeData =
-
     { Size: float list
       Position: float list }
 
@@ -25,7 +24,6 @@ type private NodeData =
           Position = List.init tree.SpaceBoundaries.Length (fun _ -> 0.0) }
 
 module SpatialTree =
-
     let private failIfWrongDimension tree list =
         if (tree.SpaceBoundaries |> List.length) <> (list |> List.length) then
             "wrong object extent dimension" |> invalidArg "objectExtentProvider"
@@ -72,15 +70,6 @@ module SpatialTree =
         { Position = childNodePosition
           Size = parentNodeData.Size |> List.map (fun s -> s / 2.0) }
 
-    let create maxLeafObjects maxDepth spaceBoundaries =
-        if spaceBoundaries |> List.isEmpty then
-            "boundaries must be non empty" |> failwith "spaceBoundaries"
-
-        { Root = [] |> Leaf
-          MaxLeafObjects = maxLeafObjects
-          MaxDepth = maxDepth
-          SpaceBoundaries = spaceBoundaries }
-
     let private areIntersecting nodeDataA nodeDataB =
         let size =
             nodeDataA.Size
@@ -96,13 +85,21 @@ module SpatialTree =
 
         size |> Seq.forall2 (fun delta size -> (delta |> abs) < size) delta
 
+    let init maxLeafObjects maxDepth spaceBoundaries =
+        if spaceBoundaries |> List.isEmpty then
+            "boundaries must be non empty" |> failwith "spaceBoundaries"
+
+        { Root = [] |> Leaf
+          MaxLeafObjects = maxLeafObjects
+          MaxDepth = maxDepth
+          SpaceBoundaries = spaceBoundaries }
+
     let insert
         (tree: SpatialTree<'T>)
         (objectExtentProvider: 'T -> {| Size: float; Position: float |} list)
         (object: 'T)
         =
         let objectExtent = object |> objectExtentProvider
-
         do objectExtent |> failIfWrongDimension tree
 
         let rec addInternal curDepth (curNodeData: NodeData) (node: SpatialTreeNode<'T>) : SpatialTreeNode<'T> =
@@ -127,7 +124,7 @@ module SpatialTree =
                 if (objects |> List.length) < tree.MaxLeafObjects || (curDepth >= tree.MaxDepth) then
                     object :: objects |> Leaf
                 else
-                    objects |> splitNode
+                    object :: objects |> splitNode
             | NonLeaf childNodes ->
                 childNodes
                 |> Array.mapi (fun i childNode ->
@@ -141,3 +138,12 @@ module SpatialTree =
 
         { tree with
             Root = tree.Root |> addInternal 0 (tree |> NodeData.init) }
+
+    let getObjectBuckets (tree: SpatialTree<'T>) =
+        let rec getBucketsInternal node : 'T list seq =
+            match node with
+            | Leaf objects when objects.IsEmpty -> Seq.empty
+            | Leaf objects -> objects |> Seq.singleton
+            | NonLeaf spatialTreeNodes -> spatialTreeNodes |> Array.toSeq |> Seq.collect getBucketsInternal
+
+        getBucketsInternal tree.Root
