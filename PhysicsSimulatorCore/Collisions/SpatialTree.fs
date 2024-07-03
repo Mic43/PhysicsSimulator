@@ -3,7 +3,7 @@ namespace PhysicsSimulator.Collisions
 open FSharpPlus
 
 
-type SpatialTreeNode<'T> =
+type private SpatialTreeNode<'T> =
     | Leaf of 'T list
     | NonLeaf of SpatialTreeNode<'T> array
 
@@ -16,6 +16,7 @@ type SpatialTree<'T> =
           SpaceBoundaries: (float * float) list }
 
 type private NodeData =
+
     { Size: float list
       Position: float list }
 
@@ -68,7 +69,7 @@ module SpatialTree =
             |> List.zip parentNodeData.Position
             |> List.map (fun (pos, size) -> pos + size)
 
-        { Position = parentNodeData.Position
+        { Position = childNodePosition
           Size = parentNodeData.Size |> List.map (fun s -> s / 2.0) }
 
     let create maxLeafObjects maxDepth spaceBoundaries =
@@ -80,14 +81,36 @@ module SpatialTree =
           MaxDepth = maxDepth
           SpaceBoundaries = spaceBoundaries }
 
-    let private isIntersecting childNodeData extent = true
+    let private areIntersecting nodeDataA nodeDataB =
+        let size =
+            nodeDataA.Size
+            |> Seq.ofList
+            |> Seq.zip nodeDataB.Size
+            |> Seq.map (fun (s1, s2) -> s2 + s1 / 2.0)
 
-    let insert (tree: SpatialTree<'T>) (objectExtentProvider: 'T -> (float * float) list) (object: 'T) =
+        let delta =
+            nodeDataA.Position
+            |> Seq.ofList
+            |> Seq.zip nodeDataB.Position
+            |> Seq.map (fun (p1, p2) -> p2 - p2)
+
+        size |> Seq.forall2 (fun delta size -> (delta |> abs) < size) delta
+
+    let insert
+        (tree: SpatialTree<'T>)
+        (objectExtentProvider: 'T -> {| Size: float; Position: float |} list)
+        (object: 'T)
+        =
         let objectExtent = object |> objectExtentProvider
 
         do objectExtent |> failIfWrongDimension tree
 
         let rec addInternal curDepth (curNodeData: NodeData) (node: SpatialTreeNode<'T>) : SpatialTreeNode<'T> =
+
+            let toNodeData (extent: {| Size: float; Position: float |} list) =
+                let p = extent |> List.map (fun e -> (e.Size, e.Position)) |> List.unzip
+                { Size = p |> fst; Position = p |> snd }
+
             let splitNode nodeObjects =
                 [| 0 .. (pown 2 tree.SpaceBoundaries.Length) |]
                 |> Array.map (fun index ->
@@ -95,7 +118,7 @@ module SpatialTree =
                     |> List.filter (fun nodeObject ->
                         index
                         |> getChildNodeData curNodeData
-                        |> isIntersecting (nodeObject |> objectExtentProvider))
+                        |> areIntersecting (nodeObject |> objectExtentProvider |> toNodeData))
                     |> Leaf)
                 |> NonLeaf
 
@@ -110,10 +133,11 @@ module SpatialTree =
                 |> Array.mapi (fun i childNode ->
                     let childNodeData = i |> getChildNodeData curNodeData
 
-                    if childNodeData |> isIntersecting objectExtent then
+                    if childNodeData |> areIntersecting (objectExtent |> toNodeData) then
                         childNode |> addInternal (curDepth + 1) childNodeData
                     else
                         childNode)
                 |> NonLeaf
 
-        tree.Root |> addInternal 0 (tree |> NodeData.init)
+        { tree with
+            Root = tree.Root |> addInternal 0 (tree |> NodeData.init) }
