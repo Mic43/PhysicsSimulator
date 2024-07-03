@@ -24,6 +24,7 @@ type private NodeData =
           Position = List.init tree.SpaceBoundaries.Length (fun _ -> 0.0) }
 
 module SpatialTree =
+
     let private failIfWrongDimension tree list =
         if (tree.SpaceBoundaries |> List.length) <> (list |> List.length) then
             "wrong object extent dimension" |> invalidArg "objectExtentProvider"
@@ -60,12 +61,16 @@ module SpatialTree =
                     (rest / 2, (cur / 2.0) :: pos))
             (index, [])
         |> snd
-    // curNodeSize |> List.map (fun s -> )
-    // let mutable i = index
-    // while i > 0 do
-    //     let r = i % 2
-    //     i <- i / 2
-    // ()
+
+    let private getChildNodeData parentNodeData index =
+        let childNodePosition =
+            getNodePositionByIndex index parentNodeData.Size
+            |> List.zip parentNodeData.Position
+            |> List.map (fun (pos, size) -> pos + size)
+
+        { Position = parentNodeData.Position
+          Size = parentNodeData.Size |> List.map (fun s -> s / 2.0) }
+
     let create maxLeafObjects maxDepth spaceBoundaries =
         if spaceBoundaries |> List.isEmpty then
             "boundaries must be non empty" |> failwith "spaceBoundaries"
@@ -75,33 +80,40 @@ module SpatialTree =
           MaxDepth = maxDepth
           SpaceBoundaries = spaceBoundaries }
 
-    // let add (tree: SpatialTree<'T>) (objectExtentProvider: 'T -> (float * float) list) (object: 'T) =
-    //     let extent = object |> objectExtentProvider
-    //
-    //     do extent |> failIfWrongDimension tree
-    //
-    //     let rec addInternal curDepth (curNodeData: NodeData) (node: SpatialTreeNode<'T>) : SpatialTreeNode<'T> =
-    //         match node with
-    //         | Leaf objects ->
-    //             if (objects |> List.length) < tree.MaxLeafObjects || (curDepth >= tree.MaxDepth) then
-    //                 object :: objects |> Leaf
-    //             else
-    //                 objects |> splitNode
-    //         | NonLeaf childNodes ->
-    //             childNodes
-    //             |> Array.mapi (fun i childNode ->
-    //                 let childPosition =
-    //                     getNodePositionByIndex i curNodeData.Size
-    //                     |> List.map ((+) curNodeData.Position[i])
-    //
-    //                 if childNode |> isIntersecting object then
-    //                     childNode
-    //                     |> addInternal
-    //                         (curDepth + 1)
-    //                         { curNodeData with
-    //                             Size = curNodeData.Size |> List.map (fun s -> s / 2.0) }                  
-    //                 else
-    //                     childNode)
-    //             |> NonLeaf
-    //
-    //     tree.Root |> addInternal 0 (tree |> NodeData.init)
+    let private isIntersecting childNodeData extent = true
+
+    let insert (tree: SpatialTree<'T>) (objectExtentProvider: 'T -> (float * float) list) (object: 'T) =
+        let objectExtent = object |> objectExtentProvider
+
+        do objectExtent |> failIfWrongDimension tree
+
+        let rec addInternal curDepth (curNodeData: NodeData) (node: SpatialTreeNode<'T>) : SpatialTreeNode<'T> =
+            let splitNode nodeObjects =
+                [| 0 .. (pown 2 tree.SpaceBoundaries.Length) |]
+                |> Array.map (fun index ->
+                    nodeObjects
+                    |> List.filter (fun nodeObject ->
+                        index
+                        |> getChildNodeData curNodeData
+                        |> isIntersecting (nodeObject |> objectExtentProvider))
+                    |> Leaf)
+                |> NonLeaf
+
+            match node with
+            | Leaf objects ->
+                if (objects |> List.length) < tree.MaxLeafObjects || (curDepth >= tree.MaxDepth) then
+                    object :: objects |> Leaf
+                else
+                    objects |> splitNode
+            | NonLeaf childNodes ->
+                childNodes
+                |> Array.mapi (fun i childNode ->
+                    let childNodeData = i |> getChildNodeData curNodeData
+
+                    if childNodeData |> isIntersecting objectExtent then
+                        childNode |> addInternal (curDepth + 1) childNodeData
+                    else
+                        childNode)
+                |> NonLeaf
+
+        tree.Root |> addInternal 0 (tree |> NodeData.init)
