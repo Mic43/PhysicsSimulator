@@ -34,6 +34,7 @@
         <Compile Include="Collisions\ContactPointImpulseData.fs" />
         <Compile Include="Collisions\Friction.fs"/>
         <Compile Include="Collisions\CollisionResponse.fs"/>
+        <Compile Include="Collisions\SpatialTree.fs" />
         <Compile Include="RigidBodyPrototype.fs" />
         <Compile Include="Joints.fs" />
         <Compile Include="SimulatorState.fs"/>
