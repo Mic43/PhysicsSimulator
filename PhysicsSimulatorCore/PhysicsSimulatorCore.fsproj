@@ -21,6 +21,7 @@
         <Compile Include="Utilities\Plane.fs" />
         <Compile Include="Utilities\GraphicsUtils.fs" />
         <Compile Include="Utilities\ValueSupplier.fs" />
+        <Compile Include="Utilities\SpatialTree.fs" />
         <Compile Include="Entities\Base.fs" />
         <Compile Include="Entities\Box.fs" />
         <Compile Include="Entities\Sphere.fs" />
@@ -34,7 +35,6 @@
         <Compile Include="Collisions\ContactPointImpulseData.fs" />
         <Compile Include="Collisions\Friction.fs"/>
         <Compile Include="Collisions\CollisionResponse.fs"/>
-        <Compile Include="Collisions\SpatialTree.fs" />
         <Compile Include="RigidBodyPrototype.fs" />
         <Compile Include="Joints.fs" />
         <Compile Include="SimulatorState.fs"/>
