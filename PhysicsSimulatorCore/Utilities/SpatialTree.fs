@@ -1,19 +1,18 @@
-namespace PhysicsSimulator.Collisions
+namespace PhysicsSimulator.Utilities
 
 open FSharpPlus
 
 
-type private SpatialTreeNode<'T> =
+type SpatialTreeNode<'T> =
     | Leaf of 'T list
     | NonLeaf of SpatialTreeNode<'T> array
 
 /// n dimensional spatial tree
 type SpatialTree<'T> =
-    private
-        { Root: SpatialTreeNode<'T>
-          MaxLeafObjects: int
-          MaxDepth: int
-          SpaceBoundaries: (float * float) list }
+    { Root: SpatialTreeNode<'T>
+      MaxLeafObjects: int
+      MaxDepth: int
+      SpaceBoundaries: (float * float) list }
 
 type private NodeData =
     { Size: float list
@@ -87,7 +86,13 @@ module SpatialTree =
 
     let init maxLeafObjects maxDepth spaceBoundaries =
         if spaceBoundaries |> List.isEmpty then
-            "boundaries must be non empty" |> failwith "spaceBoundaries"
+            "boundaries must be non empty" |> invalidArg "spaceBoundaries"
+
+        if maxLeafObjects < 0 then
+            "must be positive" |> invalidArg "maxLeafObjects"
+
+        if maxDepth < 0 then
+            "must be positive" |> invalidArg "maxDepth"
 
         { Root = [] |> Leaf
           MaxLeafObjects = maxLeafObjects

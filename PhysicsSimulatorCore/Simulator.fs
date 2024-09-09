@@ -24,17 +24,17 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
         |> SimulatorStateBuilder.withConfiguration configuration
         |> ref
 
-    let broadPhaseCollisions (simulatorState: SimulatorState) =
+    let dummyBroadPhaseCollisions (simulatorState: SimulatorState) =
         (simulatorState.Objects |> Map.keys |> Set.ofSeq)
 
     let updateSimulation =
         async {
-            let collidingObjectsCandidates = simulatorState.Value |> broadPhaseCollisions
+            let collidingObjectsCandidates = simulatorState.Value |> dummyBroadPhaseCollisions
             gate.Wait()
             let newState =
                 simulatorState.Value
                 |> CollisionResolver.resolveAll simulationStepInterval collidingObjectsCandidates
-                |> JointsRestorer.restoreAll simulationStepInterval 
+                // |> JointsRestorer.restoreAll simulationStepInterval 
                 |> SimulatorState.update simulationStepInterval
 
             simulatorState.Value <- newState

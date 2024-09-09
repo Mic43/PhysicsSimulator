@@ -89,8 +89,7 @@ module CollisionResponse =
                 monad {
                     let! offsets = State.gets ContactPointImpulseData.offsets
 
-                    let! normalImpulse = contactPoint |> calculateNormalImpulse bodies
-                    // normalImpulse |> printfn "normal impulse value: %A"
+                    let! normalImpulse = contactPoint |> calculateNormalImpulse bodies                 
 
                     return
                         ([ normalImpulse; -normalImpulse ] |> ofList, offsets, bodies)
@@ -103,9 +102,7 @@ module CollisionResponse =
                 monad {
                     let! offsets = State.gets ContactPointImpulseData.offsets
                     let! tangentImpulses = bodies|> Friction.calculateImpulse 
-
-                    // tangentImpulse |> printfn "tangent impulse value: %A"
-
+                    
                     ([ tangentImpulses; tangentImpulses |> map (~-) ] |> ofList, offsets, bodies)
                     |||> zip3
                     |> map (fun (impulses, offset, rigidBody) ->
