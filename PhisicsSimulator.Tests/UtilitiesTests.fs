@@ -39,3 +39,30 @@ module SpatialTree =
             let expected = Seq.empty
             actual .=. expected)
         |> Prop.forAll (PhisicsSimulator.Tests.Generators.SpatialTree.emptyTree |> Arb.fromGen)
+
+    [<Property>]
+    let ``For single object tree getObjectBuckets returns singleton `` (object: int) =
+     
+        let extentGen dimension =
+            gen {
+                let! b = PhisicsSimulator.Tests.Generators.Common.properRangeGen |> Gen.listOfLength dimension
+                return! b |> PhisicsSimulator.Tests.Generators.SpatialTree.extendInBoundaries
+            }
+
+        let treeGen =
+            gen {
+                let! emptyTree = PhisicsSimulator.Tests.Generators.SpatialTree.emptyTree<int>
+                let! extent = emptyTree.SpaceBoundaries.Length |> extentGen
+                
+                return
+                    object
+                    |> SpatialTree.insert emptyTree (fun _ ->
+                        extent |> List.map (fun (p, s) -> {| Position = p; Size = s |}))
+            }
+
+        (fun tree ->
+            let actual = tree |> SpatialTree.getObjectBuckets
+            let expected = object |> List.singleton |> Seq.singleton
+
+            actual |> Seq.toList .=. (expected |> Seq.toList))
+        |> Prop.forAll (treeGen |> Arb.fromGen)

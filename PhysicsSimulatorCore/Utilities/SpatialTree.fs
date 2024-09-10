@@ -84,7 +84,7 @@ module SpatialTree =
 
         size |> Seq.forall2 (fun delta size -> (delta |> abs) < size) delta
 
-    let init maxLeafObjects maxDepth spaceBoundaries =
+    let init<'T> maxLeafObjects maxDepth spaceBoundaries : SpatialTree<'T> =
         if spaceBoundaries |> List.isEmpty then
             "boundaries must be non empty" |> invalidArg "spaceBoundaries"
 
