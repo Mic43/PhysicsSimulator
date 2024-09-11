@@ -13,22 +13,22 @@ module Common =
             return min + (f * (max - min))
         }
 
-    let properRangeGen =
+    let properRangeGen max =
         gen {
             let! l = Arb.generate<NormalFloat> |> Gen.map (_.Get)
 
-            return! (l, Single.MaxValue |> float) |> genFloatInRange |> Gen.map (fun h -> (l, h))
+            return! (l, ( float Int32.MaxValue * max)) |> genFloatInRange |> Gen.map (fun h -> (l, h))
         }
 
 module SpatialTree =
-    let emptyTree<'T> =
-        (Arb.generate<PositiveInt> |> Gen.two, Common.properRangeGen |> Gen.nonEmptyListOf )
+    let emptyTree<'T> maxSize =
+        (Arb.generate<PositiveInt> |> Gen.two, Common.properRangeGen maxSize |> Gen.nonEmptyListOf )
         ||> Gen.map2 (fun (maxLeafObjects, maxDepth) boundaries ->
             (maxLeafObjects.Get, maxDepth.Get, boundaries) |||> SpatialTree.init<'T>)
 
-    let singleNodeTree<'T> (singleNodeGen: Gen<'T>) =
+    let singleNodeTree<'T> maxSize (singleNodeGen: Gen<'T>)  =
         gen {
-            let! empty = emptyTree<'T>
+            let! empty = emptyTree<'T> maxSize
             let! newRoot = singleNodeGen |> Gen.listOfLength empty.MaxLeafObjects |> Gen.map Leaf
             return { empty with Root = newRoot }
         }
@@ -47,8 +47,8 @@ module SpatialTree =
     let extentInBoundaries (boundary: (float * float) list) =
         boundary |> List.map extentInBoundary |> Gen.sequence
 
-    let extent dimension =
+    let extent maxSize dimension  =
         gen {
-            let! b = Common.properRangeGen |> Gen.listOfLength dimension
+            let! b = Common.properRangeGen maxSize |> Gen.listOfLength dimension 
             return! b |> extentInBoundaries
         }

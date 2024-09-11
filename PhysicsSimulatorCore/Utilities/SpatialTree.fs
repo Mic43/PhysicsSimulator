@@ -19,8 +19,8 @@ type private NodeData =
       Position: float list }
 
     static member init tree =
-        { Size = (tree.SpaceBoundaries |> List.map (fun (a, b) -> b - a))
-          Position = List.init tree.SpaceBoundaries.Length (fun _ -> 0.0) }
+        { Size = tree.SpaceBoundaries |> List.map (fun (a, b) -> b - a)
+          Position = tree.SpaceBoundaries |> List.map fst }
 
 module SpatialTree =
     let private failIfWrongDimension tree list =
@@ -50,14 +50,12 @@ module SpatialTree =
         |> Seq.fold (fun acc (i, cur) -> acc + cur * (pown 2 i)) 0
 
     let private getNodePositionByIndex index curNodeSize =
-        curNodeSize
-        |> List.fold
-            (fun (rest, pos) cur ->
-                if rest % 2 = 0 then
-                    (rest / 2, 0.0 :: pos)
-                else
-                    (rest / 2, (cur / 2.0) :: pos))
-            (index, [])
+       (index, [])
+        |> List.foldBack
+            (fun curSize (indexRest, pos)  ->
+                let v = if indexRest % 2 = 0 then 0.0 else (curSize / 2.0)
+                (indexRest / 2, v :: pos))            
+            curNodeSize
         |> snd
 
     let private getChildNodeData parentNodeData index =
@@ -74,15 +72,15 @@ module SpatialTree =
             nodeDataA.Size
             |> Seq.ofList
             |> Seq.zip nodeDataB.Size
-            |> Seq.map (fun (s1, s2) -> s2 + s1 / 2.0)
+            |> Seq.map (fun (s1, s2) -> (s2 + s1) / 2.0)
 
         let delta =
             nodeDataA.Position
             |> Seq.ofList
             |> Seq.zip nodeDataB.Position
-            |> Seq.map (fun (p1, p2) -> p2 - p2)
+            |> Seq.map (fun (p1, p2) -> p2 - p1)
 
-        size |> Seq.forall2 (fun delta size -> (delta |> abs) < size) delta
+        Seq.forall2 (fun delta size -> abs delta < size) delta size
 
     let init<'T> maxLeafObjects maxDepth spaceBoundaries : SpatialTree<'T> =
         if spaceBoundaries |> List.isEmpty then
@@ -114,7 +112,7 @@ module SpatialTree =
                 { Size = p |> fst; Position = p |> snd }
 
             let splitNode nodeObjects =
-                [| 0 .. (pown 2 tree.SpaceBoundaries.Length) |]
+                [| 0 .. (pown 2 tree.SpaceBoundaries.Length) - 1 |]
                 |> Array.map (fun index ->
                     nodeObjects
                     |> List.filter (fun nodeObject ->

@@ -39,16 +39,17 @@ module SpatialTree =
             let actual = tree |> SpatialTree.getObjectBuckets
             let expected = Seq.empty
             actual .=. expected)
-        |> Prop.forAll (Generators.SpatialTree.emptyTree |> Arb.fromGen)
+        |> Prop.forAll (Generators.SpatialTree.emptyTree 1000.0 |> Arb.fromGen)
 
     [<Property>]
     let ``For single object tree getObjectBuckets returns object's singleton `` (object: int) =
-
+       
         let treeGen =
             gen {
-                let! emptyTree = Generators.SpatialTree.emptyTree<int>
+                let size = 1000.0
+                let! emptyTree = Generators.SpatialTree.emptyTree<int> size
 
-                let! extent = emptyTree.SpaceBoundaries.Length |> Generators.SpatialTree.extent
+                let! extent = emptyTree.SpaceBoundaries.Length |> Generators.SpatialTree.extent size
 
                 return
                     object
@@ -64,25 +65,34 @@ module SpatialTree =
         |> Prop.forAll (treeGen |> Arb.fromGen)
 
     [<Property(EndSize = 10)>]
-    let ``For tree with full Leaf Root node inserting objects causes node to split if maxDepth is not reached`` object =
+    let ``For tree with full Root node, inserting object causes node to split correctly if maxDepth is not reached``
+        object
+        =
+        let maxSurfaceSize = 10.0
         let treeGen =
             Arb.generate<int>
-            |> Generators.SpatialTree.singleNodeTree
+            |> Generators.SpatialTree.singleNodeTree maxSurfaceSize
             |> Gen.filter (fun tree -> tree.MaxDepth > 1)
 
         (fun tree ->
-
             // all objects are placed in the plane origin
             let actual =
                 object
                 |> SpatialTree.insert tree (fun _ ->
-                    tree.SpaceBoundaries |> List.map (fun (p, _) -> {| Position = p; Size = 0.0 |}))
+                    tree.SpaceBoundaries |> List.map (fun (p, _) -> {| Position = p; Size = 0.00 |}))
 
             match actual.Root with
             | Leaf _ -> false
             | NonLeaf root when root.Length > 0 ->
                 match root[0] with
-                | Leaf l when l.Length = tree.MaxLeafObjects + 1 -> true
+                | Leaf l when l.Length = tree.MaxLeafObjects + 1 ->
+                    root
+                    |> Array.skip 1
+                    |> Array.forall (fun child ->
+                        match child with
+                        | Leaf l when l.IsEmpty -> true
+                        | Leaf _ -> false
+                        | NonLeaf _ -> false)
                 | Leaf _ -> false
                 | NonLeaf _ -> false
             | _ -> false)
