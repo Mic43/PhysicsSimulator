@@ -14,13 +14,15 @@ type SpatialTree<'T> =
       MaxDepth: int
       SpaceBoundaries: (float * float) list }
 
+type ObjectExtent = { Size: float; Position: float }
+
 type private NodeData =
-    { Size: float list
-      Position: float list }
+    { Sizes: float list
+      Positions: float list }
 
     static member init tree =
-        { Size = tree.SpaceBoundaries |> List.map (fun (a, b) -> b - a)
-          Position = tree.SpaceBoundaries |> List.map fst }
+        { Sizes = tree.SpaceBoundaries |> List.map (fun (a, b) -> b - a)
+          Positions = tree.SpaceBoundaries |> List.map fst }
 
 module SpatialTree =
     let private failIfWrongDimension tree list =
@@ -50,34 +52,34 @@ module SpatialTree =
         |> Seq.fold (fun acc (i, cur) -> acc + cur * (pown 2 i)) 0
 
     let private getNodePositionByIndex index curNodeSize =
-       (index, [])
+        (index, [])
         |> List.foldBack
-            (fun curSize (indexRest, pos)  ->
+            (fun curSize (indexRest, pos) ->
                 let v = if indexRest % 2 = 0 then 0.0 else (curSize / 2.0)
-                (indexRest / 2, v :: pos))            
+                (indexRest / 2, v :: pos))
             curNodeSize
         |> snd
 
     let private getChildNodeData parentNodeData index =
         let childNodePosition =
-            getNodePositionByIndex index parentNodeData.Size
-            |> List.zip parentNodeData.Position
+            getNodePositionByIndex index parentNodeData.Sizes
+            |> List.zip parentNodeData.Positions
             |> List.map (fun (pos, size) -> pos + size)
 
-        { Position = childNodePosition
-          Size = parentNodeData.Size |> List.map (fun s -> s / 2.0) }
+        { Positions = childNodePosition
+          Sizes = parentNodeData.Sizes |> List.map (fun s -> s / 2.0) }
 
     let private areIntersecting nodeDataA nodeDataB =
         let size =
-            nodeDataA.Size
+            nodeDataA.Sizes
             |> Seq.ofList
-            |> Seq.zip nodeDataB.Size
-            |> Seq.map (fun (s1, s2) -> (s2 + s1) / 2.0)
+            |> Seq.zip nodeDataB.Sizes
+            |> Seq.map (fun (s1, s2) -> s2 + s1)
 
         let delta =
-            nodeDataA.Position
+            nodeDataA.Positions
             |> Seq.ofList
-            |> Seq.zip nodeDataB.Position
+            |> Seq.zip nodeDataB.Positions
             |> Seq.map (fun (p1, p2) -> p2 - p1)
 
         Seq.forall2 (fun delta size -> abs delta < size) delta size
@@ -99,7 +101,7 @@ module SpatialTree =
 
     let insert
         (tree: SpatialTree<'T>)
-        (objectExtentProvider: 'T -> {| Size: float; Position: float |} list)
+        (objectExtentProvider: 'T -> ObjectExtent list)
         (object: 'T)
         =
         let objectExtent = object |> objectExtentProvider
@@ -107,9 +109,9 @@ module SpatialTree =
 
         let rec addInternal curDepth (curNodeData: NodeData) (node: SpatialTreeNode<'T>) : SpatialTreeNode<'T> =
 
-            let toNodeData (extent: {| Size: float; Position: float |} list) =
+            let toNodeData (extent: ObjectExtent list) =
                 let p = extent |> List.map (fun e -> (e.Size, e.Position)) |> List.unzip
-                { Size = p |> fst; Position = p |> snd }
+                { Sizes = p |> fst; Positions = p |> snd }
 
             let splitNode nodeObjects =
                 [| 0 .. (pown 2 tree.SpaceBoundaries.Length) - 1 |]
@@ -140,7 +142,7 @@ module SpatialTree =
                 |> NonLeaf
 
         { tree with
-            Root = tree.Root |> addInternal 0 (tree |> NodeData.init) }
+            Root = tree.Root |> addInternal 1 (tree |> NodeData.init) }
 
     let getObjectBuckets (tree: SpatialTree<'T>) =
         let rec getBucketsInternal node : 'T list seq =

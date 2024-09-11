@@ -1,13 +1,14 @@
 module UtilitiesTests
 
 open System
+open FSharpPlus
 open FSharpPlus.Data
+open Xunit
 open FsCheck
 open FsCheck.Xunit
 open PhysicsSimulator.Utilities
 
-let (.=.) left right =
-    left = right |@ sprintf "%A = %A" left right
+let (.=.) left right = left = right |@ $"%A{left} = %A{right}"
 
 module SpatialTree =
 
@@ -43,7 +44,7 @@ module SpatialTree =
 
     [<Property>]
     let ``For single object tree getObjectBuckets returns object's singleton `` (object: int) =
-       
+
         let treeGen =
             gen {
                 let size = 1000.0
@@ -54,7 +55,7 @@ module SpatialTree =
                 return
                     object
                     |> SpatialTree.insert emptyTree (fun _ ->
-                        extent |> List.map (fun (p, s) -> {| Position = p; Size = s |}))
+                        extent |> List.map (fun (p, s) -> { Position = p; Size = s }))
             }
 
         (fun tree ->
@@ -69,6 +70,7 @@ module SpatialTree =
         object
         =
         let maxSurfaceSize = 10.0
+
         let treeGen =
             Arb.generate<int>
             |> Generators.SpatialTree.singleNodeTree maxSurfaceSize
@@ -79,7 +81,7 @@ module SpatialTree =
             let actual =
                 object
                 |> SpatialTree.insert tree (fun _ ->
-                    tree.SpaceBoundaries |> List.map (fun (p, _) -> {| Position = p; Size = 0.00 |}))
+                    tree.SpaceBoundaries |> List.map (fun (p, _) -> { Position = p; Size = 0.00 }))
 
             match actual.Root with
             | Leaf _ -> false
@@ -97,3 +99,50 @@ module SpatialTree =
                 | NonLeaf _ -> false
             | _ -> false)
         |> Prop.forAll (treeGen |> Arb.fromGen)
+
+    [<Property(EndSize = 100)>]
+    let ``For tree with full Root node, inserting object works correctly if maxDepth is reached`` object =
+        let maxSurfaceSize = 10.0
+
+        let treeGen =
+            Arb.generate<int>
+            |> Generators.SpatialTree.singleNodeTree maxSurfaceSize
+            |> Gen.filter (fun tree -> tree.MaxDepth = 1)
+
+        (fun tree ->
+            // all objects are placed in the plane origin
+            let actual =
+                object
+                |> SpatialTree.insert tree (fun _ ->
+                    tree.SpaceBoundaries |> List.map (fun (p, _) -> { Position = p; Size = 0.00 }))
+
+            (match actual.Root with
+             | Leaf newRoot ->
+                 match tree.Root with
+                 | Leaf oldRoot when newRoot = object :: oldRoot -> true
+                 | _ -> false
+             | _ -> false)
+            |@ $"before:{tree} actual:{actual}")
+
+        |> Prop.forAll (treeGen |> Arb.fromGen)
+
+    [<Fact>]
+    let ``inserting object intersecting many subspaces works correctly for 1D`` () =
+
+        let posMap =
+            [ (1, { Position = 2.0; Size = 1.0 })
+              (2, { Position = 7.0; Size = 1.0 })
+              (3, { Position = 4.0; Size = 1.1 }) ]
+            |> Map.ofList
+
+        let tree =
+            { SpatialTree.init<int> 2 10 [ (0, 10) ] with
+                Root = Leaf(posMap |> Map.keys |> Seq.take 2 |> Seq.toList) }
+
+        let actual = SpatialTree.insert tree (fun id -> posMap[id] |> List.singleton) 3
+
+        let expected =
+            { tree with
+                Root = [| [ 3; 1 ] |> Leaf; [ 3; 2 ] |> Leaf |] |> NonLeaf }
+
+        Assert.Equal(expected, actual)
