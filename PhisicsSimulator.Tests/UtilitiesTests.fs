@@ -81,23 +81,24 @@ module SpatialTree =
             let actual =
                 object
                 |> SpatialTree.insert tree (fun _ ->
-                    tree.SpaceBoundaries |> List.map (fun (p, _) -> { Position = p; Size = 0.00 }))
+                    tree.SpaceBoundaries |> List.map (fun (p, _) -> { Position = p; Size = 0.01 }))
 
-            match actual.Root with
-            | Leaf _ -> false
-            | NonLeaf root when root.Length > 0 ->
-                match root[0] with
-                | Leaf l when l.Length = tree.MaxLeafObjects + 1 ->
-                    root
-                    |> Array.skip 1
-                    |> Array.forall (fun child ->
-                        match child with
-                        | Leaf l when l.IsEmpty -> true
-                        | Leaf _ -> false
-                        | NonLeaf _ -> false)
-                | Leaf _ -> false
-                | NonLeaf _ -> false
-            | _ -> false)
+            (match actual.Root with
+             | Leaf _ -> false
+             | NonLeaf root when root.Length > 0 ->
+                 match root[0] with
+                 | Leaf l when l.Length = tree.MaxLeafObjects + 1 ->
+                     root
+                     |> Array.skip 1
+                     |> Array.forall (fun child ->
+                         match child with
+                         | Leaf l when l.IsEmpty -> true
+                         | Leaf _ -> false
+                         | NonLeaf _ -> false)
+                 | Leaf _ -> false
+                 | NonLeaf _ -> false
+             | _ -> false)
+            |@ $"before:{tree} actual:{actual}")
         |> Prop.forAll (treeGen |> Arb.fromGen)
 
     [<Property(EndSize = 100)>]
@@ -127,7 +128,7 @@ module SpatialTree =
         |> Prop.forAll (treeGen |> Arb.fromGen)
 
     [<Fact>]
-    let ``inserting object intersecting many subspaces works correctly for 1D`` () =
+    let ``inserting object intersecting many subspaces works correctly for 1D simple`` () =
 
         let posMap =
             [ (1, { Position = 2.0; Size = 1.0 })
@@ -144,5 +145,69 @@ module SpatialTree =
         let expected =
             { tree with
                 Root = [| [ 3; 1 ] |> Leaf; [ 3; 2 ] |> Leaf |] |> NonLeaf }
+
+        Assert.Equal(expected, actual)
+
+    [<Fact>]
+    let ``inserting object works correctly for 1D simple`` () =
+
+        let posMap =
+            [ (1, { Position = 2.0; Size = 2.0 })
+              (2, { Position = 7.0; Size = 1.0 })
+              (3, { Position = 3.0; Size = 1.1 }) ]
+            |> Map.ofList
+
+        let tree =
+            { SpatialTree.init<int> 2 10 [ (0, 10) ] with
+                Root = Leaf(posMap |> Map.keys |> Seq.take 2 |> Seq.toList) }
+
+        let actual = SpatialTree.insert tree (fun id -> posMap[id] |> List.singleton) 3
+
+        let expected =
+            { tree with
+                Root = [| [ 3; 1 ] |> Leaf; [ 2 ] |> Leaf |] |> NonLeaf }
+
+        Assert.Equal(expected, actual)
+
+    [<Fact>]
+    let ``inserting object works correctly for 1D simple 2`` () =
+
+        let posMap =
+            [ (1, { Position = 12.0; Size = 2.0 })
+              (2, { Position = 17.0; Size = 1.0 })
+              (3, { Position = 18.0; Size = 1.1 }) ]
+            |> Map.ofList
+
+        let tree =
+            { SpatialTree.init<int> 2 10 [ (10, 20) ] with
+                Root = Leaf(posMap |> Map.keys |> Seq.take 2 |> Seq.toList) }
+
+        let actual = SpatialTree.insert tree (fun id -> posMap[id] |> List.singleton) 3
+
+        let expected =
+            { tree with
+                Root = [| [ 1 ] |> Leaf; [ 3; 2 ] |> Leaf |] |> NonLeaf }
+
+        Assert.Equal(expected, actual)
+
+    [<Fact>]
+    let ``inserting object works correctly for 1D complex`` () =
+
+        let posMap =
+            [ (1, { Position = 0; Size = 2.0 })
+              (2, { Position = 6; Size = 1.0 })
+              (3, { Position = 17.0; Size = 1.1 })
+              (4, { Position = 1.0; Size = 1.1 }) ]
+            |> Map.ofList
+
+        let tree =
+            { SpatialTree.init<int> 2 10 [ (0, 20) ] with
+                Root = [| [ 1; 2 ] |> Leaf; [ 3 ] |> Leaf |] |> NonLeaf }
+
+        let actual = SpatialTree.insert tree (fun id -> posMap[id] |> List.singleton) 4
+
+        let expected =
+            { tree with
+                Root = [| [| [ 4; 1 ] |> Leaf; [ 2 ] |> Leaf |] |> NonLeaf; [ 3 ] |> Leaf |] |> NonLeaf }
 
         Assert.Equal(expected, actual)
