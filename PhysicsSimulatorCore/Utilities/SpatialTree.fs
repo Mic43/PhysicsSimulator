@@ -14,15 +14,21 @@ type SpatialTree<'T> =
       MaxDepth: int
       SpaceBoundaries: (float * float) list }
 
-type ObjectExtent = { Size: float; Position: float }
+type ObjectExtent =
+    { Size: float
+      Position: float }
+
+    member this.withPositionCentered =
+        { this with
+            Position = this.Position + this.Size / 2.0 }
 
 type private NodeData =
-    { Sizes: float list
-      Positions: float list }
+    | NodeData of ObjectExtent list
 
     static member init tree =
-        { Sizes = tree.SpaceBoundaries |> List.map (fun (a, b) -> b - a)
-          Positions = tree.SpaceBoundaries |> List.map fst }
+        tree.SpaceBoundaries
+        |> List.map (fun (min, max) -> { Size = max - min; Position = min })
+        |> NodeData
 
 module SpatialTree =
     let private failIfWrongDimension tree list =
@@ -60,29 +66,20 @@ module SpatialTree =
             curNodeSize
         |> snd
 
-    let private getChildNodeData parentNodeData index =
-        let childNodePosition =
-            getNodePositionByIndex index parentNodeData.Sizes
-            |> List.zip parentNodeData.Positions
-            |> List.map (fun (pos, size) -> pos + size)
+    let private getChildNodeData (NodeData parentNodeData) index =
+        let childNodePositionAbsolute =
+            getNodePositionByIndex index (parentNodeData |> List.map (_.Size))
 
-        { Positions = childNodePosition
-          Sizes = parentNodeData.Sizes |> List.map (fun s -> s / 2.0) }
+        (parentNodeData |> List.map (fun oe -> { oe with Size = oe.Size / 2.0 }), childNodePositionAbsolute)
+        ||> List.map2 (fun parent child ->
+            { parent with
+                Position = parent.Position + child })
+        |> NodeData
 
-    let private areIntersecting nodeDataA nodeDataB =
-        let size =
-            nodeDataA.Sizes
-            |> Seq.ofList
-            |> Seq.zip nodeDataB.Sizes
-            |> Seq.map (fun (s1, s2) -> s2 + s1)
+    let private areIntersecting (NodeData nodeDataA) (NodeData nodeDataB) =
 
-        let delta =
-            nodeDataA.Positions
-            |> Seq.ofList
-            |> Seq.zip nodeDataB.Positions
-            |> Seq.map (fun (p1, p2) -> p2 - p1)
-
-        Seq.forall2 (fun delta size -> abs delta < size) delta size
+        (nodeDataA |> List.map _.withPositionCentered, nodeDataB |> List.map _.withPositionCentered)
+        ||> List.forall2 (fun ndA ndB -> (ndA.Size + ndB.Size) / 2.0 > abs (ndB.Position - ndA.Position))
 
     let init<'T> maxLeafObjects maxDepth spaceBoundaries : SpatialTree<'T> =
         if spaceBoundaries |> List.isEmpty then
@@ -99,19 +96,12 @@ module SpatialTree =
           MaxDepth = maxDepth
           SpaceBoundaries = spaceBoundaries }
 
-    let insert
-        (tree: SpatialTree<'T>)
-        (objectExtentProvider: 'T -> ObjectExtent list)
-        (object: 'T)
-        =
+    let insert (tree: SpatialTree<'T>) (objectExtentProvider: 'T -> ObjectExtent list) (object: 'T) =
         let objectExtent = object |> objectExtentProvider
         do objectExtent |> failIfWrongDimension tree
 
         let rec addInternal curDepth (curNodeData: NodeData) (node: SpatialTreeNode<'T>) : SpatialTreeNode<'T> =
 
-            let toNodeData (extent: ObjectExtent list) =
-                let p = extent |> List.map (fun e -> (e.Size, e.Position)) |> List.unzip
-                { Sizes = p |> fst; Positions = p |> snd }
 
             let splitNode nodeObjects =
                 [| 0 .. (pown 2 tree.SpaceBoundaries.Length) - 1 |]
@@ -120,7 +110,7 @@ module SpatialTree =
                     |> List.filter (fun nodeObject ->
                         index
                         |> getChildNodeData curNodeData
-                        |> areIntersecting (nodeObject |> objectExtentProvider |> toNodeData))
+                        |> areIntersecting (nodeObject |> objectExtentProvider |> NodeData))
                     |> Leaf)
                 |> NonLeaf
 
@@ -135,7 +125,7 @@ module SpatialTree =
                 |> Array.mapi (fun i childNode ->
                     let childNodeData = i |> getChildNodeData curNodeData
 
-                    if childNodeData |> areIntersecting (objectExtent |> toNodeData) then
+                    if childNodeData |> areIntersecting (objectExtent |> NodeData) then
                         childNode |> addInternal (curDepth + 1) childNodeData
                     else
                         childNode)

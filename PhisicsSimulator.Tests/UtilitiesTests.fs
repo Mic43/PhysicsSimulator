@@ -81,23 +81,24 @@ module SpatialTree =
             let actual =
                 object
                 |> SpatialTree.insert tree (fun _ ->
-                    tree.SpaceBoundaries |> List.map (fun (p, _) -> { Position = p; Size = 0.00 }))
+                    tree.SpaceBoundaries |> List.map (fun (p, _) -> { Position = p; Size = 0.01 }))
 
-            match actual.Root with
-            | Leaf _ -> false
-            | NonLeaf root when root.Length > 0 ->
-                match root[0] with
-                | Leaf l when l.Length = tree.MaxLeafObjects + 1 ->
-                    root
-                    |> Array.skip 1
-                    |> Array.forall (fun child ->
-                        match child with
-                        | Leaf l when l.IsEmpty -> true
-                        | Leaf _ -> false
-                        | NonLeaf _ -> false)
-                | Leaf _ -> false
-                | NonLeaf _ -> false
-            | _ -> false)
+            (match actual.Root with
+             | Leaf _ -> false
+             | NonLeaf root when root.Length > 0 ->
+                 match root[0] with
+                 | Leaf l when l.Length = tree.MaxLeafObjects + 1 ->
+                     root
+                     |> Array.skip 1
+                     |> Array.forall (fun child ->
+                         match child with
+                         | Leaf l when l.IsEmpty -> true
+                         | Leaf _ -> false
+                         | NonLeaf _ -> false)
+                 | Leaf _ -> false
+                 | NonLeaf _ -> false
+             | _ -> false)
+            |@ $"before:{tree} actual:{actual}")
         |> Prop.forAll (treeGen |> Arb.fromGen)
 
     [<Property(EndSize = 100)>]
