@@ -4,7 +4,7 @@ open FSharpPlus
 
 
 type SpatialTreeNode<'T> =
-    | Leaf of 'T list
+    | Leaf of 'T list // TODO: maybe store set instead of list?
     | NonLeaf of SpatialTreeNode<'T> array
 
 /// n dimensional spatial tree
@@ -14,6 +14,7 @@ type SpatialTree<'T> =
       MaxDepth: int
       SpaceBoundaries: (float * float) list }
 
+///Position (left top) and size of the boundingBox 
 type ObjectExtent =
     { Size: float
       Position: float }
@@ -134,6 +135,7 @@ module SpatialTree =
         { tree with
             Root = tree.Root |> addInternal 1 (tree |> NodeData.init) }
 
+    //TODO: should be seq of sets?
     let getObjectBuckets (tree: SpatialTree<'T>) =
         let rec getBucketsInternal node : 'T list seq =
             match node with

@@ -1,5 +1,6 @@
 namespace PhysicsSimulator.Entities
 
+open System
 open FSharpPlus.Data
 open PhysicsSimulator.Utilities
 open FSharpPlus
@@ -41,10 +42,12 @@ module SimulatorObject =
     let withPhysicalObject simulatorObject physicalObject =
         { simulatorObject with
             PhysicalObject = physicalObject }
-        
+
     let getOffsetFrom (point: Vector3D) (physicalObject: SimulatorObject) =
         (point, physicalObject.PhysicalObject.MassCenterPosition())
         ||> Vector3D.apply2 (-)
+
+    let getAABoundingBox (simulatorObject: SimulatorObject) : Box * Vector3D = "Not implemented yet" |> invalidOp
 
     let applyImpulse impulse offset object =
         let applyImpulseToObject object =

@@ -51,7 +51,6 @@ let objects: ChangeableIndexList<SimulatorObject> = ChangeableIndexList []
 
 let prepareSimulator () =
     let rigidBodyPrototypes =
-
         [ { ((15.0, 15.0, 0.5) |||> RigidBodyPrototype.createDefaultBox) with
               Mass = Mass.Infinite
               UseGravity = false
@@ -64,18 +63,18 @@ let prepareSimulator () =
           //     Pitch = 0.2
           //     Position = Vector3D.create -5 0 -3.5 }
           ]
-        // @ createYAxisHorizontalStack ((0.0, -4.0, 1.5) |||> Vector3D.create) 12 (Box.create 0.5 0.2 2) 0.5
-        // @ createVerticalStack ((0.0, 0.0, 1.5) |||> Vector3D.create) 3 1.0 mass
+        @ createYAxisHorizontalStack ((0.0, -4.0, 1.5) |||> Vector3D.create) 12 (Box.create 0.5 0.2 2) 0.5
+        @ createVerticalStack ((0.0, 0.0, 1.5) |||> Vector3D.create) 3 1.0 mass
 
-        @ [ { (0.5 |> RigidBodyPrototype.createDefaultCube) with
-                Mass = 50.0 |> Mass.Value
-                UseGravity = true
-                Position = Vector3D.create 0 -5 0 } ]
-        
-        @ [ { (0.5 |> RigidBodyPrototype.createDefaultSphere) with
-                Mass = 50.0 |> Mass.Value
-                UseGravity = false 
-                Position = Vector3D.create -2 -5 0.3 } ]
+        // @ [ { (0.5 |> RigidBodyPrototype.createDefaultCube) with
+        //         Mass = 50.0 |> Mass.Value
+        //         UseGravity = true
+        //         Position = Vector3D.create 0 -5 0 } ]
+        //
+        // @ [ { (0.5 |> RigidBodyPrototype.createDefaultSphere) with
+        //         Mass = 50.0 |> Mass.Value
+        //         UseGravity = false 
+        //         Position = Vector3D.create -2 -5 0.3 } ]
 
 
     let sim =

@@ -3,8 +3,10 @@ namespace PhysicsSimulator
 open System
 open System.Threading
 open FSharpPlus
+open FSharpPlus.Control
 open Microsoft.FSharp.Control
 open PhysicsSimulator.Collisions
+open PhysicsSimulator.Utilities
 
 type SimulatorTaskState =
     | Paused
@@ -19,10 +21,16 @@ type BroadPhaseCollisionDetectionKind =
 
 type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?simulationStepInterval0, ?configuration0) =
     let simulationSpeedMultiplier = defaultArg simulationSpeedMultiplier0 1.0
-    let configuration = defaultArg configuration0 Configuration.getDefault
 
     let simulationStepInterval =
         defaultArg simulationStepInterval0 (TimeSpan.FromMilliseconds(10.0))
+
+    //TODO: extract to simulator params
+    let spaceBoundaries =
+        {| Min = Vector3D.zero
+           Max = Vector3D.zero |}
+
+    let configuration = defaultArg configuration0 Configuration.getDefault
 
     let mutable taskState = SimulatorTaskState.Stopped
     let simulatorStateChanged = Event<SimulatorState>()
@@ -35,8 +43,8 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?simulationStepInt
         |> ref
 
     let broadPhaseCollisionDetection: BroadPhaseCollisionDetector =
-        // BroadPhase.withSpatialTree simulatorState.Value.Objects
-        BroadPhase.dummy
+        BroadPhase.withSpatialTree simulatorState.Value.Objects spaceBoundaries
+    // BroadPhase.dummy
 
     let collisionResolver = CollisionResolver.resolveAll broadPhaseCollisionDetection
 
