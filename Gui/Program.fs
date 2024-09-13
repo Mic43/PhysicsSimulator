@@ -15,12 +15,12 @@ open PhysicsSimulator.Collisions
 open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
 
-let impulsedObjectId = 1
+let impulsedObjectId = 2
 let groundId = 0
 let radius = 1.0
 let mass = 100.0
-let impulseStrenght = 1000.0
-let impulseDir = Vector3D.create 0.0 1 0.5
+let impulseStrenght = 200.0
+let impulseDir = Vector3D.create 1.0 0 0.
 let impulseValue = (impulseDir |> Vector3D.normalized).Get * impulseStrenght
 let impulseOffset = Vector3D.create 0.0 0.0 0
 //let epsilon = 0.001
@@ -43,7 +43,7 @@ let createYAxisHorizontalStack position count (box: PhysicsSimulator.Entities.Bo
     [ 0 .. count - 1 ]
     |> List.map (fun i ->
         { (box |> RigidBodyKind.Box |> RigidBodyPrototype.createDefault) with
-            Mass = mass |> Mass.Value          
+            Mass = mass |> Mass.Value
             Position = position + Vector3D.create 0 ((i |> float) * (box.XSize + margin)) 0 })
 
 let collisions: ChangeableIndexList<CollisionData> = ChangeableIndexList []
@@ -56,7 +56,7 @@ let prepareSimulator () =
               Mass = Mass.Infinite
               UseGravity = false
               Pitch = 0.0
-              Position = Vector3D.create 0 0 -0.25 }
+              Position = Vector3D.create 0 0 -0.5 }
           // { ((15.0, 15.0, 0.5) |||> RigidBodyPrototype.createDefaultBox) with
           //     Mass = Mass.Infinite
           //     UseGravity = false
@@ -64,27 +64,33 @@ let prepareSimulator () =
           //     Pitch = 0.2
           //     Position = Vector3D.create -5 0 -3.5 }
           ]
-        // @ createYAxisHorizontalStack ((0.0, -4.0, 1.5) |||> Vector3D.create) 12 (Box.create 0.5 0.2 2) 0.5 
+        // @ createYAxisHorizontalStack ((0.0, -4.0, 1.5) |||> Vector3D.create) 12 (Box.create 0.5 0.2 2) 0.5
         // @ createVerticalStack ((0.0, 0.0, 1.5) |||> Vector3D.create) 3 1.0 mass
+
         @ [ { (0.5 |> RigidBodyPrototype.createDefaultCube) with
                 Mass = 50.0 |> Mass.Value
-                Position = Vector3D.create 0 -7 1.25 } ]
-        @ [ { (0.5 |> RigidBodyPrototype.createDefaultCube) with
+                UseGravity = true
+                Position = Vector3D.create 0 -5 0 } ]
+        
+        @ [ { (0.5 |> RigidBodyPrototype.createDefaultSphere) with
                 Mass = 50.0 |> Mass.Value
-                Position = Vector3D.create 0 -5 1.25 } ]
+                UseGravity = false 
+                Position = Vector3D.create -2 -5 0.3 } ]
+
 
     let sim =
         new Simulator(
             rigidBodyPrototypes,
             0.1,
+            TimeSpan.FromMilliseconds(10.0),
             { Configuration.getDefault with
                 baumgarteTerm = 0.2
-                enableFriction = false }
+                enableFriction = true }
         )
 
-    sim.SimulationStateChanged.Add(fun _ ->        
+    sim.SimulationStateChanged.Add(fun _ ->
         transact (fun () ->
-            //     collisions.UpdateTo(sim.AllCollisions) |> ignore
+            collisions.UpdateTo(sim.AllCollisions) |> ignore
             objects.UpdateTo sim.AllPhysicalObjects)
         |> ignore)
 
@@ -173,7 +179,7 @@ let prepareScene (win: Aardvark.Glfw.Window) sim =
         collisions |> AList.map (collisionToRenderable win) |> AList.toASet |> Sg.set
 
     seq {
-        // yield collisions
+        yield collisions
         yield objects
     }
     |> Sg.ofSeq

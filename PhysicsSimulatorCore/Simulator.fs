@@ -4,16 +4,26 @@ open System
 open System.Threading
 open FSharpPlus
 open Microsoft.FSharp.Control
+open PhysicsSimulator.Collisions
 
 type SimulatorTaskState =
     | Paused
     | Started
     | Stopped
 
-type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
+
+//should be made parameter of simulation?
+type BroadPhaseCollisionDetectionKind =
+    | Dummy
+    | SpatialTree
+
+type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?simulationStepInterval0, ?configuration0) =
     let simulationSpeedMultiplier = defaultArg simulationSpeedMultiplier0 1.0
     let configuration = defaultArg configuration0 Configuration.getDefault
-    let simulationStepInterval = TimeSpan.FromMilliseconds(10.0)
+
+    let simulationStepInterval =
+        defaultArg simulationStepInterval0 (TimeSpan.FromMilliseconds(10.0))
+
     let mutable taskState = SimulatorTaskState.Stopped
     let simulatorStateChanged = Event<SimulatorState>()
     let gate = new SemaphoreSlim(1)
@@ -24,17 +34,20 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
         |> SimulatorStateBuilder.withConfiguration configuration
         |> ref
 
-    let dummyBroadPhaseCollisions (simulatorState: SimulatorState) =
-        (simulatorState.Objects |> Map.keys |> Set.ofSeq)
+    let broadPhaseCollisionDetection: BroadPhaseCollisionDetector =
+        // BroadPhase.withSpatialTree simulatorState.Value.Objects
+        BroadPhase.dummy
+
+    let collisionResolver = CollisionResolver.resolveAll broadPhaseCollisionDetection
 
     let updateSimulation =
         async {
-            let collidingObjectsCandidates = simulatorState.Value |> dummyBroadPhaseCollisions
             gate.Wait()
+
             let newState =
                 simulatorState.Value
-                |> CollisionResolver.resolveAll simulationStepInterval collidingObjectsCandidates
-                // |> JointsRestorer.restoreAll simulationStepInterval 
+                |> collisionResolver simulationStepInterval
+                // |> JointsRestorer.restoreAll simulationStepInterval
                 |> SimulatorState.update simulationStepInterval
 
             simulatorState.Value <- newState
@@ -69,16 +82,19 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
     member this.Configuration = simulatorState.Value.Configuration
 
     member this.AddObject object =
-        gate.Wait()        
+        gate.Wait()
         simulatorState.Value <- simulatorState.Value |> SimulatorStateBuilder.withPrototype object
         gate.Release() |> ignore
-        
-        simulatorState.Value |> simulatorStateChanged.Trigger        
+
+        simulatorState.Value |> simulatorStateChanged.Trigger
+
     member this.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset =
         gate.Wait()
+
         simulatorState.Value <-
             simulatorState.Value
             |> SimulatorState.applyImpulse physicalObjectIdentifier impulseValue impulseOffset
+
         gate.Release() |> ignore
         simulatorState.Value |> simulatorStateChanged.Trigger
 

@@ -30,6 +30,7 @@
         <Compile Include="Entities\OrientedBox.fs" />
         <Compile Include="Entities\Collider.fs" />
         <Compile Include="Entities\SimulatorObject.fs" />
+        <Compile Include="Collisions\BroadPhase.fs" />
         <Compile Include="Collisions\SAT.fs" />
         <Compile Include="Collisions\CollisionDetection.fs"/>
         <Compile Include="Collisions\ContactPointImpulseData.fs" />
