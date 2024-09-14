@@ -21,12 +21,14 @@ module BroadPhase =
         let objExtentProvider id =
             let bb = simulationObjectsMap[id] |> SimulatorObject.getAABoundingBox
 
-            [ { Size = (bb |> fst).XSize
-                Position = (bb |> snd).X }
-              { Size = (bb |> fst).YSize
-                Position = (bb |> snd).Y }
-              { Size = (bb |> fst).ZSize
-                Position = (bb |> snd).Z } ]
+            let minPosition = bb.CenterPosition - (bb.Size |> Box.toVector3D) / 2.0
+
+            [ { Size = bb.Size.XSize
+                Position = minPosition.X }
+              { Size = bb.Size.YSize
+                Position = minPosition.Y }
+              { Size = bb.Size.ZSize
+                Position = minPosition.Z } ]
 
         let inserter tree id =
             id |> SpatialTree.insert tree objExtentProvider
@@ -36,7 +38,10 @@ module BroadPhase =
             ||> Array.zip
             |> Array.toList
 
-        let initialTree = SpatialTree.init 4 10 boundaries
+        let leafCapacity = 4
+        let maxDepth = 10
+
+        let initialTree = SpatialTree.init leafCapacity maxDepth boundaries
         let tree = ids |> Set.fold inserter initialTree
 
         tree

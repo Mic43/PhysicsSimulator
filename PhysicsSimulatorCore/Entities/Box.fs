@@ -18,6 +18,7 @@ type Box =
         Matrix<float>.Build.Diagonal [| m * (b2 + c2); m * (a2 + c2); m * (a2 + b2) |]
         |> Matrix3.ofMatrix
 
+
 module Box =
     let private vertices =
         [ (-1.0, -1.0, -1.0)
@@ -56,7 +57,13 @@ module Box =
           YSize = ySize
           ZSize = zSize }
 
+    let ofVector3D (vector: Vector3D) =
+        (vector.X, vector.Y, vector.Z) |||> create
+
     let createCube size = (size, size, size) |||> create
+
+    let toVector3D box =
+        (box.XSize, box.YSize, box.ZSize) |||> Vector3D.create
 
     let getVertices (box: Box) =
         let t =
@@ -82,7 +89,7 @@ module Box =
             { Vertices =
                 faces[i]
                 |> List.map ((fun i -> vertices[i].Get) >> (_.PointwiseMultiply(scaleVector)) >> ofVector)
-              Normal = normal |> NormalVector.createUnsafe })        
+              Normal = normal |> NormalVector.createUnsafe })
 
     let findFaceByNormal normal (faces: Face seq) =
         faces |> Seq.find (fun face -> face.Normal = normal)
