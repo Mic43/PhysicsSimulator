@@ -27,9 +27,9 @@ module CollisionDetection =
     open SAT
 
     let private detectBoxBoxCollision (boxCollider1, body1) (boxCollider2, body2) =
-        let generateFaceContactPoints normal referenceFaces otherFaces : Reader<Configuration, CollisionData Option> =
+        let generateFaceContactPoints normal referenceFaces otherFaces : Reader<StepConfiguration, CollisionData Option> =
             monad {
-                let! (config: Configuration) = ask
+                let! (config: StepConfiguration) = ask
                 let epsilon = config.epsilon
 
                 let findIncidentFace (referenceFace: Face) (facesCandidates: Face seq) =
@@ -205,7 +205,7 @@ module CollisionDetection =
         |> Reader.Return
 
     /// Collision Normal vector points from the first to the second object in pair
-    let areColliding (pair: SimulatorObject SetOf2) : Reader<Configuration, CollisionData Option> =      
+    let areColliding (pair: SimulatorObject SetOf2) : Reader<StepConfiguration, CollisionData Option> =      
         let first = pair |> SetOf2.fst
         let second = pair |> SetOf2.snd
 

@@ -70,7 +70,7 @@ module CollisionResponse =
         dt
         (collisionData: CollisionData)
         (objects: PhysicalObject SetOf2)
-        : Reader<Configuration, SetOf2<PhysicalObject>> =
+        : Reader<StepConfiguration, SetOf2<PhysicalObject>> =
 
         let createCollisionManifold collisionData target other config =
             let tangentVectors =

@@ -31,11 +31,14 @@ type private NodeData =
         |> List.map (fun (min, max) -> { Size = max - min; Position = min })
         |> NodeData
 
-module SpatialTree =
+module SpatialTree =    
+    let private areIntersecting (NodeData nodeDataA) (NodeData nodeDataB) =
+        (nodeDataA |> List.map _.withPositionCentered, nodeDataB |> List.map _.withPositionCentered)
+        ||> List.forall2 (fun ndA ndB -> (ndA.Size + ndB.Size) / 2.0 >= abs (ndB.Position - ndA.Position))
+    
     let private failIfWrongDimension tree list =
         if (tree.SpaceBoundaries |> List.length) <> (list |> List.length) then
-            "wrong object extent dimension" |> invalidArg "objectExtentProvider"
-
+            "wrong object extent dimension" |> invalidArg "objectExtentProvider"   
     let private getChildNodeIndexByPosition tree (position: float list) =
         do position |> failIfWrongDimension tree
 
@@ -77,19 +80,14 @@ module SpatialTree =
                 Position = parent.Position + child })
         |> NodeData
 
-    let private areIntersecting (NodeData nodeDataA) (NodeData nodeDataB) =
-
-        (nodeDataA |> List.map _.withPositionCentered, nodeDataB |> List.map _.withPositionCentered)
-        ||> List.forall2 (fun ndA ndB -> (ndA.Size + ndB.Size) / 2.0 > abs (ndB.Position - ndA.Position))
-
     let init<'T> maxLeafObjects maxDepth spaceBoundaries : SpatialTree<'T> =
         if spaceBoundaries |> List.isEmpty then
             "boundaries must be non empty" |> invalidArg "spaceBoundaries"
 
-        if maxLeafObjects < 0 then
+        if maxLeafObjects < 1 then
             "must be positive" |> invalidArg "maxLeafObjects"
 
-        if maxDepth < 0 then
+        if maxDepth < 1 then
             "must be positive" |> invalidArg "maxDepth"
 
         { Root = [] |> Leaf
@@ -99,11 +97,12 @@ module SpatialTree =
 
     let insert (tree: SpatialTree<'T>) (objectExtentProvider: 'T -> ObjectExtent list) (object: 'T) =
         let objectExtent = object |> objectExtentProvider
+        
         do objectExtent |> failIfWrongDimension tree
-
+        if tree |> NodeData.init |> areIntersecting (objectExtent |> NodeData) |> not then
+            invalidArg "object" $"object {object} out of space bounds"
+        
         let rec addInternal curDepth (curNodeData: NodeData) (node: SpatialTreeNode<'T>) : SpatialTreeNode<'T> =
-
-
             let splitNode nodeObjects =
                 [| 0 .. (pown 2 tree.SpaceBoundaries.Length) - 1 |]
                 |> Array.map (fun index ->

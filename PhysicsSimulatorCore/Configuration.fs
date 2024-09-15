@@ -1,6 +1,6 @@
 namespace PhysicsSimulator
 
-type Configuration =
+type StepConfiguration =
     { epsilon: float          
       baumgarteTerm: float
       allowedPenetration: float
@@ -8,7 +8,7 @@ type Configuration =
       enableFriction:bool
       }
 
-module Configuration =
+module StepConfiguration =
     let getDefault =
         { epsilon = 0.0001            
           baumgarteTerm = 0.2

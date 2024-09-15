@@ -63,29 +63,21 @@ let prepareSimulator () =
           //     Pitch = 0.2
           //     Position = Vector3D.create -5 0 -3.5 }
           ]
-        @ createYAxisHorizontalStack ((0.0, -4.0, 1.5) |||> Vector3D.create) 12 (Box.create 0.5 0.2 2) 0.5
+        // @ createYAxisHorizontalStack ((0.0, -4.0, 1.5) |||> Vector3D.create) 12 (Box.create 0.5 0.2 2) 0.5
         @ createVerticalStack ((0.0, 0.0, 1.5) |||> Vector3D.create) 3 1.0 mass
 
-        // @ [ { (0.5 |> RigidBodyPrototype.createDefaultCube) with
-        //         Mass = 50.0 |> Mass.Value
-        //         UseGravity = true
-        //         Position = Vector3D.create 0 -5 0 } ]
-        //
-        // @ [ { (0.5 |> RigidBodyPrototype.createDefaultSphere) with
-        //         Mass = 50.0 |> Mass.Value
-        //         UseGravity = false 
-        //         Position = Vector3D.create -2 -5 0.3 } ]
+    // @ [ { (0.5 |> RigidBodyPrototype.createDefaultCube) with
+    //         Mass = 50.0 |> Mass.Value
+    //         UseGravity = true
+    //         Position = Vector3D.create 0 -5 0 } ]
+    //
+    // @ [ { (0.5 |> RigidBodyPrototype.createDefaultSphere) with
+    //         Mass = 50.0 |> Mass.Value
+    //         UseGravity = false
+    //         Position = Vector3D.create -2 -5 0.3 } ]
 
 
-    let sim =
-        new Simulator(
-            rigidBodyPrototypes,
-            0.1,
-            TimeSpan.FromMilliseconds(10.0),
-            { Configuration.getDefault with
-                baumgarteTerm = 0.2
-                enableFriction = true }
-        )
+    let sim = new Simulator(rigidBodyPrototypes)
 
     sim.SimulationStateChanged.Add(fun _ ->
         transact (fun () ->

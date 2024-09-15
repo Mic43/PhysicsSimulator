@@ -13,22 +13,28 @@ type SimulatorTaskState =
     | Started
     | Stopped
 
-
-//should be made parameter of simulation?
 type BroadPhaseCollisionDetectionKind =
     | Dummy
-    | SpatialTree
+    | SpatialTree of SpatialTreeConfiguration
 
-type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?simulationStepInterval0, ?configuration0) =
-    let simulationSpeedMultiplier = defaultArg simulationSpeedMultiplier0 1.0
+type Configuration =
+    { StepConfiguration: StepConfiguration
+      SimulationSpeedMultiplier: float
+      SimulationStepInterval: TimeSpan
+      BroadPhaseCollisionDetectionKind: BroadPhaseCollisionDetectionKind }
 
-    let simulationStepInterval =
-        defaultArg simulationStepInterval0 (TimeSpan.FromMilliseconds(10.0))
+module Configuration =
+    let getDefault =
+        { StepConfiguration = StepConfiguration.getDefault
+          SimulationSpeedMultiplier = 1.0
+          SimulationStepInterval = TimeSpan.FromMilliseconds(10.0)
+          BroadPhaseCollisionDetectionKind = BroadPhaseCollisionDetectionKind.Dummy }
 
+type Simulator(simulatorObjects, ?configuration0) =
     //TODO: extract to simulator params
     let spaceBoundaries =
-        {| Min = Vector3D.zero
-           Max = Vector3D.zero |}
+        {| Min = (-15.0, -15.0, -15.0) |||> Vector3D.create
+           Max = (15.0, 15.0, 15.0) |||> Vector3D.create |}
 
     let configuration = defaultArg configuration0 Configuration.getDefault
 
@@ -39,14 +45,17 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?simulationStepInt
     let simulatorState: SimulatorState ref =
         simulatorObjects
         |> SimulatorStateBuilder.fromPrototypes
-        |> SimulatorStateBuilder.withConfiguration configuration
+        |> SimulatorStateBuilder.withConfiguration configuration.StepConfiguration
         |> ref
 
     let broadPhaseCollisionDetection: BroadPhaseCollisionDetector =
-        BroadPhase.withSpatialTree simulatorState.Value.Objects spaceBoundaries
-    // BroadPhase.dummy
+        match configuration.BroadPhaseCollisionDetectionKind with
+        | Dummy -> BroadPhase.dummy
+        | SpatialTree config ->
+            BroadPhase.withSpatialTree config simulatorState.Value.Objects spaceBoundaries
 
-    let collisionResolver = CollisionResolver.resolveAll broadPhaseCollisionDetection
+    let resolveCollisions =
+        CollisionResolver.resolveAll broadPhaseCollisionDetection configuration.SimulationStepInterval
 
     let updateSimulation =
         async {
@@ -54,9 +63,9 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?simulationStepInt
 
             let newState =
                 simulatorState.Value
-                |> collisionResolver simulationStepInterval
+                |> resolveCollisions
                 // |> JointsRestorer.restoreAll simulationStepInterval
-                |> SimulatorState.update simulationStepInterval
+                |> SimulatorState.update configuration.SimulationStepInterval
 
             simulatorState.Value <- newState
             gate.Release() |> ignore
@@ -120,7 +129,10 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?simulationStepInt
                     else
                         async { () }
 
-                do! simulationStepInterval.Divide(simulationSpeedMultiplier) |> Async.Sleep
+                let sleepTime =
+                    configuration.SimulationStepInterval.Divide(configuration.SimulationSpeedMultiplier)
+
+                do! sleepTime |> Async.Sleep
 
                 return! updateSingleFrame ()
             }

@@ -3,6 +3,7 @@ module UtilitiesTests
 open System
 open FSharpPlus
 open FSharpPlus.Data
+open PhisicsSimulator.Tests.Generators.SpatialTree
 open Xunit
 open FsCheck
 open FsCheck.Xunit
@@ -127,6 +128,14 @@ module SpatialTree =
 
         |> Prop.forAll (treeGen |> Arb.fromGen)
 
+    [<Property(Arbitrary=[| typeof<NormalSpatialTree> |], EndSize = 1)>]
+    let ``inserting object outside of space boundaries causes exception`` (tree: SpatialTree<int>)=
+        lazy
+            (1
+             |> SpatialTree.insert tree (fun id ->
+                 { Size = 0.0; Position = 0.0 } |> List.replicate tree.SpaceBoundaries.Length))
+        |> Prop.throws<ArgumentException, _>
+
     [<Fact>]
     let ``inserting object intersecting many subspaces works correctly for 1D simple`` () =
 
@@ -150,7 +159,6 @@ module SpatialTree =
 
     [<Fact>]
     let ``inserting object works correctly for 1D simple`` () =
-
         let posMap =
             [ (1, { Position = 2.0; Size = 2.0 })
               (2, { Position = 7.0; Size = 1.0 })
@@ -171,7 +179,6 @@ module SpatialTree =
 
     [<Fact>]
     let ``inserting object works correctly for 1D simple 2`` () =
-
         let posMap =
             [ (1, { Position = 12.0; Size = 2.0 })
               (2, { Position = 17.0; Size = 1.0 })
@@ -192,7 +199,6 @@ module SpatialTree =
 
     [<Fact>]
     let ``inserting object works correctly for 1D complex`` () =
-
         let posMap =
             [ (1, { Position = 0; Size = 2.0 })
               (2, { Position = 6; Size = 1.0 })
