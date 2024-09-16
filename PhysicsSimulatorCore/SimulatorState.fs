@@ -78,10 +78,14 @@ module SimulatorState =
     let private particleIntegrator = ParticleIntegrators.forwardEuler
     let private rigidBodyIntegrator = RigidBodyIntegrators.firstOrder
 
-    let private objectUpdater =
-        SimulatorObject.update particleIntegrator rigidBodyIntegrator
-
     let internal updateObjectById (simulatorState: SimulatorState) dt id =
+        let objectUpdater =
+            SimulatorObject.update
+                particleIntegrator
+                (match simulatorState.Configuration.RigidBodyIntegratorKind with
+                 | FirstOrder -> RigidBodyIntegrators.firstOrder
+                 | AugmentedSecondOrder -> RigidBodyIntegrators.augmentedSecondOrder)
+
         let newObjectState =
             objectUpdater
                 dt
