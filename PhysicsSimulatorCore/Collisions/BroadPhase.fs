@@ -5,16 +5,20 @@ open PhysicsSimulator.Entities
 open PhysicsSimulator.Utilities
 
 
-type BroadPhaseCollisionDetector = SimulatorObjectIdentifier Set -> SimulatorObjectIdentifier SetOf2 List
+type internal BroadPhaseCollisionDetector = SimulatorObjectIdentifier Set -> SimulatorObjectIdentifier SetOf2 List
 
-type SpatialTreeConfiguration = { LeafCapacity: int; MaxDepth: int }
+type SpatialTreeConfiguration =
+    { LeafCapacity: int
+      MaxDepth: int }
 
-module BroadPhase =
+    static member Default = { LeafCapacity = 4; MaxDepth = 10 }
+
+module internal BroadPhase =
     let dummy (ids: SimulatorObjectIdentifier Set) =
         ids |> subSetsOf2Tail |> Set.toList |> List.map SetOf2.ofSet
 
     let withSpatialTree
-        (configuration:SpatialTreeConfiguration)
+        (configuration: SpatialTreeConfiguration)
         (simulationObjectsMap: Map<SimulatorObjectIdentifier, SimulatorObject>)
         (spaceBoundaries: {| Min: Vector3D; Max: Vector3D |})
         (ids: SimulatorObjectIdentifier Set)
@@ -49,7 +53,7 @@ module BroadPhase =
         tree
         |> SpatialTree.getObjectBuckets
         |> Seq.filter (fun bucket -> bucket.Length > 1)
-        |> Seq.distinct        
+        |> Seq.distinct
         |> Seq.collect (Set.ofList >> subSetsOf2Tail >> Set.toSeq)
         |> List.ofSeq
         |> List.map SetOf2.ofSet

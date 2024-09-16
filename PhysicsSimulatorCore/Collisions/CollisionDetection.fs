@@ -22,7 +22,7 @@ type CollisionData =
     member this.WithInvertedNormals() =
         { ContactPoints = this.ContactPoints |> List.map (fun cp -> { cp with Normal = -cp.Normal }) }
 
-module CollisionDetection =
+module internal CollisionDetection =
     open Vector3D
     open SAT
 

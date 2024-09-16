@@ -26,7 +26,7 @@ type SetOf2<'t when 't: equality> =
     override this.GetHashCode() =
         this.Get[0].GetHashCode() + this.Get[1].GetHashCode()
 
-module SetOf2 =
+module internal SetOf2 =
     let create fst second = [ fst; second ] |> SetOf2.Value
     let ofPair pair = pair ||> create
 

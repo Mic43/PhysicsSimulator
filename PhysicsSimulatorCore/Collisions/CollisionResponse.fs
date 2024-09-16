@@ -10,12 +10,12 @@ open PhysicsSimulator.Entities
 open Vector3D
 open SetOf2
 
-type CollisionManifold =
+type internal CollisionManifold =
     { Bodies: RigidBody SetOf2
       TangentDirs: NormalVector SetOf2
       Contacts: List<ContactPoint * ContactPointImpulseData> }
 
-module CollisionResponse =
+module internal CollisionResponse =
     let private clamped impulseValue : State<ContactPointImpulseData, float> =
         monad {
             let! impulseAccOld = State.gets (_.AccumulatedNormalImpulse)

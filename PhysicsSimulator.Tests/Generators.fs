@@ -1,4 +1,4 @@
-module PhisicsSimulator.Tests.Generators
+module PhysicsSimulator.Tests.Generators
 
 open System
 open FSharpPlus.Data
@@ -23,7 +23,7 @@ module Common =
                 |> Gen.map (fun h -> (l, h))
         }
 
-module SpatialTree =
+module internal SpatialTree =
     let emptyTree<'T> maxSize =
         (Arb.generate<PositiveInt> |> Gen.two, Common.properRangeGen maxSize |> Gen.nonEmptyListOf)
         ||> Gen.map2 (fun (maxLeafObjects, maxDepth) boundaries ->

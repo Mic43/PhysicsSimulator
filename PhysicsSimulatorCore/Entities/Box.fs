@@ -19,7 +19,7 @@ type Box =
         |> Matrix3.ofMatrix
 
 
-module Box =
+module internal Box =
     let private vertices =
         [ (-1.0, -1.0, -1.0)
           (-1.0, 1.0, -1.0)

@@ -6,7 +6,7 @@ open Microsoft.VisualBasic.CompilerServices
 open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
 
-type ContactPointImpulseData =
+type internal ContactPointImpulseData =
     { BaumgarteBias: float
       AccumulatedNormalImpulse: float
       AccumulatedFrictionImpulse: float SetOf2
@@ -19,7 +19,7 @@ type ContactPointImpulseData =
     member this.Offsets =
         (this.PositionOffsetFromTarget, this.PositionOffsetFromOther) ||> SetOf2.create
 
-module ContactPointImpulseData =
+module internal ContactPointImpulseData =
     let init
         (targetBody: RigidBody)
         (otherBody: RigidBody)

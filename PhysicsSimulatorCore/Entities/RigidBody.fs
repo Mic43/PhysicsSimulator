@@ -42,7 +42,7 @@ type RigidBody =
 
 type RigidBodyIntegrator = TimeSpan -> Torque -> RotationalInertiaInverse -> RigidBodyVariables -> RigidBodyVariables
 
-module RigidBody =
+module internal RigidBody =
     let getAxes (rigidBody: RigidBody) = rigidBody.Axes
 
     let create
@@ -135,7 +135,7 @@ module RigidBody =
         offset
         |> GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation rigidBody.MassCenterPosition
 
-module RigidBodyIntegrators =
+module internal RigidBodyIntegrators =
     open Vector3D
     open Matrix3
 
@@ -189,7 +189,7 @@ module RigidBodyIntegrators =
             { Orientation = newOrientation |> orthonormalize
               AngularMomentum = old.AngularMomentum + angMomentumChange }
 
-module RigidBodyMotion =
+module internal RigidBodyMotion =
 
     let applyImpulse (offset: Vector3D) rigidBody impulse =
         { rigidBody with

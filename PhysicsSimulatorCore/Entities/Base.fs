@@ -23,7 +23,7 @@ type Face =
     { Vertices: Vector3D list
       Normal: NormalVector }
 
-module Face =
+module internal Face =
     let toPlane face =
         face.Normal
         |> Plane.create  (face.Vertices |> Seq.head |> Vector3D.dotProduct face.Normal.Get)

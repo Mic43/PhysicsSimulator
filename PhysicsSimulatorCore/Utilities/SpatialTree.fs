@@ -3,19 +3,19 @@ namespace PhysicsSimulator.Utilities
 open FSharpPlus
 
 
-type SpatialTreeNode<'T> =
+type internal SpatialTreeNode<'T> =
     | Leaf of 'T list // TODO: maybe store set instead of list?
     | NonLeaf of SpatialTreeNode<'T> array
 
 /// n dimensional spatial tree
-type SpatialTree<'T> =
+type internal SpatialTree<'T> =
     { Root: SpatialTreeNode<'T>
       MaxLeafObjects: int
       MaxDepth: int
       SpaceBoundaries: (float * float) list }
 
 ///Position (left top) and size of the boundingBox 
-type ObjectExtent =
+type internal ObjectExtent =
     { Size: float
       Position: float }
 
@@ -31,7 +31,7 @@ type private NodeData =
         |> List.map (fun (min, max) -> { Size = max - min; Position = min })
         |> NodeData
 
-module SpatialTree =    
+module internal SpatialTree =    
     let private areIntersecting (NodeData nodeDataA) (NodeData nodeDataB) =
         (nodeDataA |> List.map _.withPositionCentered, nodeDataB |> List.map _.withPositionCentered)
         ||> List.forall2 (fun ndA ndB -> (ndA.Size + ndB.Size) / 2.0 >= abs (ndB.Position - ndA.Position))

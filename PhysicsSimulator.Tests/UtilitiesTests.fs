@@ -1,9 +1,9 @@
-module UtilitiesTests
+module PhysicsSimulator.Tests.UtilitiesTests
 
 open System
 open FSharpPlus
 open FSharpPlus.Data
-open PhisicsSimulator.Tests.Generators.SpatialTree
+open PhysicsSimulator.Tests.Generators.SpatialTree
 open Xunit
 open FsCheck
 open FsCheck.Xunit
@@ -11,9 +11,9 @@ open PhysicsSimulator.Utilities
 
 let (.=.) left right = left = right |@ $"%A{left} = %A{right}"
 
-module SpatialTree =
+module internal SpatialTree =
 
-    open PhisicsSimulator.Tests
+    open PhysicsSimulator.Tests
 
     [<Property>]
     let ``init called with empty boundaries throws exception`` (maxLeafObjects: PositiveInt) (maxDepth: PositiveInt) =

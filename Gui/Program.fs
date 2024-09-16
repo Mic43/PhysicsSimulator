@@ -76,8 +76,13 @@ let prepareSimulator () =
     //         UseGravity = false
     //         Position = Vector3D.create -2 -5 0.3 } ]
 
-
-    let sim = new Simulator(rigidBodyPrototypes)
+    let sim =
+        new Simulator(
+            rigidBodyPrototypes,
+            { Configuration.getDefault with
+                BroadPhaseCollisionDetectionKind =
+                    {LeafCapacity = 4;MaxDepth = 10 } |> BroadPhaseCollisionDetectionKind.SpatialTree }
+        )
 
     sim.SimulationStateChanged.Add(fun _ ->
         transact (fun () ->

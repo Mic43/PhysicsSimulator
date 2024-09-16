@@ -5,7 +5,7 @@ open FSharpPlus.Data
 open PhysicsSimulator.Entities
 open PhysicsSimulator.Utilities
 
-module JointsRestorer =
+module internal JointsRestorer =
     let restoreAll dt (simState: SimulatorState) =
         let readersList =
             simState.Joints

@@ -8,7 +8,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "PhysicsSimulatorCore", "Phy
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gui2", "Gui2\Gui2.csproj", "{E0136E4D-3D4B-48B9-AD2F-3E8329421BD6}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "PhisicsSimulator.Tests", "PhisicsSimulator.Tests\PhisicsSimulator.Tests.fsproj", "{26B77739-B1F4-4A51-BC5E-2746AC7619C9}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "PhysicsSimulator.Tests", "PhysicsSimulator.Tests\PhysicsSimulator.Tests.fsproj", "{26B77739-B1F4-4A51-BC5E-2746AC7619C9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

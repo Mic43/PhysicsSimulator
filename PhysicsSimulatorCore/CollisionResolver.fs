@@ -6,7 +6,7 @@ open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
 open PhysicsSimulator.Collisions
 
-module CollisionResolver =
+module internal CollisionResolver =
     open SimulatorState
 
     /// returns simulator state with handled collisions for colliding objects or None if there was no collision
