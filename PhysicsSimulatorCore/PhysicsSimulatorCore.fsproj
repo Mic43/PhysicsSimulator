@@ -13,6 +13,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Compile Include="AssemblyInfo.fs" />
         <Compile Include="Configuration.fs" />
         <Compile Include="Utilities\Utils.fs" />
         <Compile Include="Utilities\SetOf2.fs" />
@@ -21,6 +22,7 @@
         <Compile Include="Utilities\Plane.fs" />
         <Compile Include="Utilities\GraphicsUtils.fs" />
         <Compile Include="Utilities\ValueSupplier.fs" />
+        <Compile Include="Utilities\SpatialTree.fs" />
         <Compile Include="Entities\Base.fs" />
         <Compile Include="Entities\Box.fs" />
         <Compile Include="Entities\Sphere.fs" />
@@ -29,6 +31,7 @@
         <Compile Include="Entities\OrientedBox.fs" />
         <Compile Include="Entities\Collider.fs" />
         <Compile Include="Entities\SimulatorObject.fs" />
+        <Compile Include="Collisions\BroadPhase.fs" />
         <Compile Include="Collisions\SAT.fs" />
         <Compile Include="Collisions\CollisionDetection.fs"/>
         <Compile Include="Collisions\ContactPointImpulseData.fs" />

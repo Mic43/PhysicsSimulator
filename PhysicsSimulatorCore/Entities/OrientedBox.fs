@@ -2,11 +2,11 @@ namespace PhysicsSimulator.Entities
 
 open PhysicsSimulator.Utilities
 
-type OrientedBox =
+type internal OrientedBox =
     { Faces: Face list
       Vertices: Vector3D list }
 
-module OrientedBox =
+module internal OrientedBox =
     let private getOrientedFaces colliderBox rigidBody =
         let getOrientedVertex =
             GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation rigidBody.MassCenterPosition

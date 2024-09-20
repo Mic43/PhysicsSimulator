@@ -5,19 +5,8 @@ open FSharpPlus
 open FSharpPlus.Data
 open FSharpPlus.Control
 
-
-// [<AutoOpen>]
-// module Configuration =
-//     let epsilon = 0.00001
-//     let defaultElasticityCoeff = 0.9
-//     let defaultFrictionCoeff = 0.5
-//     let infiniteMass  = infinity
-//     let baumgarteTerm = 0.2
-//     let collisionSolverIterationCount = 10
-//     let allowedPenetration = 0.01
-
 [<AutoOpen>]
-module Utils =
+module internal Utils =
     let throwIfNegative value name =
         if value < 0.0 then
             "Must be positive" |> invalidArg name

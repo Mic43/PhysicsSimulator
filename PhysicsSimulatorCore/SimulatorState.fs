@@ -15,7 +15,7 @@ type SimulatorState =
           ExternalTorques: Map<SimulatorObjectIdentifier, Vector3D>
           Collisions: Map<SimulatorObjectIdentifier Set, CollisionData>
           Joints: Joint list
-          Configuration: Configuration }
+          Configuration: StepConfiguration }
 
 module SimulatorStateBuilder =
     let private earthGAcceleration = Vector3D.create 0.0 0.0 -9.81
@@ -50,7 +50,7 @@ module SimulatorStateBuilder =
         { Objects = objectMap
           ExternalForces = externalForces
           ExternalTorques = identifiers |> Seq.map (fun i -> (i, Vector3D.zero)) |> Map.ofSeq
-          Configuration = Configuration.getDefault
+          Configuration = StepConfiguration.getDefault
           Collisions = Map.empty
           Joints =
             [ Vector3D.create 0 -5 1.25
@@ -78,10 +78,14 @@ module SimulatorState =
     let private particleIntegrator = ParticleIntegrators.forwardEuler
     let private rigidBodyIntegrator = RigidBodyIntegrators.firstOrder
 
-    let private objectUpdater =
-        SimulatorObject.update particleIntegrator rigidBodyIntegrator
-
     let internal updateObjectById (simulatorState: SimulatorState) dt id =
+        let objectUpdater =
+            SimulatorObject.update
+                particleIntegrator
+                (match simulatorState.Configuration.RigidBodyIntegratorKind with
+                 | FirstOrder -> RigidBodyIntegrators.firstOrder
+                 | AugmentedSecondOrder -> RigidBodyIntegrators.augmentedSecondOrder)
+
         let newObjectState =
             objectUpdater
                 dt

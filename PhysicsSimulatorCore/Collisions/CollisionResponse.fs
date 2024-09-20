@@ -10,12 +10,12 @@ open PhysicsSimulator.Entities
 open Vector3D
 open SetOf2
 
-type CollisionManifold =
+type internal CollisionManifold =
     { Bodies: RigidBody SetOf2
       TangentDirs: NormalVector SetOf2
       Contacts: List<ContactPoint * ContactPointImpulseData> }
 
-module CollisionResponse =
+module internal CollisionResponse =
     let private clamped impulseValue : State<ContactPointImpulseData, float> =
         monad {
             let! impulseAccOld = State.gets (_.AccumulatedNormalImpulse)
@@ -70,7 +70,7 @@ module CollisionResponse =
         dt
         (collisionData: CollisionData)
         (objects: PhysicalObject SetOf2)
-        : Reader<Configuration, SetOf2<PhysicalObject>> =
+        : Reader<StepConfiguration, SetOf2<PhysicalObject>> =
 
         let createCollisionManifold collisionData target other config =
             let tangentVectors =
@@ -89,8 +89,7 @@ module CollisionResponse =
                 monad {
                     let! offsets = State.gets ContactPointImpulseData.offsets
 
-                    let! normalImpulse = contactPoint |> calculateNormalImpulse bodies
-                    // normalImpulse |> printfn "normal impulse value: %A"
+                    let! normalImpulse = contactPoint |> calculateNormalImpulse bodies                 
 
                     return
                         ([ normalImpulse; -normalImpulse ] |> ofList, offsets, bodies)
@@ -103,9 +102,7 @@ module CollisionResponse =
                 monad {
                     let! offsets = State.gets ContactPointImpulseData.offsets
                     let! tangentImpulses = bodies|> Friction.calculateImpulse 
-
-                    // tangentImpulse |> printfn "tangent impulse value: %A"
-
+                    
                     ([ tangentImpulses; tangentImpulses |> map (~-) ] |> ofList, offsets, bodies)
                     |||> zip3
                     |> map (fun (impulses, offset, rigidBody) ->

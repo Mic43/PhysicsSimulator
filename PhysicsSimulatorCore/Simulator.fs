@@ -3,17 +3,36 @@ namespace PhysicsSimulator
 open System
 open System.Threading
 open FSharpPlus
+open FSharpPlus.Control
 open Microsoft.FSharp.Control
+open PhysicsSimulator.Collisions
+open PhysicsSimulator.Utilities
 
 type SimulatorTaskState =
     | Paused
     | Started
     | Stopped
 
-type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
-    let simulationSpeedMultiplier = defaultArg simulationSpeedMultiplier0 1.0
+type BroadPhaseCollisionDetectionKind =
+    | Dummy
+    | SpatialTree of SpatialTreeConfiguration
+
+type Configuration =
+    { StepConfiguration: StepConfiguration
+      SimulationSpeedMultiplier: float
+      SimulationStepInterval: TimeSpan
+      BroadPhaseCollisionDetectionKind: BroadPhaseCollisionDetectionKind }
+
+module Configuration =
+    let getDefault =
+        { StepConfiguration = StepConfiguration.getDefault
+          SimulationSpeedMultiplier = 1.0
+          SimulationStepInterval = TimeSpan.FromMilliseconds(10.0)
+          BroadPhaseCollisionDetectionKind = BroadPhaseCollisionDetectionKind.Dummy }
+
+type Simulator(simulatorObjects, ?configuration0) =
     let configuration = defaultArg configuration0 Configuration.getDefault
-    let simulationStepInterval = TimeSpan.FromMilliseconds(10.0)
+
     let mutable taskState = SimulatorTaskState.Stopped
     let simulatorStateChanged = Event<SimulatorState>()
     let gate = new SemaphoreSlim(1)
@@ -21,21 +40,26 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
     let simulatorState: SimulatorState ref =
         simulatorObjects
         |> SimulatorStateBuilder.fromPrototypes
-        |> SimulatorStateBuilder.withConfiguration configuration
+        |> SimulatorStateBuilder.withConfiguration configuration.StepConfiguration
         |> ref
 
-    let broadPhaseCollisions (simulatorState: SimulatorState) =
-        (simulatorState.Objects |> Map.keys |> Set.ofSeq)
+    let broadPhaseCollisionDetection: BroadPhaseCollisionDetector =
+        match configuration.BroadPhaseCollisionDetectionKind with
+        | Dummy -> BroadPhase.dummy
+        | SpatialTree config -> BroadPhase.withSpatialTree config simulatorState.Value.Objects
+
+    let resolveCollisions =
+        CollisionResolver.resolveAll broadPhaseCollisionDetection configuration.SimulationStepInterval
 
     let updateSimulation =
         async {
-            let collidingObjectsCandidates = simulatorState.Value |> broadPhaseCollisions
             gate.Wait()
+
             let newState =
                 simulatorState.Value
-                |> CollisionResolver.resolveAll simulationStepInterval collidingObjectsCandidates
-                |> JointsRestorer.restoreAll simulationStepInterval 
-                |> SimulatorState.update simulationStepInterval
+                |> resolveCollisions
+                // |> JointsRestorer.restoreAll simulationStepInterval
+                |> SimulatorState.update configuration.SimulationStepInterval
 
             simulatorState.Value <- newState
             gate.Release() |> ignore
@@ -69,16 +93,19 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
     member this.Configuration = simulatorState.Value.Configuration
 
     member this.AddObject object =
-        gate.Wait()        
+        gate.Wait()
         simulatorState.Value <- simulatorState.Value |> SimulatorStateBuilder.withPrototype object
         gate.Release() |> ignore
-        
-        simulatorState.Value |> simulatorStateChanged.Trigger        
+
+        simulatorState.Value |> simulatorStateChanged.Trigger
+
     member this.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset =
         gate.Wait()
+
         simulatorState.Value <-
             simulatorState.Value
             |> SimulatorState.applyImpulse physicalObjectIdentifier impulseValue impulseOffset
+
         gate.Release() |> ignore
         simulatorState.Value |> simulatorStateChanged.Trigger
 
@@ -96,7 +123,10 @@ type Simulator(simulatorObjects, ?simulationSpeedMultiplier0, ?configuration0) =
                     else
                         async { () }
 
-                do! simulationStepInterval.Divide(simulationSpeedMultiplier) |> Async.Sleep
+                let sleepTime =
+                    configuration.SimulationStepInterval.Divide(configuration.SimulationSpeedMultiplier)
+
+                do! sleepTime |> Async.Sleep
 
                 return! updateSingleFrame ()
             }

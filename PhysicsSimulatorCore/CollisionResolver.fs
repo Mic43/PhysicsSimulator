@@ -6,7 +6,7 @@ open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
 open PhysicsSimulator.Collisions
 
-module CollisionResolver =
+module internal CollisionResolver =
     open SimulatorState
 
     /// returns simulator state with handled collisions for colliding objects or None if there was no collision
@@ -21,7 +21,7 @@ module CollisionResolver =
                             dt
                             collisionData
                             (collidingObjectsCandidates |> SetOf2.map (_.PhysicalObject))
-                 
+
                     let objectsIds = collidingObjectsCandidates |> SetOf2.map _.Id |> SetOf2.toSet
 
                     let simulatorState =
@@ -45,14 +45,13 @@ module CollisionResolver =
         tryHandleCollision dt collidingObjectsCandidates curSimulationState
         |> Option.defaultValue curSimulationState
 
-    let resolveAll dt collidingObjectsCandidates (curSimulationState: SimulatorState) =
-        let withCollisionResponse simulatorState objectIdentifiers =
-            objectIdentifiers |> SetOf2.ofSet |> withCollisionResponse dt simulatorState
-
+    let resolveAll (broadPhaseCollisionDetection: BroadPhaseCollisionDetector) dt (curSimulationState: SimulatorState) =        
         let withClearedOldCollisions =
             { curSimulationState with
                 Collisions = Map.empty }
 
-        collidingObjectsCandidates
-        |> subSetsOf2Tail
-        |> Set.fold withCollisionResponse withClearedOldCollisions
+        curSimulationState.Objects
+        |> Map.keys
+        |> Set.ofSeq
+        |> broadPhaseCollisionDetection
+        |> List.fold (withCollisionResponse dt) withClearedOldCollisions

@@ -5,7 +5,7 @@ open FSharpPlus.Data
 open PhysicsSimulator.Entities
 open PhysicsSimulator.Utilities
 
-module Friction =
+module internal Friction =
     open Vector3D
 
     let private compoundFrictionCoeff coeff1 coeff2 = max coeff1 coeff2

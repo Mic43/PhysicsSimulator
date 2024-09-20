@@ -3,7 +3,7 @@ namespace PhysicsSimulator.Utilities
 open MathNet.Numerics.LinearAlgebra
 open FSharpPlus
 
-module GraphicsUtils =
+module internal GraphicsUtils =
     open Vector3D
 
     let getClosestPointToEdge (vertex1: Vector3D, vertex2: Vector3D) position =

@@ -1,5 +1,6 @@
 namespace PhysicsSimulator.Entities
 
+open System
 open FSharpPlus.Data
 open PhysicsSimulator.Utilities
 open FSharpPlus
@@ -37,14 +38,36 @@ type SimulatorObject =
       PhysicalObject: PhysicalObject
       Collider: Collider }
 
+/// Axis aligned bounding box
+type AABB = { Size: Box; CenterPosition: Vector3D }
+
 module SimulatorObject =
     let withPhysicalObject simulatorObject physicalObject =
         { simulatorObject with
             PhysicalObject = physicalObject }
-        
+
     let getOffsetFrom (point: Vector3D) (physicalObject: SimulatorObject) =
         (point, physicalObject.PhysicalObject.MassCenterPosition())
         ||> Vector3D.apply2 (-)
+
+    let getAABoundingBox (simulatorObject: SimulatorObject) : AABB =
+        match (simulatorObject.Collider, simulatorObject.PhysicalObject) with
+        | Sphere sphere, Particle particle ->
+            { Size = sphere.Radius |> Box.createCube
+              CenterPosition = particle.Variables.Position }
+        | Sphere sphere, RigidBody rigidBody ->
+            { Size = sphere.Radius |> Box.createCube
+              CenterPosition = rigidBody.MassCenterPosition }
+        | Box box, Particle particle ->
+            { Size = box
+              CenterPosition = particle.Variables.Position }
+        | Box box, RigidBody rigidBody ->
+            { Size =
+                box
+                |> Box.toVector3D
+                |> GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation Vector3D.zero
+                |> Box.ofVector3D
+              CenterPosition = rigidBody.MassCenterPosition }
 
     let applyImpulse impulse offset object =
         let applyImpulseToObject object =

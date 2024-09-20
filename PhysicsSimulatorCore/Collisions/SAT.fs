@@ -5,7 +5,7 @@ open PhysicsSimulator.Entities
 
 open FSharpPlus
 
-module SAT =
+module internal SAT =
     open Vector3D
 
     /// axes on both boxes that make this edge separating axis
