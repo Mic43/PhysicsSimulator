@@ -31,11 +31,6 @@ module Configuration =
           BroadPhaseCollisionDetectionKind = BroadPhaseCollisionDetectionKind.Dummy }
 
 type Simulator(simulatorObjects, ?configuration0) =
-    //TODO: extract to simulator params
-    let spaceBoundaries =
-        {| Min = (-15.0, -15.0, -15.0) |||> Vector3D.create
-           Max = (15.0, 15.0, 15.0) |||> Vector3D.create |}
-
     let configuration = defaultArg configuration0 Configuration.getDefault
 
     let mutable taskState = SimulatorTaskState.Stopped
@@ -51,8 +46,7 @@ type Simulator(simulatorObjects, ?configuration0) =
     let broadPhaseCollisionDetection: BroadPhaseCollisionDetector =
         match configuration.BroadPhaseCollisionDetectionKind with
         | Dummy -> BroadPhase.dummy
-        | SpatialTree config ->
-            BroadPhase.withSpatialTree config simulatorState.Value.Objects spaceBoundaries
+        | SpatialTree config -> BroadPhase.withSpatialTree config simulatorState.Value.Objects
 
     let resolveCollisions =
         CollisionResolver.resolveAll broadPhaseCollisionDetection configuration.SimulationStepInterval

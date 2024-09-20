@@ -9,9 +9,15 @@ type internal BroadPhaseCollisionDetector = SimulatorObjectIdentifier Set -> Sim
 
 type SpatialTreeConfiguration =
     { LeafCapacity: int
+      SpaceBoundaries: {| Min: Vector3D; Max: Vector3D |}
       MaxDepth: int }
 
-    static member Default = { LeafCapacity = 4; MaxDepth = 10 }
+    static member Default =
+        { LeafCapacity = 4
+          SpaceBoundaries =
+            {| Min = (-15.0, -15.0, -15.0) |||> Vector3D.create
+               Max = (15.0, 15.0, 15.0) |||> Vector3D.create |}
+          MaxDepth = 10 }
 
 module internal BroadPhase =
     let dummy (ids: SimulatorObjectIdentifier Set) =
@@ -19,8 +25,7 @@ module internal BroadPhase =
 
     let withSpatialTree
         (configuration: SpatialTreeConfiguration)
-        (simulationObjectsMap: Map<SimulatorObjectIdentifier, SimulatorObject>)
-        (spaceBoundaries: {| Min: Vector3D; Max: Vector3D |})
+        (simulationObjectsMap: Map<SimulatorObjectIdentifier, SimulatorObject>)    
         (ids: SimulatorObjectIdentifier Set)
         =
 
@@ -40,7 +45,7 @@ module internal BroadPhase =
             id |> SpatialTree.insert tree objExtentProvider
 
         let boundaries =
-            (spaceBoundaries.Min.Get.AsArray(), spaceBoundaries.Max.Get.AsArray())
+            (configuration.SpaceBoundaries.Min.Get.AsArray(), configuration.SpaceBoundaries.Max.Get.AsArray())
             ||> Array.zip
             |> Array.toList
 
