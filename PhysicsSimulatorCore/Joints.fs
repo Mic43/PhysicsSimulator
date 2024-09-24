@@ -62,7 +62,7 @@ module Joint =
             let bias = Vector3D.zero
             jointImpulseData.ConstraintMass * (bias - vRel)
 
-    let restore dt (joint: JointType) (objects: PhysicalObject SetOf2) : Reader<Configuration, SetOf2<PhysicalObject>> =
+    let restore dt (joint: JointType) (objects: PhysicalObject SetOf2) : Reader<StepConfiguration, SetOf2<PhysicalObject>> =
         match (objects |> toTuple) with
         | RigidBody body1, RigidBody body2 ->
             let restoreIteration jointImpulseData jointType bodies =
