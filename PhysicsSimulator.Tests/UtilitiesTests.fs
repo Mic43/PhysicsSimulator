@@ -11,7 +11,7 @@ open PhysicsSimulator.Utilities
 
 let (.=.) left right = left = right |@ $"%A{left} = %A{right}"
 
-module internal SpatialTree =
+module SpatialTree =
 
     open PhysicsSimulator.Tests
 
@@ -41,7 +41,7 @@ module internal SpatialTree =
             let actual = tree |> SpatialTree.getObjectBuckets
             let expected = Seq.empty
             actual .=. expected)
-        |> Prop.forAll (Generators.SpatialTree.emptyTree 1000.0 |> Arb.fromGen)
+        |> Prop.forAll (emptyTree 1000.0 |> Arb.fromGen)
 
     [<Property>]
     let ``For single object tree getObjectBuckets returns object's singleton `` (object: int) =
@@ -50,15 +50,15 @@ module internal SpatialTree =
             gen {
                 let size = 1000.0
                 let! emptyTree = Generators.SpatialTree.emptyTree<int> size
-
+        
                 let! extent = emptyTree.SpaceBoundaries.Length |> Generators.SpatialTree.extent size
-
+        
                 return
                     object
-                    |> SpatialTree.insert emptyTree (fun _ ->
-                        extent |> List.map (fun (p, s) -> { Position = p; Size = s }))
+                    |> SpatialTree.insert emptyTree (fun _ -> 
+                        emptyTree.SpaceBoundaries |> List.map (fun (p, s) -> { Position = p; Size = s }))
             }
-
+        
         (fun tree ->
             let actual = tree |> SpatialTree.getObjectBuckets
             let expected = object |> List.singleton |> Seq.singleton
@@ -74,7 +74,7 @@ module internal SpatialTree =
 
         let treeGen =
             Arb.generate<int>
-            |> Generators.SpatialTree.singleNodeTree maxSurfaceSize
+            |> singleNodeTree maxSurfaceSize
             |> Gen.filter (fun tree -> tree.MaxDepth > 1)
 
         (fun tree ->
@@ -108,7 +108,7 @@ module internal SpatialTree =
 
         let treeGen =
             Arb.generate<int>
-            |> Generators.SpatialTree.singleNodeTree maxSurfaceSize
+            |> singleNodeTree maxSurfaceSize
             |> Gen.filter (fun tree -> tree.MaxDepth = 1)
 
         (fun tree ->
@@ -116,7 +116,7 @@ module internal SpatialTree =
             let actual =
                 object
                 |> SpatialTree.insert tree (fun _ ->
-                    tree.SpaceBoundaries |> List.map (fun (p, _) -> { Position = p; Size = 0.00 }))
+                    tree.SpaceBoundaries |> List.map (fun (p, _) -> { Position = p; Size = 0.01 }))
 
             (match actual.Root with
              | Leaf newRoot ->
@@ -128,11 +128,11 @@ module internal SpatialTree =
 
         |> Prop.forAll (treeGen |> Arb.fromGen)
 
-    [<Property(Arbitrary=[| typeof<NormalSpatialTree> |], EndSize = 1)>]
-    let ``inserting object outside of space boundaries causes exception`` (tree: SpatialTree<int>)=
+    [<Property(Arbitrary=[| typeof<NormalSpatialTree> |], EndSize = 10)>]
+    let internal ``inserting object outside of space boundaries causes exception`` (tree: SpatialTree<int>)=
         lazy
             (1
-             |> SpatialTree.insert tree (fun id ->
+             |> SpatialTree.insert tree (fun _ ->
                  { Size = 0.0; Position = 0.0 } |> List.replicate tree.SpaceBoundaries.Length))
         |> Prop.throws<ArgumentException, _>
 
