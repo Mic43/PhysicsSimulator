@@ -1,3 +1,5 @@
+# 3d physics engine
+
 Basic 3d physics engine written entirelly in F#, using functional paradigm - eg. immutability. <BR>
 Supports collisions, two kinds of rigid bodies (boxes and spheres) and friction. <BR>
 
