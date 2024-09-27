@@ -14,7 +14,6 @@
 
     <ItemGroup>
         <Compile Include="AssemblyInfo.fs" />
-        <Compile Include="Configuration.fs" />
         <Compile Include="Utilities\Utils.fs" />
         <Compile Include="Utilities\SetOf2.fs" />
         <Compile Include="Utilities\Vector3D.fs" />
@@ -23,6 +22,7 @@
         <Compile Include="Utilities\GraphicsUtils.fs" />
         <Compile Include="Utilities\ValueSupplier.fs" />
         <Compile Include="Utilities\SpatialTree.fs" />
+        <Compile Include="Configuration.fs" />
         <Compile Include="Entities\Base.fs" />
         <Compile Include="Entities\Box.fs" />
         <Compile Include="Entities\Sphere.fs" />

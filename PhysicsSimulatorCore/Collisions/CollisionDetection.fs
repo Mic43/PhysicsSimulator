@@ -30,7 +30,7 @@ module internal CollisionDetection =
         let generateFaceContactPoints normal referenceFaces otherFaces : Reader<StepConfiguration, CollisionData Option> =
             monad {
                 let! (config: StepConfiguration) = ask
-                let epsilon = config.epsilon
+                let epsilon = config.Epsilon
 
                 let findIncidentFace (referenceFace: Face) (facesCandidates: Face seq) =
                     facesCandidates
@@ -117,7 +117,7 @@ module internal CollisionDetection =
                     (boxes, edgeAxes, [ collisionNormalFromFirstBox; -collisionNormalFromFirstBox ] |> SetOf2.ofList)
                     |||> SetOf2.zip3
                     |> SetOf2.map (fun (box, edgeAxis, normal) ->
-                        edgeAxis |> getSupportingEdge config.epsilon normal box)
+                        edgeAxis |> getSupportingEdge config.Epsilon normal box)
 
                 let cp =
                     getContactPoint (collidingEdges |> SetOf2.fst) (collidingEdges |> SetOf2.snd)
@@ -174,7 +174,7 @@ module internal CollisionDetection =
 
                 let position =
                     (startP, endP)
-                    ||> GraphicsUtils.tryGetPlaneEdgeIntersection conf.epsilon (result.CollidedFace |> Face.toPlane)
+                    ||> GraphicsUtils.tryGetPlaneEdgeIntersection conf.Epsilon (result.CollidedFace |> Face.toPlane)
                     |> Option.get
 
                 { ContactPoints =

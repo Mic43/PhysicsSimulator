@@ -11,21 +11,25 @@ open PhysicsSimulator.Entities
 type SimulatorState =
     private
         { Objects: Map<SimulatorObjectIdentifier, SimulatorObject>
-          ExternalForces: Map<SimulatorObjectIdentifier, Vector3D ValueSupplier>
+          ExternalForces: Map<SimulatorObjectIdentifier, Vector3D>
           ExternalTorques: Map<SimulatorObjectIdentifier, Vector3D>
           Collisions: Map<SimulatorObjectIdentifier Set, CollisionData>
           Joints: Joint list
           Configuration: StepConfiguration }
 
 module SimulatorStateBuilder =
-    let private earthGAcceleration = Vector3D.create 0.0 0.0 -9.81
-    let private gravityForce mass = mass * earthGAcceleration
 
-    let private getExternalForceSupplier proto =
+    let private gravityForce mass (accelMagnitude: float) (accelDirection: NormalVector) =
+        mass * (accelMagnitude * accelDirection.Get)
+
+    let private getDefaultExternalForceSupplier proto =
         (match proto.UseGravity with
-         | true -> proto.Mass.GetValue |> gravityForce
+         | true ->
+             gravityForce
+                 proto.Mass.GetValue
+                 StepConfiguration.earthGravityAccelMagnitude
+                 StepConfiguration.earthGravityDirection
          | false -> Vector3D.zero)
-        |> ValueSupplier.Constant
 
     let fromPrototypes (prototypes: RigidBodyPrototype seq) =
         let prototypes = prototypes |> Seq.toList
@@ -44,7 +48,7 @@ module SimulatorStateBuilder =
         let externalForces =
             prototypes
             |> List.zip identifiers
-            |> List.map (Tuple2.mapItem2 getExternalForceSupplier)
+            |> List.map (Tuple2.mapItem2 getDefaultExternalForceSupplier)
             |> Map.ofList
 
         { Objects = objectMap
@@ -58,7 +62,21 @@ module SimulatorStateBuilder =
 
     let withConfiguration configuration simulatorState =
         { simulatorState with
-            Configuration = configuration }
+            Configuration = configuration
+            ExternalForces =
+                simulatorState.ExternalForces
+                |> Map.map (fun key force ->
+                    if force = Vector3D.zero then
+                        Vector3D.zero
+                    else
+                        let mass = simulatorState.Objects[key].PhysicalObject.AsParticle().Mass.GetValue
+
+                        gravityForce
+                            mass
+                            configuration.GravitationalAccelerationMagnitude
+                            configuration.GravityDirection)
+
+        }
 
     let withPrototype objectProto simulatorState =
         let id =
@@ -71,7 +89,7 @@ module SimulatorStateBuilder =
             Objects = simulatorState.Objects |> Map.add id object
             ExternalForces =
                 simulatorState.ExternalForces
-                |> Map.add id (objectProto |> getExternalForceSupplier)
+                |> Map.add id (objectProto |> getDefaultExternalForceSupplier)
             ExternalTorques = simulatorState.ExternalTorques |> Map.add id Vector3D.zero }
 
 module SimulatorState =
@@ -89,7 +107,7 @@ module SimulatorState =
         let newObjectState =
             objectUpdater
                 dt
-                (simulatorState.ExternalForces[id].GetValue())
+                simulatorState.ExternalForces[id]
                 simulatorState.ExternalTorques[id]
                 simulatorState.Objects[id].PhysicalObject
 

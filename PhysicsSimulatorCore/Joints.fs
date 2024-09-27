@@ -89,7 +89,7 @@ module Joint =
 
                 return
                     bodies
-                    |> applyN config.collisionSolverIterationCount (restoreIteration jImpulseData joint)
+                    |> applyN config.CollisionSolverIterationCount (restoreIteration jImpulseData joint)
                     |> map RigidBody
             }
 

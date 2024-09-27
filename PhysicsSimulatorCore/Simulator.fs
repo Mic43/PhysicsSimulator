@@ -18,14 +18,14 @@ type BroadPhaseCollisionDetectionKind =
     | SpatialTree of SpatialTreeConfiguration
 
 type Configuration =
-    { StepConfiguration: StepConfiguration
+    { StepConfig: StepConfiguration
       SimulationSpeedMultiplier: float
       SimulationStepInterval: TimeSpan
       BroadPhaseCollisionDetectionKind: BroadPhaseCollisionDetectionKind }
 
 module Configuration =
     let getDefault =
-        { StepConfiguration = StepConfiguration.getDefault
+        { StepConfig = StepConfiguration.getDefault
           SimulationSpeedMultiplier = 1.0
           SimulationStepInterval = TimeSpan.FromMilliseconds(10.0)
           BroadPhaseCollisionDetectionKind = BroadPhaseCollisionDetectionKind.Dummy }
@@ -40,7 +40,7 @@ type Simulator(simulatorObjects, ?configuration0) =
     let simulatorState: SimulatorState ref =
         simulatorObjects
         |> SimulatorStateBuilder.fromPrototypes
-        |> SimulatorStateBuilder.withConfiguration configuration.StepConfiguration
+        |> SimulatorStateBuilder.withConfiguration configuration.StepConfig
         |> ref
 
     let broadPhaseCollisionDetection: BroadPhaseCollisionDetector =

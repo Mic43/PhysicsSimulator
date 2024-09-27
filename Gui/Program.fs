@@ -64,7 +64,7 @@ let prepareSimulator () =
           //     Position = Vector3D.create -5 0 -3.5 }
           ]
         @ createYAxisHorizontalStack ((0.0, -4.0, 1.5) |||> Vector3D.create) 12 (Box.create 0.5 0.2 2) 0.5
-        // @ createVerticalStack ((0.0, 0.0, 1.5) |||> Vector3D.create) 3 1.0 mass
+    // @ createVerticalStack ((0.0, 0.0, 1.5) |||> Vector3D.create) 3 1.0 mass
 
     // @ [ { (0.5 |> RigidBodyPrototype.createDefaultCube) with
     //         Mass = 50.0 |> Mass.Value
@@ -78,11 +78,12 @@ let prepareSimulator () =
 
     let sim =
         new Simulator(
-            rigidBodyPrototypes
-            // ,
-            // { Configuration.getDefault with
-            //     BroadPhaseCollisionDetectionKind = 
-            //         {LeafCapacity = 2;MaxDepth = 10 } |> BroadPhaseCollisionDetectionKind.SpatialTree }
+            rigidBodyPrototypes,
+            { Configuration.getDefault with
+                SimulationSpeedMultiplier = 1.0
+                // BroadPhaseCollisionDetectionKind =
+                //     {LeafCapacity = 2;MaxDepth = 10 } |> BroadPhaseCollisionDetectionKind.SpatialTree
+                StepConfig.GravityDirection = (0.0, 0.0, -0.1) |||> Vector3D.create |> NormalVector.create 0.01 }
         )
 
     sim.SimulationStateChanged.Add(fun _ ->
@@ -102,7 +103,7 @@ let toRotation (simulator: Simulator) (orientationMatrix: Matrix3) =
 
     let mutable m33d = tmp |> M33d.op_Explicit
 
-    let fromM33d = Rot3d.FromM33d(m33d, simulator.Configuration.epsilon)
+    let fromM33d = Rot3d.FromM33d(m33d, simulator.Configuration.Epsilon)
     Trafo3d(fromM33d)
 
 let getObjectTransformation (simulator: Simulator) (simObj: PhysicalObject) =

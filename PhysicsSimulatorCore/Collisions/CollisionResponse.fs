@@ -33,8 +33,8 @@ module internal CollisionResponse =
         }
 
     let private calculateBaumgarteBias config (timeInterval: TimeSpan) penetration =
-        -config.baumgarteTerm / timeInterval.TotalSeconds
-        * ((penetration + config.allowedPenetration) |> min 0.0)
+        -config.BaumgarteTerm / timeInterval.TotalSeconds
+        * ((penetration + config.AllowedPenetration) |> min 0.0)
 
     /// calculated impulse is to be applied to the first body of the bodies set
     /// providing collision normal is pointing form the first to the second body
@@ -136,7 +136,7 @@ module internal CollisionResponse =
 
                 let newManifold =
                     collisionManifold
-                    |> applyN config.collisionSolverIterationCount (resolveIteration config.enableFriction)
+                    |> applyN config.CollisionSolverIterationCount (resolveIteration config.EnableFriction)
 
                 return newManifold.Bodies |> map RigidBody
             }
