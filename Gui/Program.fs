@@ -83,7 +83,7 @@ let prepareSimulator () =
                 SimulationSpeedMultiplier = 1.0
                 // BroadPhaseCollisionDetectionKind =
                 //     {LeafCapacity = 2;MaxDepth = 10 } |> BroadPhaseCollisionDetectionKind.SpatialTree
-                StepConfig.GravityDirection = (0.0, 0.0, -0.1) |||> Vector3D.create |> NormalVector.create 0.01 }
+                StepConfig.GravityDirection = (0.0, 0.0, -1.0) |||> Vector3D.create |> NormalVector.create 0.01 }
         )
 
     sim.SimulationStateChanged.Add(fun _ ->
