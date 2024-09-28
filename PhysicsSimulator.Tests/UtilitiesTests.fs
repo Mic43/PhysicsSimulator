@@ -50,15 +50,15 @@ module SpatialTree =
             gen {
                 let size = 1000.0
                 let! emptyTree = Generators.SpatialTree.emptyTree<int> size
-        
+
                 let! extent = emptyTree.SpaceBoundaries.Length |> Generators.SpatialTree.extent size
-        
+
                 return
                     object
-                    |> SpatialTree.insert emptyTree (fun _ -> 
+                    |> SpatialTree.insert emptyTree (fun _ ->
                         emptyTree.SpaceBoundaries |> List.map (fun (p, s) -> { Position = p; Size = s }))
             }
-        
+
         (fun tree ->
             let actual = tree |> SpatialTree.getObjectBuckets
             let expected = object |> List.singleton |> Seq.singleton
@@ -128,10 +128,23 @@ module SpatialTree =
 
         |> Prop.forAll (treeGen |> Arb.fromGen)
 
-    [<Property(Arbitrary=[| typeof<NormalSpatialTree> |], EndSize = 10)>]
-    let internal ``inserting object outside of space boundaries causes exception`` (tree: SpatialTree<int>)=
+    [<Property>]
+    let internal ``inserting object outside of space boundaries causes exception``
+        id
+        (node: SpatialTreeNode<int>)
+        (maxLeafObjects: int)
+        (maxDepth: int)
+        (spaceBoundaries: (float * float) NonEmptyList)
+        =
+
         lazy
-            (1
+            (let tree =
+                { Root = node
+                  MaxLeafObjects = maxLeafObjects
+                  MaxDepth = maxDepth
+                  SpaceBoundaries = spaceBoundaries |> NonEmptyList.toList }
+
+             id
              |> SpatialTree.insert tree (fun _ ->
                  { Size = 0.0; Position = 0.0 } |> List.replicate tree.SpaceBoundaries.Length))
         |> Prop.throws<ArgumentException, _>
