@@ -11,6 +11,11 @@ open PhysicsSimulator.Utilities
 
 let (.=.) left right = left = right |@ $"%A{left} = %A{right}"
 
+let internal singleNodeTreeFromPosMap spaceBoundaries posMap =  
+        let count = (posMap |> Map.count ) - 1
+        { SpatialTree.init<int> count 10 spaceBoundaries with
+                Root = Leaf(posMap |> Map.keys |> Seq.take count |>  Seq.toList) }
+
 module SpatialTree =
 
     open PhysicsSimulator.Tests
@@ -50,15 +55,15 @@ module SpatialTree =
             gen {
                 let size = 1000.0
                 let! emptyTree = Generators.SpatialTree.emptyTree<int> size
-        
+
                 let! extent = emptyTree.SpaceBoundaries.Length |> Generators.SpatialTree.extent size
-        
+
                 return
                     object
-                    |> SpatialTree.insert emptyTree (fun _ -> 
+                    |> SpatialTree.insert emptyTree (fun _ ->
                         emptyTree.SpaceBoundaries |> List.map (fun (p, s) -> { Position = p; Size = s }))
             }
-        
+
         (fun tree ->
             let actual = tree |> SpatialTree.getObjectBuckets
             let expected = object |> List.singleton |> Seq.singleton
@@ -128,10 +133,23 @@ module SpatialTree =
 
         |> Prop.forAll (treeGen |> Arb.fromGen)
 
-    [<Property(Arbitrary=[| typeof<NormalSpatialTree> |], EndSize = 10)>]
-    let internal ``inserting object outside of space boundaries causes exception`` (tree: SpatialTree<int>)=
+    [<Property>]
+    let internal ``inserting object outside of space boundaries causes exception``
+        id
+        (node: SpatialTreeNode<int>)
+        (maxLeafObjects: int)
+        (maxDepth: int)
+        (spaceBoundaries: (float * float) NonEmptyList)
+        =
+
         lazy
-            (1
+            (let tree =
+                { Root = node
+                  MaxLeafObjects = maxLeafObjects
+                  MaxDepth = maxDepth
+                  SpaceBoundaries = spaceBoundaries |> NonEmptyList.toList }
+
+             id
              |> SpatialTree.insert tree (fun _ ->
                  { Size = 0.0; Position = 0.0 } |> List.replicate tree.SpaceBoundaries.Length))
         |> Prop.throws<ArgumentException, _>
@@ -145,9 +163,7 @@ module SpatialTree =
               (3, { Position = 4.0; Size = 1.1 }) ]
             |> Map.ofList
 
-        let tree =
-            { SpatialTree.init<int> 2 10 [ (0, 10) ] with
-                Root = Leaf(posMap |> Map.keys |> Seq.take 2 |> Seq.toList) }
+        let tree = posMap |> singleNodeTreeFromPosMap [(0,10)]
 
         let actual = SpatialTree.insert tree (fun id -> posMap[id] |> List.singleton) 3
 
@@ -165,9 +181,7 @@ module SpatialTree =
               (3, { Position = 3.0; Size = 1.1 }) ]
             |> Map.ofList
 
-        let tree =
-            { SpatialTree.init<int> 2 10 [ (0, 10) ] with
-                Root = Leaf(posMap |> Map.keys |> Seq.take 2 |> Seq.toList) }
+        let tree = posMap |> singleNodeTreeFromPosMap [(0,10)]          
 
         let actual = SpatialTree.insert tree (fun id -> posMap[id] |> List.singleton) 3
 
@@ -185,10 +199,8 @@ module SpatialTree =
               (3, { Position = 18.0; Size = 1.1 }) ]
             |> Map.ofList
 
-        let tree =
-            { SpatialTree.init<int> 2 10 [ (10, 20) ] with
-                Root = Leaf(posMap |> Map.keys |> Seq.take 2 |> Seq.toList) }
-
+        let tree = posMap |> singleNodeTreeFromPosMap [(10,20)]      
+            
         let actual = SpatialTree.insert tree (fun id -> posMap[id] |> List.singleton) 3
 
         let expected =
@@ -215,5 +227,30 @@ module SpatialTree =
         let expected =
             { tree with
                 Root = [| [| [ 4; 1 ] |> Leaf; [ 2 ] |> Leaf |] |> NonLeaf; [ 3 ] |> Leaf |] |> NonLeaf }
+
+        Assert.Equal(expected, actual)
+
+
+    [<Fact>]
+    let ``inserting object works correctly for 2D simple`` () =
+        let posMap =
+            [ (1, [ { Position = 2.0; Size = 2.0 }; { Position = 2.0; Size = 2.0 } ])
+              (2, [ { Position = 2.0; Size = 1.0 }; { Position = 7.0; Size = 2.0 } ])
+              (3, [ { Position = 7.0; Size = 1.0 }; { Position = 2.0; Size = 2.0 } ])
+              (4, [ { Position = 7.0; Size = 1.0 }; { Position = 7.0; Size = 2.0 } ])
+              (5, [ { Position = 1.0; Size = 1.1 }; { Position = 2.0; Size = 2.0 } ]) ]
+            |> Map.ofList
+
+        let tree = posMap |> singleNodeTreeFromPosMap  [ (0, 10); (0, 10) ] 
+           
+        let actual = SpatialTree.insert tree (fun id -> posMap[id]) 5
+
+        let expected =
+            { tree with
+                Root = [| [ 5;1 ] |> Leaf
+                          [ 2 ] |> Leaf
+                          [ 3 ] |> Leaf
+                          [ 4 ] |> Leaf
+                       |] |> NonLeaf }
 
         Assert.Equal(expected, actual)

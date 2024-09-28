@@ -34,7 +34,7 @@ type private NodeData =
 module internal SpatialTree =    
     let private areIntersecting (NodeData nodeDataA) (NodeData nodeDataB) =
         (nodeDataA |> List.map _.withPositionCentered, nodeDataB |> List.map _.withPositionCentered)
-        ||> List.forall2 (fun ndA ndB -> (ndA.Size + ndB.Size) / 2.0 >= abs (ndB.Position - ndA.Position))
+        ||> List.forall2 (fun ndA ndB -> (ndA.Size + ndB.Size) / 2.0 > abs (ndB.Position - ndA.Position))
     
     let private failIfWrongDimension tree list =
         if (tree.SpaceBoundaries |> List.length) <> (list |> List.length) then

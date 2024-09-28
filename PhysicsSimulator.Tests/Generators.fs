@@ -55,7 +55,6 @@ module internal SpatialTree =
             let! b = Common.properRangeGen maxSize |> Gen.listOfLength dimension
             return! b |> extentInBoundaries
         }
-
     type NormalSpatialTree =
         static member Double() =
             Arb.generate<SpatialTree<int>>
