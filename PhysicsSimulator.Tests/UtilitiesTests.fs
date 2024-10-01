@@ -11,10 +11,11 @@ open PhysicsSimulator.Utilities
 
 let (.=.) left right = left = right |@ $"%A{left} = %A{right}"
 
-let internal singleNodeTreeFromPosMap spaceBoundaries posMap =  
-        let count = (posMap |> Map.count ) - 1
-        { SpatialTree.init<int> count 10 spaceBoundaries with
-                Root = Leaf(posMap |> Map.keys |> Seq.take count |>  Seq.toList) }
+let internal singleNodeTreeFromPosMap spaceBoundaries posMap =
+    let count = (posMap |> Map.count) - 1
+
+    { SpatialTree.init<int> count 10 spaceBoundaries with
+        Root = Leaf(posMap |> Map.keys |> Seq.take count |> Set.ofSeq) }
 
 module SpatialTree =
 
@@ -36,7 +37,7 @@ module SpatialTree =
             |||> SpatialTree.init
 
         match actual.Root with
-        | Leaf l -> l = List.Empty
+        | Leaf l -> l = Set.empty
         | _ -> false
 
     [<Property>]
@@ -66,7 +67,7 @@ module SpatialTree =
 
         (fun tree ->
             let actual = tree |> SpatialTree.getObjectBuckets
-            let expected = object |> List.singleton |> Seq.singleton
+            let expected = object |> Set.singleton |> Seq.singleton
 
             actual |> Seq.toList .=. (expected |> Seq.toList))
         |> Prop.forAll (treeGen |> Arb.fromGen)
@@ -79,6 +80,7 @@ module SpatialTree =
 
         let treeGen =
             Arb.generate<int>
+            |> Gen.filter (fun node -> node <> object)
             |> singleNodeTree maxSurfaceSize
             |> Gen.filter (fun tree -> tree.MaxDepth > 1)
 
@@ -93,7 +95,7 @@ module SpatialTree =
              | Leaf _ -> false
              | NonLeaf root when root.Length > 0 ->
                  match root[0] with
-                 | Leaf l when l.Length = tree.MaxLeafObjects + 1 ->
+                 | Leaf l when l |> Set.count = tree.MaxLeafObjects + 1 ->
                      root
                      |> Array.skip 1
                      |> Array.forall (fun child ->
@@ -126,7 +128,7 @@ module SpatialTree =
             (match actual.Root with
              | Leaf newRoot ->
                  match tree.Root with
-                 | Leaf oldRoot when newRoot = object :: oldRoot -> true
+                 | Leaf oldRoot when newRoot = Set.add object oldRoot -> true
                  | _ -> false
              | _ -> false)
             |@ $"before:{tree} actual:{actual}")
@@ -163,13 +165,13 @@ module SpatialTree =
               (3, { Position = 4.0; Size = 1.1 }) ]
             |> Map.ofList
 
-        let tree = posMap |> singleNodeTreeFromPosMap [(0,10)]
+        let tree = posMap |> singleNodeTreeFromPosMap [ (0, 10) ]
 
         let actual = SpatialTree.insert tree (fun id -> posMap[id] |> List.singleton) 3
 
         let expected =
             { tree with
-                Root = [| [ 3; 1 ] |> Leaf; [ 3; 2 ] |> Leaf |] |> NonLeaf }
+                Root = [| [ 3; 1 ] |> Set.ofList |> Leaf; [ 3; 2 ] |> Set.ofList |> Leaf |] |> NonLeaf }
 
         Assert.Equal(expected, actual)
 
@@ -181,13 +183,13 @@ module SpatialTree =
               (3, { Position = 3.0; Size = 1.1 }) ]
             |> Map.ofList
 
-        let tree = posMap |> singleNodeTreeFromPosMap [(0,10)]          
+        let tree = posMap |> singleNodeTreeFromPosMap [ (0, 10) ]
 
         let actual = SpatialTree.insert tree (fun id -> posMap[id] |> List.singleton) 3
 
         let expected =
             { tree with
-                Root = [| [ 3; 1 ] |> Leaf; [ 2 ] |> Leaf |] |> NonLeaf }
+                Root = [| [ 3; 1 ] |> Set.ofList |> Leaf; [ 2 ] |> Set.ofList |> Leaf |] |> NonLeaf }
 
         Assert.Equal(expected, actual)
 
@@ -199,13 +201,13 @@ module SpatialTree =
               (3, { Position = 18.0; Size = 1.1 }) ]
             |> Map.ofList
 
-        let tree = posMap |> singleNodeTreeFromPosMap [(10,20)]      
-            
+        let tree = posMap |> singleNodeTreeFromPosMap [ (10, 20) ]
+
         let actual = SpatialTree.insert tree (fun id -> posMap[id] |> List.singleton) 3
 
         let expected =
             { tree with
-                Root = [| [ 1 ] |> Leaf; [ 3; 2 ] |> Leaf |] |> NonLeaf }
+                Root = [| [ 1 ] |> Set.ofList |> Leaf; [ 3; 2 ] |> Set.ofList |> Leaf |] |> NonLeaf }
 
         Assert.Equal(expected, actual)
 
@@ -220,13 +222,16 @@ module SpatialTree =
 
         let tree =
             { SpatialTree.init<int> 2 10 [ (0, 20) ] with
-                Root = [| [ 1; 2 ] |> Leaf; [ 3 ] |> Leaf |] |> NonLeaf }
+                Root = [| [ 1; 2 ] |> Set.ofList |> Leaf; [ 3 ] |> Set.ofList |> Leaf |] |> NonLeaf }
 
         let actual = SpatialTree.insert tree (fun id -> posMap[id] |> List.singleton) 4
 
         let expected =
             { tree with
-                Root = [| [| [ 4; 1 ] |> Leaf; [ 2 ] |> Leaf |] |> NonLeaf; [ 3 ] |> Leaf |] |> NonLeaf }
+                Root =
+                    [| [| [ 4; 1 ] |> Set.ofList |> Leaf; [ 2 ] |> Set.ofList |> Leaf |] |> NonLeaf
+                       [ 3 ] |> Set.ofList |> Leaf |]
+                    |> NonLeaf }
 
         Assert.Equal(expected, actual)
 
@@ -241,16 +246,17 @@ module SpatialTree =
               (5, [ { Position = 1.0; Size = 1.1 }; { Position = 2.0; Size = 2.0 } ]) ]
             |> Map.ofList
 
-        let tree = posMap |> singleNodeTreeFromPosMap  [ (0, 10); (0, 10) ] 
-           
+        let tree = posMap |> singleNodeTreeFromPosMap [ (0, 10); (0, 10) ]
+
         let actual = SpatialTree.insert tree (fun id -> posMap[id]) 5
 
         let expected =
             { tree with
-                Root = [| [ 5;1 ] |> Leaf
-                          [ 2 ] |> Leaf
-                          [ 3 ] |> Leaf
-                          [ 4 ] |> Leaf
-                       |] |> NonLeaf }
+                Root =
+                    [| [ 5; 1 ] |> Set.ofList |> Leaf
+                       [ 2 ] |> Set.ofList |> Leaf
+                       [ 3 ] |> Set.ofList |> Leaf
+                       [ 4 ] |> Set.ofList |> Leaf |]
+                    |> NonLeaf }
 
         Assert.Equal(expected, actual)

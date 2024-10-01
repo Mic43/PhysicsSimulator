@@ -57,8 +57,8 @@ module internal BroadPhase =
 
         tree
         |> SpatialTree.getObjectBuckets
-        |> Seq.filter (fun bucket -> bucket.Length > 1)
+        |> Seq.filter (fun bucket -> bucket |> Set.count > 1)
         |> Seq.distinct
-        |> Seq.collect (Set.ofList >> subSetsOf2Tail >> Set.toSeq)
+        |> Seq.collect (subSetsOf2Tail >> Set.toSeq)        
+        |> Seq.map SetOf2.ofSet
         |> List.ofSeq
-        |> List.map SetOf2.ofSet

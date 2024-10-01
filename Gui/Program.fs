@@ -20,7 +20,7 @@ let groundId = 0
 let radius = 1.0
 let mass = 100.0
 let impulseStrenght = 200.0
-let impulseDir = Vector3D.create 1.0 0 0.
+let impulseDir = Vector3D.create 0.0 1.0 0.
 let impulseValue = (impulseDir |> Vector3D.normalized).Get * impulseStrenght
 let impulseOffset = Vector3D.create 0.0 0.0 0
 //let epsilon = 0.001
@@ -51,7 +51,7 @@ let objects: ChangeableIndexList<SimulatorObject> = ChangeableIndexList []
 
 let prepareSimulator () =
     let rigidBodyPrototypes =
-        [ { ((15.0, 15.0, 0.5) |||> RigidBodyPrototype.createDefaultBox) with
+        [ { ((15.0, 15.0, 1.01) |||> RigidBodyPrototype.createDefaultBox) with
               Mass = Mass.Infinite
               UseGravity = false
               Pitch = 0.0
@@ -63,13 +63,13 @@ let prepareSimulator () =
           //     Pitch = 0.2
           //     Position = Vector3D.create -5 0 -3.5 }
           ]
-        @ createYAxisHorizontalStack ((0.0, -4.0, 1.5) |||> Vector3D.create) 12 (Box.create 0.5 0.2 2) 0.5
-    // @ createVerticalStack ((0.0, 0.0, 1.5) |||> Vector3D.create) 3 1.0 mass
+        // @ createYAxisHorizontalStack ((0.0, -4.0, 1.5) |||> Vector3D.create) 12 (Box.create 0.5 0.2 2) 0.5
+        @ createVerticalStack ((0.0, 0.0, 1.5) |||> Vector3D.create) 3 1.0 mass
 
-    // @ [ { (0.5 |> RigidBodyPrototype.createDefaultCube) with
-    //         Mass = 50.0 |> Mass.Value
-    //         UseGravity = true
-    //         Position = Vector3D.create 0 -5 0 } ]
+        @ [ { (0.5 |> RigidBodyPrototype.createDefaultCube) with
+                Mass = 50.0 |> Mass.Value
+                UseGravity = true
+                Position = Vector3D.create 0 -5 0 } ]
     //
     // @ [ { (0.5 |> RigidBodyPrototype.createDefaultSphere) with
     //         Mass = 50.0 |> Mass.Value
@@ -81,8 +81,13 @@ let prepareSimulator () =
             rigidBodyPrototypes,
             { Configuration.getDefault with
                 SimulationSpeedMultiplier = 1.0
-                // BroadPhaseCollisionDetectionKind =
-                //     {LeafCapacity = 2;MaxDepth = 10 } |> BroadPhaseCollisionDetectionKind.SpatialTree
+                BroadPhaseCollisionDetectionKind =
+                    { LeafCapacity = 2
+                      SpaceBoundaries =
+                        {| Min =(-15.0,-15.0,-15.0) |||> Vector3D.create
+                           Max = (15.0,15.0,15.0) |||> Vector3D.create |}
+                      MaxDepth = 10 }
+                    |> BroadPhaseCollisionDetectionKind.SpatialTree
                 StepConfig.GravityDirection = (0.0, 0.0, -1.0) |||> Vector3D.create |> NormalVector.create 0.01 }
         )
 

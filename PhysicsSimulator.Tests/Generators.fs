@@ -24,15 +24,15 @@ module Common =
         }
 
 module internal SpatialTree =
-    let emptyTree<'T> maxSize =
+    let emptyTree<'T when 'T: comparison> maxSize =
         (Arb.generate<PositiveInt> |> Gen.two, Common.properRangeGen maxSize |> Gen.nonEmptyListOf)
         ||> Gen.map2 (fun (maxLeafObjects, maxDepth) boundaries ->
             (maxLeafObjects.Get, maxDepth.Get, boundaries) |||> SpatialTree.init<'T>)
 
-    let singleNodeTree<'T> maxSize (singleNodeGen: Gen<'T>) =
+    let singleNodeTree<'T when 'T: comparison> maxSize (singleNodeGen: Gen<'T>) =
         gen {
             let! empty = emptyTree<'T> maxSize
-            let! newRoot = singleNodeGen |> Gen.listOfLength empty.MaxLeafObjects |> Gen.map Leaf
+            let! newRoot = singleNodeGen |> Gen.listOfLength empty.MaxLeafObjects |> Gen.map (Set.ofList >> Leaf)
             return { empty with Root = newRoot }
         }
 
