@@ -57,8 +57,9 @@ module SimulatorStateBuilder =
           Configuration = StepConfiguration.getDefault
           Collisions = Map.empty
           Joints =
-            [ Vector3D.create 0 -5 1.25
-              |> Joint.createBallSocket ([ objectMap[1]; objectMap[2] ] |> SetOf2.ofList) ] }
+            [ Joint.createBallSocket
+                  (SetOf2.ofList [ objectMap[1]; objectMap[2] ])
+                  (Vector3D.create 0.0 -5.0 1.25) ] }
 
     let withConfiguration configuration simulatorState =
         { simulatorState with

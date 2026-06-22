@@ -47,5 +47,4 @@ module internal Utils =
 
     let clamp low high value = high |> min value |> max low
 
-    let inline mapWith (f: 'T -> 'U) (collection: '``Functor<'T>``) : '``Functor<<'T*'U>>`` =
-        collection |> map (fun t -> (t, f t))
+    let mapWith f items = List.map (fun x -> (x, f x)) items

@@ -37,7 +37,7 @@ module internal CollisionResponse =
         * ((penetration + config.AllowedPenetration) |> min 0.0)
 
     /// calculated impulse is to be applied to the first body of the bodies set
-    /// providing collision normal is pointing form the first to the second body
+    /// providing collision normal is pointing from the first to the second body
     let private calculateNormalImpulse
         (bodies: RigidBody SetOf2)
         (contactPoint: ContactPoint)
