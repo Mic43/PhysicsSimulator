@@ -5,7 +5,8 @@ open PhysicsSimulator.Entities
 open PhysicsSimulator.Utilities
 
 
-type internal BroadPhaseCollisionDetector = SimulatorObjectIdentifier Set -> SimulatorObjectIdentifier SetOf2 List
+type internal BroadPhaseCollisionDetector =
+    Map<SimulatorObjectIdentifier, SimulatorObject> -> SimulatorObjectIdentifier SetOf2 List
 
 type SpatialTreeConfiguration =
     { LeafCapacity: int
@@ -20,14 +21,20 @@ type SpatialTreeConfiguration =
           MaxDepth = 10 }
 
 module internal BroadPhase =
-    let dummy (ids: SimulatorObjectIdentifier Set) =
-        ids |> subSetsOf2Tail |> Set.toList |> List.map SetOf2.ofSet
+    let dummy (simulationObjectsMap: Map<SimulatorObjectIdentifier, SimulatorObject>) =
+        simulationObjectsMap
+        |> Map.keys
+        |> Set.ofSeq
+        |> subSetsOf2Tail
+        |> Set.toList
+        |> List.map SetOf2.ofSet
 
     let withSpatialTree
         (configuration: SpatialTreeConfiguration)
-        (simulationObjectsMap: Map<SimulatorObjectIdentifier, SimulatorObject>)    
-        (ids: SimulatorObjectIdentifier Set)
+        (simulationObjectsMap: Map<SimulatorObjectIdentifier, SimulatorObject>)
         =
+
+        let ids = simulationObjectsMap |> Map.keys |> Set.ofSeq
 
         let objExtentProvider id =
             let bb = simulationObjectsMap[id] |> SimulatorObject.getAABoundingBox

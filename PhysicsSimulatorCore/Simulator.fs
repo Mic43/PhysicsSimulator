@@ -46,7 +46,7 @@ type Simulator(simulatorObjects, ?configuration0) =
     let broadPhaseCollisionDetection: BroadPhaseCollisionDetector =
         match configuration.BroadPhaseCollisionDetectionKind with
         | Dummy -> BroadPhase.dummy
-        | SpatialTree config -> BroadPhase.withSpatialTree config simulatorState.Value.Objects
+        | SpatialTree config -> BroadPhase.withSpatialTree config
 
     let resolveCollisions =
         CollisionResolver.resolveAll broadPhaseCollisionDetection configuration.SimulationStepInterval

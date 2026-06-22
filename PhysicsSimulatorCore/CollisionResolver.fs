@@ -51,7 +51,5 @@ module internal CollisionResolver =
                 Collisions = Map.empty }
 
         curSimulationState.Objects
-        |> Map.keys
-        |> Set.ofSeq
         |> broadPhaseCollisionDetection
         |> List.fold (withCollisionResponse dt) withClearedOldCollisions
