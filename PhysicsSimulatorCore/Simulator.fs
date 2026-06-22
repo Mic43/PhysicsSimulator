@@ -52,18 +52,19 @@ type Simulator(simulatorObjects, ?configuration0) =
         CollisionResolver.resolveAll broadPhaseCollisionDetection configuration.SimulationStepInterval
 
     let updateSimulation =
-        async {
+        async {            
             gate.Wait()
+            try
+                let newState =
+                    simulatorState.Value
+                    |> resolveCollisions
+                    // |> JointsRestorer.restoreAll simulationStepInterval
+                    |> SimulatorState.update configuration.SimulationStepInterval
 
-            let newState =
-                simulatorState.Value
-                |> resolveCollisions
-                // |> JointsRestorer.restoreAll simulationStepInterval
-                |> SimulatorState.update configuration.SimulationStepInterval
-
-            simulatorState.Value <- newState
-            gate.Release() |> ignore
-            newState |> simulatorStateChanged.Trigger
+                simulatorState.Value <- newState
+            finally
+                gate.Release() |> ignore
+            simulatorState.Value |> simulatorStateChanged.Trigger
         }
 
     let cancellationTokenSource = new CancellationTokenSource()
@@ -94,19 +95,23 @@ type Simulator(simulatorObjects, ?configuration0) =
 
     member this.AddObject object =
         gate.Wait()
-        simulatorState.Value <- simulatorState.Value |> SimulatorStateBuilder.withPrototype object
-        gate.Release() |> ignore
+        try
+            simulatorState.Value <- simulatorState.Value |> SimulatorStateBuilder.withPrototype object
+        finally 
+            gate.Release() |> ignore
 
         simulatorState.Value |> simulatorStateChanged.Trigger
 
     member this.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset =
         gate.Wait()
-
-        simulatorState.Value <-
-            simulatorState.Value
-            |> SimulatorState.applyImpulse physicalObjectIdentifier impulseValue impulseOffset
-
-        gate.Release() |> ignore
+        
+        try
+            simulatorState.Value <-
+                simulatorState.Value
+                |> SimulatorState.applyImpulse physicalObjectIdentifier impulseValue impulseOffset
+        finally
+            gate.Release() |> ignore
+        
         simulatorState.Value |> simulatorStateChanged.Trigger
 
     member this.Start() =
@@ -138,7 +143,7 @@ type Simulator(simulatorObjects, ?configuration0) =
             invalidOp "simulator is already stopped"
 
         cancellationTokenSource.Cancel()
-
+        taskState <- Stopped
     member this.PauseResume() =
         match taskState with
         | Paused -> taskState <- Started
