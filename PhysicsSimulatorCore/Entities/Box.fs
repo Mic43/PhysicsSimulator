@@ -65,6 +65,25 @@ module Box =
     let toVector3D box =
         (box.XSize, box.YSize, box.ZSize) |||> Vector3D.create
 
+    /// World-space AABB size for a box collider rotated by orientation (centered on the body origin).
+    let worldAxisAlignedSize (orientation: Matrix3) (box: Box) : Box =
+        let hx = box.XSize / 2.0
+        let hy = box.YSize / 2.0
+        let hz = box.ZSize / 2.0
+
+        let toWorld =
+            GraphicsUtils.toWorldCoordinates orientation Vector3D.zero
+
+        let ex = toWorld (Vector3D.create hx 0.0 0.0)
+        let ey = toWorld (Vector3D.create 0.0 hy 0.0)
+        let ez = toWorld (Vector3D.create 0.0 0.0 hz)
+
+        let worldHalfX = abs ex.X + abs ey.X + abs ez.X
+        let worldHalfY = abs ex.Y + abs ey.Y + abs ez.Y
+        let worldHalfZ = abs ex.Z + abs ey.Z + abs ez.Z
+
+        create (worldHalfX * 2.0) (worldHalfY * 2.0) (worldHalfZ * 2.0)
+
     let getVertices (box: Box) =
         let t =
             [ box.XSize; box.YSize; box.ZSize ]

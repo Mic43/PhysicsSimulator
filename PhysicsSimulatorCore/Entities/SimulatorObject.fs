@@ -62,11 +62,7 @@ module SimulatorObject =
             { Size = box
               CenterPosition = particle.Variables.Position }
         | Box box, RigidBody rigidBody ->
-            { Size =
-                box
-                |> Box.toVector3D
-                |> GraphicsUtils.toWorldCoordinates rigidBody.Variables.Orientation Vector3D.zero
-                |> Box.ofVector3D
+            { Size = box |> Box.worldAxisAlignedSize rigidBody.Variables.Orientation
               CenterPosition = rigidBody.MassCenterPosition }
 
     let applyImpulse impulse offset object =
