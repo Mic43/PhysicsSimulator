@@ -1,7 +1,4 @@
-﻿// For more information see https://aka.ms/fsharp-console-apps
-open System
-
-open Aardvark.Base
+﻿open Aardvark.Base
 open Aardvark.Rendering
 open FSharp.Data.Adaptive
 open Aardvark.SceneGraph
@@ -14,6 +11,15 @@ open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
 
 open Gui.Scenes
+
+let createScene argv : IPhysicsScene * CameraView =
+    match argv with
+    | [| "domino" |] ->
+        DominoScene() :> IPhysicsScene,
+        CameraView.LookAt(V3d(-6.0, 0.0, 2.0), V3d(0.0, 0.0, 0.8), V3d.OOI)
+    | _ ->
+        StackScene() :> IPhysicsScene,
+        CameraView.LookAt(V3d(0.0, -2.0, 2.0), V3d.Zero, V3d.OOI)
 
 let toTranslation (v3d: Vector3D) =
     Trafo3d.Translation(v3d.X, v3d.Y, v3d.Z)
@@ -76,7 +82,7 @@ let collisionToRenderable (win: Aardvark.Glfw.Window) collision =
         [ obj; point2 ] |> Sg.ofList)
     |> Sg.ofList
 
-let prepareScene (win: Aardvark.Glfw.Window) (host: SceneHost) =
+let prepareScene (win: Aardvark.Glfw.Window) (host: SceneHost) (showCollisions: aval<bool>) =
     let scene = host.Scene
     let simulator = scene.GetSimulator()
     let groundObjectId = scene.GroundObjectId
@@ -87,11 +93,19 @@ let prepareScene (win: Aardvark.Glfw.Window) (host: SceneHost) =
         |> AList.toASet
         |> Sg.set
 
-    let collisions =
+    let collisionNodes =
         host.Collisions
-        |> AList.map (collisionToRenderable win)
+        |> AList.mapA (fun collision ->
+            showCollisions
+            |> AVal.map (fun show ->
+                if show then
+                    collisionToRenderable win collision
+                else
+                    Sg.empty))
         |> AList.toASet
         |> Sg.set
+
+    let collisions = collisionNodes
 
     seq {
         yield collisions
@@ -100,20 +114,19 @@ let prepareScene (win: Aardvark.Glfw.Window) (host: SceneHost) =
     |> Sg.ofSeq
 
 [<EntryPoint>]
-let main _ =
+let main argv =
 
     Aardvark.Init()
 
     use app = new OpenGlApplication()
     let win = app.CreateGameWindow(samples = 8)
 
-    let scene = StackScene() :> IPhysicsScene
+    let scene, initialView = createScene argv
     let host = SceneHost(scene)
     host.Connect()
 
     let simulator = scene.GetSimulator()
-
-    let initialView = CameraView.LookAt(V3d(0.0, -2.0, 2.0), V3d.Zero, V3d.OOI)
+    let showCollisions = cval false
 
     let frustum =
         win.Sizes
@@ -123,7 +136,7 @@ let main _ =
         DefaultCameraController.control win.Mouse win.Keyboard win.Time initialView
 
     let sg =
-        prepareScene win host
+        prepareScene win host showCollisions
         |> Sg.effect
             [ DefaultSurfaces.trafo |> toEffect
               DefaultSurfaces.simpleLighting |> toEffect ]
@@ -135,6 +148,10 @@ let main _ =
     win.RenderTask <- renderTask
 
     scene.OnKeyDown |> win.Keyboard.Down.Values.Add
+
+    win.Keyboard.Down.Values.Add(fun key ->
+        if key = Keys.C then
+            transact (fun () -> showCollisions.Value <- not showCollisions.Value))
 
     simulator.Start()
     win.Run()

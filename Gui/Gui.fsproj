@@ -10,6 +10,7 @@
         <Compile Include="Scenes\SceneBase.fs" />
         <Compile Include="Scenes\SceneHost.fs" />
         <Compile Include="Scenes\StackScene.fs" />
+        <Compile Include="Scenes\DominoScene.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 
