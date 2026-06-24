@@ -12,6 +12,7 @@ open PhysicsSimulator.Entities
 
 open Gui.Scenes
 open Gui.HelpOverlay
+open Gui.PhongLighting
 
 let createScene argv : IPhysicsScene * CameraView =
     if argv |> Array.exists ((=) "domino") then
@@ -135,11 +136,12 @@ let main argv =
     let cameraView =
         DefaultCameraController.control win.Mouse win.Keyboard win.Time initialView
 
+    // Key light from above-front-right; Phong (diffuse + specular) shows box/sphere shape.
+    let lightLocation = cval (V3d(8.0, 5.0, 12.0))
+
     let scene3d =
         prepareScene win host showCollisions
-        |> Sg.effect
-            [ DefaultSurfaces.trafo |> toEffect
-              DefaultSurfaces.simpleLighting |> toEffect ]
+        |> apply lightLocation
         |> Sg.viewTrafo (cameraView |> AVal.map CameraView.viewTrafo)
         |> Sg.projTrafo (frustum |> AVal.map Frustum.projTrafo)
 
