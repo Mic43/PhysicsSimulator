@@ -33,7 +33,78 @@ module internal SAT =
               SphereCenter:Vector3D
               Penetration: float
               CollisionNormalFromBox: NormalVector }
-        
+
+        type private AxisOverlapTestResult =
+            | SeparatedOnAxis
+            | OverlappingOnAxis of overlap: float * normalFromBox: Vector3D
+
+        let private tryGetOverlapOnAxis
+            spherePosition
+            sphereRadius
+            boxCenter
+            (boxAxis: NormalVector)
+            halfExtent
+            : AxisOverlapTestResult =
+            let axis = boxAxis.Get
+            let boxProjection = boxCenter |> dotProduct axis
+            let boxMin = boxProjection - halfExtent
+            let boxMax = boxProjection + halfExtent
+
+            let sphereProjection = spherePosition |> dotProduct axis
+            let sphereMin = sphereProjection - sphereRadius
+            let sphereMax = sphereProjection + sphereRadius
+
+            if sphereMax < boxMin || sphereMin > boxMax then
+                SeparatedOnAxis
+            else
+                let overlap = (min boxMax sphereMax) - (max boxMin sphereMin)
+                let relativePosition = sphereProjection - boxProjection
+
+                let normalFromBox =
+                    if relativePosition >= 0.0 then axis else -axis
+
+                OverlappingOnAxis(overlap, normalFromBox)
+
+        let private findCollidedFace (orientedBox: OrientedBox) (normalFromBox: Vector3D) =
+            orientedBox.Faces
+            |> List.maxBy (fun face -> face.Normal.Get |> dotProduct normalFromBox)
+
+        /// SAT on the three principal box axes: returns None when any axis separates the shapes.
+        /// Overlap on all three axes is necessary but not sufficient for a true sphere-box hit (corner case).
+        let tryFindSeparatingAxisSAT (object1: Sphere * RigidBody) (object2: Box * RigidBody) =
+            let boxCollider, boxBody = object2
+            let orientedBox = object2 ||> OrientedBox.create
+            let spherePosition = (object1 |> snd).MassCenterPosition
+            let sphereRadius = (object1 |> fst).Radius
+            let boxCenter = boxBody.MassCenterPosition
+
+            let halfExtents =
+                [ boxCollider.XSize / 2.0
+                  boxCollider.YSize / 2.0
+                  boxCollider.ZSize / 2.0 ]
+
+            let axisTests =
+                (boxBody |> RigidBody.getAxes, halfExtents)
+                ||> List.map2 (tryGetOverlapOnAxis spherePosition sphereRadius boxCenter)
+
+            if axisTests |> List.exists ((=) SeparatedOnAxis) then
+                None
+            else
+                let overlap, normalFromBox =
+                    axisTests
+                    |> List.choose (function
+                        | OverlappingOnAxis(overlap, normalFromBox) -> Some(overlap, normalFromBox)
+                        | SeparatedOnAxis -> None)
+                    |> List.minBy fst
+
+                let collidedFace = findCollidedFace orientedBox normalFromBox
+
+                { CollidedFace = collidedFace
+                  Penetration = overlap
+                  CollisionNormalFromBox = normalFromBox |> NormalVector.createUnsafe
+                  SphereCenter = spherePosition }
+                |> Some
+
         let tryFindSeparatingAxis (object1: Sphere * RigidBody) (object2: Box * RigidBody) =
             let orientedBox = object2 ||> OrientedBox.create
             let spherePosition = (object1 |> snd).MassCenterPosition

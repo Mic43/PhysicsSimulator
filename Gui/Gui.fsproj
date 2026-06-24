@@ -6,6 +6,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="Scenes\IPhysicsScene.fs" />
+        <Compile Include="Scenes\SceneBase.fs" />
+        <Compile Include="Scenes\SceneHost.fs" />
+        <Compile Include="Scenes\StackScene.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 
