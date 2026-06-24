@@ -14,13 +14,11 @@ open Gui.Scenes
 open Gui.HelpOverlay
 open Gui.PhongLighting
 
-let createScene argv : IPhysicsScene * CameraView =
+let createScene argv : IPhysicsScene =
     if argv |> Array.exists ((=) "domino") then
-        DominoScene() :> IPhysicsScene,
-        CameraView.LookAt(V3d(-6.0, 0.0, 2.0), V3d(0.0, 0.0, 0.8), V3d.OOI)
+        DominoScene() :> IPhysicsScene
     else
-        StackScene() :> IPhysicsScene,
-        CameraView.LookAt(V3d(0.0, -2.0, 2.0), V3d.Zero, V3d.OOI)
+        StackScene() :> IPhysicsScene
 
 let toTranslation (v3d: Vector3D) =
     Trafo3d.Translation(v3d.X, v3d.Y, v3d.Z)
@@ -122,7 +120,7 @@ let main argv =
     use app = new OpenGlApplication()
     let win = app.CreateGameWindow(samples = 8)
 
-    let scene, initialView = createScene argv
+    let scene = createScene argv
     let host = SceneHost(scene)
     host.Connect()
 
@@ -134,7 +132,7 @@ let main argv =
         |> AVal.map (fun s -> Frustum.perspective 60.0 0.1 150.0 (float s.X / float s.Y))
 
     let cameraView =
-        DefaultCameraController.control win.Mouse win.Keyboard win.Time initialView
+        DefaultCameraController.control win.Mouse win.Keyboard win.Time scene.InitialCameraView
 
     // Key light from above-front-right; Phong (diffuse + specular) shows box/sphere shape.
     let lightLocation = cval (V3d(8.0, 5.0, 12.0))

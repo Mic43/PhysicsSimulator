@@ -1,6 +1,8 @@
 namespace Gui.Scenes
 
 open Aardvark.Application
+open Aardvark.Base
+open Aardvark.Rendering
 open FSharp.Data.Adaptive
 open PhysicsSimulator
 open PhysicsSimulator.Entities
@@ -19,10 +21,17 @@ type SceneBase(prototypes: RigidBodyPrototype list, configuration: Configuration
         member this.GroundObjectId = this.GroundObjectId
         member this.Reset() = this.Reset()
         member this.HelpLines = this.HelpLines
+        member this.InitialCameraView = this.InitialCameraView
         member this.OnKeyDown key = this.OnKeyDown key
 
     abstract GroundObjectId : SimulatorObjectIdentifier
     abstract HelpLines : string list
     default _.HelpLines = []
+
+    abstract InitialCameraView : CameraView
+
+    default _.InitialCameraView =
+        CameraView.LookAt(V3d(0.0, -2.0, 2.0), V3d.Zero, V3d.OOI)
+
     abstract OnKeyDown : Keys -> unit
     default _.OnKeyDown _ = ()

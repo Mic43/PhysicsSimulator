@@ -1,6 +1,8 @@
 namespace Gui.Scenes
 
 open Aardvark.Application
+open Aardvark.Base
+open Aardvark.Rendering
 open FSharp.Data.Adaptive
 open PhysicsSimulator
 open PhysicsSimulator.Collisions
@@ -58,6 +60,9 @@ type DominoScene() =
     static let impulseOffset = Vector3D.create 0.0 0.0 0.0
 
     override _.GroundObjectId = groundObjectId
+
+    override _.InitialCameraView =
+        CameraView.LookAt(V3d(-6.0, 0.0, 2.0), V3d(0.0, 0.0, 0.8), V3d.OOI)
 
     override _.HelpLines =
         [ "Scena: domino"
