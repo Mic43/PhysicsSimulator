@@ -11,6 +11,7 @@ open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
 
 open Gui.Scenes
+open Gui.HelpOverlay
 
 let createScene argv : IPhysicsScene * CameraView =
     match argv with
@@ -84,12 +85,12 @@ let collisionToRenderable (win: Aardvark.Glfw.Window) collision =
 
 let prepareScene (win: Aardvark.Glfw.Window) (host: SceneHost) (showCollisions: aval<bool>) =
     let scene = host.Scene
-    let simulator = scene.GetSimulator()
     let groundObjectId = scene.GroundObjectId
 
     let objects =
         host.Objects
-        |> AList.map (objectToRenderable groundObjectId simulator win)
+        |> AList.map (fun simulatorObject ->
+            objectToRenderable groundObjectId (scene.GetSimulator()) win simulatorObject)
         |> AList.toASet
         |> Sg.set
 
@@ -135,7 +136,7 @@ let main argv =
     let cameraView =
         DefaultCameraController.control win.Mouse win.Keyboard win.Time initialView
 
-    let sg =
+    let scene3d =
         prepareScene win host showCollisions
         |> Sg.effect
             [ DefaultSurfaces.trafo |> toEffect
@@ -143,15 +144,24 @@ let main argv =
         |> Sg.viewTrafo (cameraView |> AVal.map CameraView.viewTrafo)
         |> Sg.projTrafo (frustum |> AVal.map Frustum.projTrafo)
 
+    let gui = create win
+
+    let sg =
+        [ scene3d; gui ]
+        |> Sg.ofList
+
     let renderTask = app.Runtime.CompileRender(win.FramebufferSignature, sg)
 
     win.RenderTask <- renderTask
 
-    scene.OnKeyDown |> win.Keyboard.Down.Values.Add
-
     win.Keyboard.Down.Values.Add(fun key ->
-        if key = Keys.C then
-            transact (fun () -> showCollisions.Value <- not showCollisions.Value))
+        match key with
+        | Keys.C ->
+            transact (fun () -> showCollisions.Value <- not showCollisions.Value)
+        | Keys.R -> host.Reset()
+        | Keys.Pause ->
+            transact (fun () -> simulator.PauseResume ())
+        | key -> scene.OnKeyDown key)
 
     simulator.Start()
     win.Run()

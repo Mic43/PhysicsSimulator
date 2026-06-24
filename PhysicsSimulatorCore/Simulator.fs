@@ -114,6 +114,19 @@ type Simulator(simulatorObjects, ?configuration0) =
         
         simulatorState.Value |> simulatorStateChanged.Trigger
 
+    member this.Reset simulatorObjects =
+        gate.Wait()
+
+        try
+            simulatorState.Value <-
+                simulatorObjects
+                |> SimulatorStateBuilder.fromPrototypes
+                |> SimulatorStateBuilder.withConfiguration configuration.StepConfig
+        finally
+            gate.Release() |> ignore
+
+        simulatorState.Value |> simulatorStateChanged.Trigger
+
     member this.Start() =
         if taskState <> SimulatorTaskState.Stopped then
             invalidOp "simulator should be in stopped state"
