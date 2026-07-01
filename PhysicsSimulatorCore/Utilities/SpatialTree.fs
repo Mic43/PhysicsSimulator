@@ -200,6 +200,12 @@ module internal SpatialTree =
         { tree with
             Root = tree.Root |> addInternal 1 (tree |> SpaceExtent.init) }
 
+    let tryInsert tree objectExtentProvider object =
+        try
+            insert tree objectExtentProvider object |> Some
+        with
+        | :? System.ArgumentException -> None
+
     let getObjectBuckets (tree: SpatialTree<'T>) =
         let rec getBucketsInternal node : 'T Set seq =
             match node.Kind with

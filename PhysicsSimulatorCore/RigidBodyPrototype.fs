@@ -88,3 +88,50 @@ module RigidBodyPrototype =
         { PhysicalObject = rigidBody |> RigidBody
           Collider = prototype.Collider
           Id = id }
+
+    let getAABoundingBox (prototype: RigidBodyPrototype) : AABB =
+        SimulatorObjectIdentifier.fromInt 0
+        |> build prototype
+        |> SimulatorObject.getAABoundingBox
+
+module SpatialTreeBoundaries =
+    open System
+
+    let private aabbMinCorner (bb: AABB) =
+        bb.CenterPosition - (bb.Size |> Box.toVector3D) / 2.0
+
+    let private aabbMaxCorner (bb: AABB) =
+        bb.CenterPosition + (bb.Size |> Box.toVector3D) / 2.0
+
+    let private vecMin (a: Vector3D) (b: Vector3D) =
+        Vector3D.create (min a.X b.X) (min a.Y b.Y) (min a.Z b.Z)
+
+    let private vecMax (a: Vector3D) (b: Vector3D) =
+        Vector3D.create (max a.X b.X) (max a.Y b.Y) (max a.Z b.Z)
+
+    /// Union of prototype AABBs expanded by padding (static geometry) and motionMargin (dynamic travel).
+    let fromPrototypeAABBs
+        (prototypes: RigidBodyPrototype list)
+        (padding: float)
+        (motionMargin: Vector3D)
+        leafCapacity
+        maxDepth
+        =
+        let expand = Vector3D.create padding padding padding + motionMargin
+
+        let minCorner, maxCorner =
+            prototypes
+            |> List.map RigidBodyPrototype.getAABoundingBox
+            |> List.fold
+                (fun (minAcc, maxAcc) bb ->
+                    aabbMinCorner bb |> vecMin minAcc,
+                    aabbMaxCorner bb |> vecMax maxAcc)
+                (Vector3D.create Double.MaxValue Double.MaxValue Double.MaxValue,
+                 Vector3D.create Double.MinValue Double.MinValue Double.MinValue)
+
+        { LeafCapacity = leafCapacity
+          SpaceBoundaries =
+            {| Min = minCorner - expand
+               Max = maxCorner + expand |}
+          MaxDepth = maxDepth }
+        |> BroadPhaseCollisionDetectionKind.SpatialTree

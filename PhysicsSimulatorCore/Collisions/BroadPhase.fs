@@ -98,11 +98,15 @@ module internal BroadPhase =
                 let withRemovedDynamicNodes: SpatialTree<SimulatorObjectIdentifier> =
                     dynamicIds |> Seq.fold (fun tree id -> id |> remove tree) oldTree.Tree
 
+                let insertDynamic tree id =
+                    match
+                        SpatialTree.tryInsert tree (objExtentProvider simulationObjects) id
+                    with
+                    | Some tree' -> tree'
+                    | None -> tree
+
                 let newTree: SpatialTree<SimulatorObjectIdentifier> =
-                    dynamicIds
-                    |> Seq.fold
-                        (fun tree id -> id |> insert tree (objExtentProvider simulationObjects))
-                        withRemovedDynamicNodes
+                    dynamicIds |> Seq.fold insertDynamic withRemovedDynamicNodes
 
                 do! {| oldTree with Tree = newTree |} |> SpatialTree |> State.put
                 return newTree |> getCollisionCandidates
