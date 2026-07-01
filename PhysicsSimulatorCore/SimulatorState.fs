@@ -82,24 +82,9 @@ module SimulatorStateBuilder =
 
         }
 
-    // let private initBroad (broadPhase: BroadPhaseCollisionDetectionKind) (simulatorState: SimulatorState) =
-    //     match broadPhase with
-    //     | BroadPhaseCollisionDetectionKind.Dummy -> Dummy
-    //     | BroadPhaseCollisionDetectionKind.SpatialTree spatialTreeConfiguration ->
-    //         let state = simulatorState.Objects |>  BroadPhase.init |> State.run
-    //         let collisionsCandidates, broadPhaseCollisionDetectorData = simulatorState.BroadPhaseCollisionDetectorData |> state
-    //
-
     let withBroadPhase (broadPhase: BroadPhaseCollisionDetectionKind) simulatorState =
         { simulatorState with
             BroadPhaseCollisionDetectorData = BroadPhase.init simulatorState.Objects broadPhase }
-    // match broadPhase with
-    // | BroadPhaseCollisionDetectionKind.Dummy ->
-    // | BroadPhaseCollisionDetectionKind.SpatialTree spatialTreeConfiguration ->
-    //     let state = simulatorState.Objects |>  BroadPhase.init |> State.run
-    //     let collisionsCandidates, broadPhaseCollisionDetectorData = simulatorState.BroadPhaseCollisionDetectorData |> state
-
-
 
     let withPrototype objectProto simulatorState =
         let id =

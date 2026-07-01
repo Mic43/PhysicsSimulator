@@ -10,10 +10,6 @@ open PhysicsSimulator.Utilities.SpatialTree
 
 type CollisionsCandidates = SimulatorObjectIdentifier SetOf2 List
 
-type internal BroadPhaseCollisionDetector = Map<SimulatorObjectIdentifier, SimulatorObject> -> CollisionsCandidates
-
-
-
 type internal BroadPhaseCollisionDetectorData =
     | Dummy
     | SpatialTree of
