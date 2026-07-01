@@ -73,13 +73,28 @@ module internal BroadPhase =
         (broadPhaseCollisionDetectionKind: BroadPhaseCollisionDetectionKind)
         : BroadPhaseCollisionDetectorData =
 
-
         match broadPhaseCollisionDetectionKind with
         | BroadPhaseCollisionDetectionKind.Dummy -> Dummy
         | BroadPhaseCollisionDetectionKind.SpatialTree config ->
             let tree = initSpatialTree config simulationObjects
             {| Tree = tree; Config = config |} |> SpatialTree
 
+    let onNewObjectAdded
+        (simulationObjects: Map<SimulatorObjectIdentifier, SimulatorObject>)
+        (newObject: SimulatorObjectIdentifier)
+        : State<BroadPhaseCollisionDetectorData, unit> =
+        monad {
+            let! data = State.get
+
+            match data with
+            | Dummy -> ()
+            | SpatialTree oldTree ->
+                do!
+                    {| oldTree with
+                        Tree = newObject |> insert oldTree.Tree (objExtentProvider simulationObjects) |}
+                    |> SpatialTree
+                    |> State.put
+        }
 
     let update
         (simulationObjects: Map<SimulatorObjectIdentifier, SimulatorObject>)
@@ -99,9 +114,7 @@ module internal BroadPhase =
                     dynamicIds |> Seq.fold (fun tree id -> id |> remove tree) oldTree.Tree
 
                 let insertDynamic tree id =
-                    match
-                        SpatialTree.tryInsert tree (objExtentProvider simulationObjects) id
-                    with
+                    match SpatialTree.tryInsert tree (objExtentProvider simulationObjects) id with
                     | Some tree' -> tree'
                     | None -> tree
 

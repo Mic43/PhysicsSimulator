@@ -93,12 +93,18 @@ module SimulatorStateBuilder =
 
         let object = id |> RigidBodyPrototype.build objectProto
 
+        let updatedObjectsMap = simulatorState.Objects |> Map.add id object
+
+        let stateRunner = id |> BroadPhase.onNewObjectAdded updatedObjectsMap |> State.run
+        let _, newData = simulatorState.BroadPhaseCollisionDetectorData |> stateRunner
+
         { simulatorState with
-            Objects = simulatorState.Objects |> Map.add id object
+            Objects = updatedObjectsMap
             ExternalForces =
                 simulatorState.ExternalForces
                 |> Map.add id (objectProto |> getDefaultExternalForceSupplier)
-            ExternalTorques = simulatorState.ExternalTorques |> Map.add id Vector3D.zero }
+            ExternalTorques = simulatorState.ExternalTorques |> Map.add id Vector3D.zero
+            BroadPhaseCollisionDetectorData = newData }
 
 module SimulatorState =
     let private particleIntegrator = ParticleIntegrators.forwardEuler
