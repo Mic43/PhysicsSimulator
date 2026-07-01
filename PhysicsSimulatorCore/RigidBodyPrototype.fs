@@ -58,7 +58,17 @@ module RigidBodyPrototype =
     let createDefaultSphere radius =
         { Sphere.Radius = radius } |> RigidBodyKind.Sphere |> createDefault
 
+    let private validate prototype =
+        match prototype.Mass, prototype.UseGravity with
+        | Mass.Infinite, true ->
+            invalidArg
+                (nameof prototype.UseGravity)
+                "objects with infinite mass cannot use gravity"
+        | _ -> ()
+
     let internal build prototype id : SimulatorObject =
+        validate prototype
+
         let inertiaMatrix =
             (match prototype.Kind with
              | Sphere sphere -> sphere.CreateRotationalInertia(prototype.Mass.GetValue)

@@ -6,6 +6,21 @@ type RigidBodyIntegratorKind =
     | FirstOrder
     | AugmentedSecondOrder
 
+type SpatialTreeConfiguration =
+    { LeafCapacity: int
+      SpaceBoundaries: {| Min: Vector3D; Max: Vector3D |}
+      MaxDepth: int }
+
+    static member Default =
+        { LeafCapacity = 4
+          SpaceBoundaries =
+            {| Min = (-15.0, -15.0, -15.0) |||> Vector3D.create
+               Max = (15.0, 15.0, 15.0) |||> Vector3D.create |}
+          MaxDepth = 10 }
+type BroadPhaseCollisionDetectionKind =
+    | Dummy
+    | SpatialTree of SpatialTreeConfiguration 
+
 type StepConfiguration =
     { Epsilon: float
       GravitationalAccelerationMagnitude: float

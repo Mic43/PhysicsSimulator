@@ -15,7 +15,9 @@ open Gui.HelpOverlay
 open Gui.PhongLighting
 
 let createScene argv : IPhysicsScene =
-    if argv |> Array.exists ((=) "domino") then
+    if argv |> Array.exists ((=) "spiral") then
+        SpiralScene() :> IPhysicsScene
+    elif argv |> Array.exists ((=) "domino") then
         DominoScene() :> IPhysicsScene
     else
         StackScene() :> IPhysicsScene
@@ -24,10 +26,20 @@ let toTranslation (v3d: Vector3D) =
     Trafo3d.Translation(v3d.X, v3d.Y, v3d.Z)
 
 let toRotation (simulator: Simulator) (orientationMatrix: Matrix3) =
-    let matrix = orientationMatrix.Get
-    let tmp = matrix.ToArray()
+    let matrix = orientationMatrix |> Matrix3.orthonormalize |> (fun m -> m.Get)
 
-    let mutable m33d = tmp |> M33d.op_Explicit
+    let m33d =
+        M33d(
+            matrix.[0, 0],
+            matrix.[0, 1],
+            matrix.[0, 2],
+            matrix.[1, 0],
+            matrix.[1, 1],
+            matrix.[1, 2],
+            matrix.[2, 0],
+            matrix.[2, 1],
+            matrix.[2, 2]
+        )
 
     let fromM33d = Rot3d.FromM33d(m33d, simulator.Configuration.Epsilon)
     Trafo3d(fromM33d)

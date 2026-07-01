@@ -14,8 +14,12 @@ type SimulatorState =
           ExternalForces: Map<SimulatorObjectIdentifier, Vector3D>
           ExternalTorques: Map<SimulatorObjectIdentifier, Vector3D>
           Collisions: Map<SimulatorObjectIdentifier Set, CollisionData>
+          BroadPhaseCollisionDetectorData: BroadPhaseCollisionDetectorData
           Joints: Joint list
           Configuration: StepConfiguration }
+
+    member this.DynamicObjects =
+        this.Objects |> Map.filter (fun _ obj -> obj.PhysicalObject.IsStatic() |> not)
 
 module SimulatorStateBuilder =
 
@@ -57,9 +61,8 @@ module SimulatorStateBuilder =
           Configuration = StepConfiguration.getDefault
           Collisions = Map.empty
           Joints =
-            [ Joint.createBallSocket
-                  (SetOf2.ofList [ objectMap[1]; objectMap[2] ])
-                  (Vector3D.create 0.0 -5.0 1.25) ] }
+            [ Joint.createBallSocket (SetOf2.ofList [ objectMap[1]; objectMap[2] ]) (Vector3D.create 0.0 -5.0 1.25) ]
+          BroadPhaseCollisionDetectorData = Dummy }
 
     let withConfiguration configuration simulatorState =
         { simulatorState with
@@ -78,6 +81,25 @@ module SimulatorStateBuilder =
                             configuration.GravityDirection)
 
         }
+
+    // let private initBroad (broadPhase: BroadPhaseCollisionDetectionKind) (simulatorState: SimulatorState) =
+    //     match broadPhase with
+    //     | BroadPhaseCollisionDetectionKind.Dummy -> Dummy
+    //     | BroadPhaseCollisionDetectionKind.SpatialTree spatialTreeConfiguration ->
+    //         let state = simulatorState.Objects |>  BroadPhase.init |> State.run
+    //         let collisionsCandidates, broadPhaseCollisionDetectorData = simulatorState.BroadPhaseCollisionDetectorData |> state
+    //
+
+    let withBroadPhase (broadPhase: BroadPhaseCollisionDetectionKind) simulatorState =
+        { simulatorState with
+            BroadPhaseCollisionDetectorData = BroadPhase.init simulatorState.Objects broadPhase }
+    // match broadPhase with
+    // | BroadPhaseCollisionDetectionKind.Dummy ->
+    // | BroadPhaseCollisionDetectionKind.SpatialTree spatialTreeConfiguration ->
+    //     let state = simulatorState.Objects |>  BroadPhase.init |> State.run
+    //     let collisionsCandidates, broadPhaseCollisionDetectorData = simulatorState.BroadPhaseCollisionDetectorData |> state
+
+
 
     let withPrototype objectProto simulatorState =
         let id =

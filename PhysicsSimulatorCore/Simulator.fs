@@ -3,19 +3,15 @@ namespace PhysicsSimulator
 open System
 open System.Threading
 open FSharpPlus
-open FSharpPlus.Control
 open Microsoft.FSharp.Control
 open PhysicsSimulator.Collisions
-open PhysicsSimulator.Utilities
+open PhysicsSimulator.Entities
 
 type SimulatorTaskState =
     | Paused
     | Started
     | Stopped
 
-type BroadPhaseCollisionDetectionKind =
-    | Dummy
-    | SpatialTree of SpatialTreeConfiguration
 
 type Configuration =
     { StepConfig: StepConfiguration
@@ -36,24 +32,22 @@ type Simulator(simulatorObjects, ?configuration0) =
     let mutable taskState = SimulatorTaskState.Stopped
     let simulatorStateChanged = Event<SimulatorState>()
     let gate = new SemaphoreSlim(1)
-
-    let simulatorState: SimulatorState ref =
+  
+    let initSimulationState () =
         simulatorObjects
         |> SimulatorStateBuilder.fromPrototypes
         |> SimulatorStateBuilder.withConfiguration configuration.StepConfig
-        |> ref
+        |> SimulatorStateBuilder.withBroadPhase configuration.BroadPhaseCollisionDetectionKind        
 
-    let broadPhaseCollisionDetection: BroadPhaseCollisionDetector =
-        match configuration.BroadPhaseCollisionDetectionKind with
-        | Dummy -> BroadPhase.dummy
-        | SpatialTree config -> BroadPhase.withSpatialTree config
+    let simulatorState: SimulatorState ref = initSimulationState () |> ref
 
     let resolveCollisions =
-        CollisionResolver.resolveAll broadPhaseCollisionDetection configuration.SimulationStepInterval
+        CollisionResolver.resolveAll configuration.SimulationStepInterval
 
     let updateSimulation =
-        async {            
+        async {
             gate.Wait()
+
             try
                 let newState =
                     simulatorState.Value
@@ -64,6 +58,7 @@ type Simulator(simulatorObjects, ?configuration0) =
                 simulatorState.Value <- newState
             finally
                 gate.Release() |> ignore
+
             simulatorState.Value |> simulatorStateChanged.Trigger
         }
 
@@ -95,33 +90,31 @@ type Simulator(simulatorObjects, ?configuration0) =
 
     member this.AddObject object =
         gate.Wait()
+
         try
             simulatorState.Value <- simulatorState.Value |> SimulatorStateBuilder.withPrototype object
-        finally 
+        finally
             gate.Release() |> ignore
 
         simulatorState.Value |> simulatorStateChanged.Trigger
 
     member this.ApplyImpulse physicalObjectIdentifier impulseValue impulseOffset =
         gate.Wait()
-        
+
         try
             simulatorState.Value <-
                 simulatorState.Value
                 |> SimulatorState.applyImpulse physicalObjectIdentifier impulseValue impulseOffset
         finally
             gate.Release() |> ignore
-        
+
         simulatorState.Value |> simulatorStateChanged.Trigger
 
     member this.Reset simulatorObjects =
         gate.Wait()
 
         try
-            simulatorState.Value <-
-                simulatorObjects
-                |> SimulatorStateBuilder.fromPrototypes
-                |> SimulatorStateBuilder.withConfiguration configuration.StepConfig
+            simulatorState.Value <- initSimulationState ()
         finally
             gate.Release() |> ignore
 
@@ -157,6 +150,7 @@ type Simulator(simulatorObjects, ?configuration0) =
 
         cancellationTokenSource.Cancel()
         taskState <- Stopped
+
     member this.PauseResume() =
         match taskState with
         | Paused -> taskState <- Started

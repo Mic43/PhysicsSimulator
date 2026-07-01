@@ -106,3 +106,32 @@ module RotationMatrix3D =
                 cosA * sinB * sinG - sinA * cosG ]
               [ -sinB; sinA * cosB; cosA * cosB ] ]
         |> Matrix3.Value
+
+    /// Inverse of `fromYawPitchRoll` (columns = body X, Y, Z in world space).
+    let yawPitchRollFromMatrix (Matrix3.Value m) =
+        let pitch = -asin (max -1.0 (min 1.0 m.[2, 0]))
+        let cosP = cos pitch
+
+        let roll =
+            if abs cosP < 1e-6 then
+                0.0
+            else
+                atan2 m.[1, 0] m.[0, 0]
+
+        let yaw =
+            if abs cosP < 1e-6 then
+                atan2 (-m.[0, 1]) m.[1, 1]
+            else
+                atan2 m.[2, 1] m.[2, 2]
+
+        yaw, pitch, roll
+
+    /// Body X = tangent, Y = binormal, Z = normal (matches `fromYawPitchRoll`).
+    let yawPitchRollFromFrame (tangent: Vector3D) (binormal: Vector3D) (normal: Vector3D) =
+        matrix
+            [ [ tangent.X; binormal.X; normal.X ]
+              [ tangent.Y; binormal.Y; normal.Y ]
+              [ tangent.Z; binormal.Z; normal.Z ] ]
+        |> Matrix3.ofMatrix
+        |> Matrix3.orthonormalize
+        |> yawPitchRollFromMatrix

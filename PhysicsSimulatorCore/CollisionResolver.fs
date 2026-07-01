@@ -45,11 +45,25 @@ module internal CollisionResolver =
         tryHandleCollision dt collidingObjectsCandidates curSimulationState
         |> Option.defaultValue curSimulationState
 
-    let resolveAll (broadPhaseCollisionDetection: BroadPhaseCollisionDetector) dt (curSimulationState: SimulatorState) =        
+
+    let resolveAll dt (curSimulationState: SimulatorState) =
         let withClearedOldCollisions =
             { curSimulationState with
                 Collisions = Map.empty }
 
-        curSimulationState.Objects
-        |> broadPhaseCollisionDetection
+        let withUpdatedBroadCollisions data ss =
+            { ss with
+                BroadPhaseCollisionDetectorData = data }
+
+        let canIntersect (setOf2: SetOf2<SimulatorObjectIdentifier>) =
+            setOf2.Get
+            |> List.exists (fun id -> curSimulationState.Objects[id].PhysicalObject.IsStatic() |> not)
+
+        let collisionsCandidates, broadPhaseCollisionDetectorData =
+            curSimulationState.Objects |> BroadPhase.update |> State.run
+            <| curSimulationState.BroadPhaseCollisionDetectorData
+
+        collisionsCandidates
+        |> List.filter canIntersect
         |> List.fold (withCollisionResponse dt) withClearedOldCollisions
+        |> withUpdatedBroadCollisions broadPhaseCollisionDetectorData

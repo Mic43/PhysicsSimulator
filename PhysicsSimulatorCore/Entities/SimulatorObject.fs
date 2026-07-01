@@ -30,6 +30,11 @@ type PhysicalObject =
         | Particle p -> p
         | RigidBody rigidBody -> rigidBody.MassCenter
 
+    member this.IsStatic() =
+        match this.AsParticle().Mass with
+        | Mass.Infinite -> true
+        | Mass.Value _ -> false
+
     member this.MassCenterPosition() = this.AsParticle().Variables.Position
 
 
