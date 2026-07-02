@@ -1,4 +1,4 @@
-﻿namespace PhysicsSimulator.AssemblyInfo
+namespace PhysicsSimulator.AssemblyInfo
 
 open System.Reflection
 open System.Runtime.CompilerServices

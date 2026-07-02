@@ -36,8 +36,8 @@ module private StackSceneData =
             BroadPhaseCollisionDetectionKind =
                 { LeafCapacity = 2
                   SpaceBoundaries =
-                    {| Min = (-15.0, -15.0, -15.0) |||> Vector3D.create
-                       Max = (15.0, 15.0, 15.0) |||> Vector3D.create |}
+                    { Min = (-15.0, -15.0, -15.0) |||> Vector3D.create
+                      Max = (15.0, 15.0, 15.0) |||> Vector3D.create }
                   MaxDepth = 10 }
                 |> BroadPhaseCollisionDetectionKind.SpatialTree
             StepConfig.GravityDirection =

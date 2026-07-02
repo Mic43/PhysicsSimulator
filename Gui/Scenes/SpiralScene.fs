@@ -204,8 +204,8 @@ module private SpiralSceneData =
             Yaw = yaw
             Pitch = pitch
             Roll = roll
-            StaticFrictionCoeff = 0.05
-            KineticFrictionCoeff = 0.01
+            StaticFrictionCoeff = 0.15
+            KineticFrictionCoeff = 0.10
             ElasticityCoeff = 0.08 }
 
     let createBall () =
@@ -262,7 +262,11 @@ module private SpiralSceneData =
         { Configuration.getDefault with
             SimulationSpeedMultiplier = 1.0
             BroadPhaseCollisionDetectionKind =
-                SpatialTreeBoundaries.fromPrototypeAABBs prototypes spatialTreePadding motionMargin 4 12
+                { LeafCapacity = 4
+                  SpaceBoundaries =
+                    SpatialTreeBoundaries.fromPrototypeAABBs prototypes spatialTreePadding motionMargin
+                  MaxDepth = 12 }
+                |> BroadPhaseCollisionDetectionKind.SpatialTree
             StepConfig.GravityDirection =
                 (0.0, 0.0, -1.0) |||> Vector3D.create |> NormalVector.create 0.01 }
 

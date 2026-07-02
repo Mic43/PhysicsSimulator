@@ -114,8 +114,7 @@ module SpatialTreeBoundaries =
         (prototypes: RigidBodyPrototype list)
         (padding: float)
         (motionMargin: Vector3D)
-        leafCapacity
-        maxDepth
+        : SpaceBoundaries
         =
         let expand = Vector3D.create padding padding padding + motionMargin
 
@@ -129,9 +128,5 @@ module SpatialTreeBoundaries =
                 (Vector3D.create Double.MaxValue Double.MaxValue Double.MaxValue,
                  Vector3D.create Double.MinValue Double.MinValue Double.MinValue)
 
-        { LeafCapacity = leafCapacity
-          SpaceBoundaries =
-            {| Min = minCorner - expand
-               Max = maxCorner + expand |}
-          MaxDepth = maxDepth }
-        |> BroadPhaseCollisionDetectionKind.SpatialTree
+        { Min = minCorner - expand
+          Max = maxCorner + expand }

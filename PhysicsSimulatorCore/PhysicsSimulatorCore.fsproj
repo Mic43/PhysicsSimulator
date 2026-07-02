@@ -16,7 +16,7 @@
     <ItemGroup>
         <Compile Include="AssemblyInfo.fs" />
         <Compile Include="Utilities\Utils.fs" />
-        <Compile Include="Utilities\SetOf2.fs" />
+        <Compile Include="Utilities\Pair.fs" />
         <Compile Include="Utilities\Vector3D.fs" />
         <Compile Include="Utilities\Matrix3.fs" />
         <Compile Include="Utilities\Plane.fs" />

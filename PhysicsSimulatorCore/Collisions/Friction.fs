@@ -10,20 +10,20 @@ module internal Friction =
 
     let private compoundFrictionCoeff coeff1 coeff2 = max coeff1 coeff2
 
-    let private clamped maxFriction (impulseValue: float SetOf2) : State<ContactPointImpulseData, float SetOf2> =
+    let private clamped maxFriction (impulseValue: float Pair) : State<ContactPointImpulseData, float Pair> =
         monad {
             let! impulseAccOld = State.gets (_.AccumulatedFrictionImpulse)
 
             let clampedImpulseValue, newAccumulatedFrictionImpulse =
                 (impulseAccOld, impulseValue)
-                ||> SetOf2.zip
-                |> SetOf2.map (fun (accumulated, impulse) ->
+                ||> Pair.zip
+                |> Pair.map (fun (accumulated, impulse) ->
                     accumulated
                     |> State.run (
                         impulse
                         |> (ContactPointImpulseData.clampImpulseValue -maxFriction (maxFriction |> Some))
                     ))
-                |> SetOf2.unzip
+                |> Pair.unzip
 
             do!
                 State.modify (fun oldState ->
@@ -37,11 +37,11 @@ module internal Friction =
 
     ///normalImpulse - normal part of the collision response applied before in the same iteration of the solver
     let calculateImpulse
-        (bodies: RigidBody SetOf2)
-        : State<ContactPointImpulseData, Vector3D SetOf2> =
+        (bodies: RigidBody Pair)
+        : State<ContactPointImpulseData, Vector3D Pair> =
 
-        let targetBody = bodies |> SetOf2.fst
-        let otherBody = bodies |> SetOf2.snd
+        let targetBody = bodies |> Pair.fst
+        let otherBody = bodies |> Pair.snd
            
         let compoundDynamicFriction =
             targetBody.KineticFrictionCoeff
@@ -56,13 +56,13 @@ module internal Friction =
 
             let impulsesValue =                  
                 cpImpulseData.MassTangent
-                |> SetOf2.zip cpImpulseData.TangentDirs
-                |> SetOf2.map (fun (tanDir, massTangent) -> (vRel |> dotProduct tanDir.Get) / massTangent)
+                |> Pair.zip cpImpulseData.TangentDirs
+                |> Pair.map (fun (tanDir, massTangent) -> (vRel |> dotProduct tanDir.Get) / massTangent)
 
             let! clamped = impulsesValue |> (clamped maxFriction)
 
             return                    
                 cpImpulseData.TangentDirs
-                |> SetOf2.zip clamped
-                |> SetOf2.map (fun (value, dir) -> value * dir.Get)
+                |> Pair.zip clamped
+                |> Pair.map (fun (value, dir) -> value * dir.Get)
         }

@@ -9,7 +9,7 @@ module internal SAT =
     open Vector3D
 
     /// axes on both boxes that make this edge separating axis
-    type EdgeSATAxisData = { EdgesAxes: NormalVector SetOf2 }
+    type EdgeSATAxisData = { EdgesAxes: NormalVector Pair }
 
     type SATAxisOrigin =
         | Face1 // face of first box
@@ -156,18 +156,18 @@ module internal SAT =
         let withProjection (vertices: Vector3D seq) =
             vertices |> Seq.map (fun v -> (v, v |> dotProduct axis.Get))
 
-        let vertices = polyhedrons |> SetOf2.map (_.Vertices >> withProjection)
+        let vertices = polyhedrons |> Pair.map (_.Vertices >> withProjection)
 
         let minMax =
             vertices
-            |> SetOf2.map (fun s ->
+            |> Pair.map (fun s ->
                 {| Min = s |> Seq.minBy snd
                    Max = s |> Seq.maxBy snd |})
 
-        let _, a = (minMax |> SetOf2.fst).Min
-        let _, b = (minMax |> SetOf2.fst).Max
-        let _, c = (minMax |> SetOf2.snd).Min
-        let _, d = (minMax |> SetOf2.snd).Max
+        let _, a = (minMax |> Pair.fst).Min
+        let _, b = (minMax |> Pair.fst).Max
+        let _, c = (minMax |> Pair.snd).Min
+        let _, d = (minMax |> Pair.snd).Max
 
         // a    c  b           d
         if a <= c && b >= c then
@@ -191,8 +191,8 @@ module internal SAT =
 
             return
                 { Origin = origin
-                  Reference = boxes |> SetOf2.fst
-                  Incident = boxes |> SetOf2.snd
+                  Reference = boxes |> Pair.fst
+                  Incident = boxes |> Pair.snd
                   CollisionNormalFromReference = collisionData.NormalFromTarget
                   Penetration = collisionData.Penetration }
         }
@@ -203,23 +203,23 @@ module internal SAT =
             tryGetCollisionDataForAxis boxes axis
             |> Option.map (fun collisionData -> (origin, collisionData, boxes)))
 
-    let tryFindSeparatingAxis (objects: (Box * RigidBody) SetOf2) : SATResult option =
-        let bodies = objects |> SetOf2.map snd
-        let orientedBoxes = objects |> SetOf2.map (fun p -> p ||> OrientedBox.create)
+    let tryFindSeparatingAxis (objects: (Box * RigidBody) Pair) : SATResult option =
+        let bodies = objects |> Pair.map snd
+        let orientedBoxes = objects |> Pair.map (fun p -> p ||> OrientedBox.create)
 
         let fromFirst =
-            (bodies |> SetOf2.snd).MassCenterPosition
-            - (bodies |> SetOf2.fst).MassCenterPosition
+            (bodies |> Pair.snd).MassCenterPosition
+            - (bodies |> Pair.fst).MassCenterPosition
 
         let facesAxes =
-            orientedBoxes |> SetOf2.map _.Faces |> SetOf2.map (List.map (_.Normal))
+            orientedBoxes |> Pair.map _.Faces |> Pair.map (List.map (_.Normal))
 
         let edgeAxes =
             seq {
-                for firstAxis in bodies |> SetOf2.fst |> RigidBody.getAxes do
-                    for secondAxis in bodies |> SetOf2.snd |> RigidBody.getAxes do
+                for firstAxis in bodies |> Pair.fst |> RigidBody.getAxes do
+                    for secondAxis in bodies |> Pair.snd |> RigidBody.getAxes do
                         yield
-                            ([ firstAxis; secondAxis ] |> SetOf2.ofList,
+                            ([ firstAxis; secondAxis ] |> Pair.ofList,
                              firstAxis.Get |> crossProduct secondAxis.Get |> normalized)
             }
             |> Seq.filter (fun (_, axis) -> axis.Get |> isZero 0.01 |> not)
@@ -227,11 +227,11 @@ module internal SAT =
 
         let axesWithData =
             seq {
-                for axis in facesAxes |> SetOf2.fst do
+                for axis in facesAxes |> Pair.fst do
                     yield (Face1, orientedBoxes, axis)
 
-                for axis in facesAxes |> SetOf2.snd do
-                    yield (Face2, orientedBoxes |> SetOf2.flip, axis)
+                for axis in facesAxes |> Pair.snd do
+                    yield (Face2, orientedBoxes |> Pair.flip, axis)
 
                 for edge, edgeSepAxis in edgeAxes do
                     yield ({ EdgeSATAxisData.EdgesAxes = edge } |> Edge, orientedBoxes, edgeSepAxis)

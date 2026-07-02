@@ -230,8 +230,8 @@ module internal RigidBodyMotion =
                   * (offset |> Matrix3.hatOperator)
 
         (bodies, offsets)
-        ||> SetOf2.zip
-        |> SetOf2.fold (fun s (body, offset) -> s + K body offset) Matrix3.zero
+        ||> Pair.zip
+        |> Pair.fold (fun s (body, offset) -> s + K body offset) Matrix3.zero
 
     let calculateVelocityAtOffset (body: RigidBody) offset =
         let getLinearVelocityAtOffset (rigidBody: RigidBody) =
@@ -244,5 +244,5 @@ module internal RigidBodyMotion =
     /// calculates relative velocity between bodies at offsets.
     /// Returned velocity points from first body to second body 
     let calculateRelativeVelocity bodies offsets =
-        (offsets |> SetOf2.snd |> calculateVelocityAtOffset (bodies |> SetOf2.snd))
-        - (offsets |> SetOf2.fst |> calculateVelocityAtOffset (bodies |> SetOf2.fst))
+        (offsets |> Pair.snd |> calculateVelocityAtOffset (bodies |> Pair.snd))
+        - (offsets |> Pair.fst |> calculateVelocityAtOffset (bodies |> Pair.fst))

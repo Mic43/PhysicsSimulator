@@ -5,21 +5,21 @@ open PhysicsSimulator.Entities
 open PhysicsSimulator.Utilities
 open FSharpPlus
 open FSharpPlus.Data
-open Utilities.SetOf2
+open Utilities.Pair
 
 type BallSocketJoint =
     private
-        { AnchorsOffsets: Vector3D SetOf2 }
+        { AnchorsOffsets: Vector3D Pair }
 
 type JointType = BallSocketJoint of BallSocketJoint
 
 type Joint =
-    { Identifiers: SimulatorObjectIdentifier SetOf2
+    { Identifiers: SimulatorObjectIdentifier Pair
       Type: JointType }
 
 type JointImpulseData =
-    { Bodies: RigidBody SetOf2
-      AnchorsWorld: Vector3D SetOf2
+    { Bodies: RigidBody Pair
+      AnchorsWorld: Vector3D Pair
       ConstraintMass: Matrix3 }
 
 module JointImpulseData =
@@ -40,7 +40,7 @@ module JointImpulseData =
           AnchorsWorld = anchors }
 
 module Joint =
-    let createBallSocket (objects: SimulatorObject SetOf2) anchorWorldPosition =
+    let createBallSocket (objects: SimulatorObject Pair) anchorWorldPosition =
         match (objects |> map (_.PhysicalObject) |> toTuple) with
         | RigidBody body1, RigidBody body2 ->
             { Identifiers = objects |> map (_.Id)
@@ -62,7 +62,7 @@ module Joint =
             let bias = Vector3D.zero
             jointImpulseData.ConstraintMass * (bias - vRel)
 
-    let restore dt (joint: JointType) (objects: PhysicalObject SetOf2) : Reader<StepConfiguration, SetOf2<PhysicalObject>> =
+    let restore dt (joint: JointType) (objects: PhysicalObject Pair) : Reader<StepConfiguration, Pair<PhysicalObject>> =
         match (objects |> toTuple) with
         | RigidBody body1, RigidBody body2 ->
             let restoreIteration jointImpulseData jointType bodies =
@@ -93,10 +93,10 @@ module Joint =
                     |> map RigidBody
             }
 
-// let body1ToBody2 = (positions |> SetOf2.snd) - (positions |> SetOf2.fst)
+// let body1ToBody2 = (positions |> Pair.snd) - (positions |> Pair.fst)
 // let normal = body1ToBody2 |> Vector3D.normalized
 // let penetration = (body1ToBody2 |> Vector3D.l2Norm) - ballSocketJoint.Distance
-// let position = ((positions |> SetOf2.snd) + (positions |> SetOf2.fst)) * 0.5
+// let position = ((positions |> Pair.snd) + (positions |> Pair.fst)) * 0.5
 //
 // let collisionData =
 //     { CollisionData.ContactPoints =

@@ -10,7 +10,7 @@ module internal CollisionResolver =
     open SimulatorState
 
     /// returns simulator state with handled collisions for colliding objects or None if there was no collision
-    let private tryHandleCollision dt (collidingObjectsCandidates: SetOf2<SimulatorObject>) curSimulationState =
+    let private tryHandleCollision dt (collidingObjectsCandidates: Pair<SimulatorObject>) curSimulationState =
         let nextSimulationState =
             monad {
                 match! collidingObjectsCandidates |> CollisionDetection.areColliding with
@@ -20,15 +20,15 @@ module internal CollisionResolver =
                         CollisionResponse.resolveCollision
                             dt
                             collisionData
-                            (collidingObjectsCandidates |> SetOf2.map (_.PhysicalObject))
+                            (collidingObjectsCandidates |> Pair.map (_.PhysicalObject))
 
-                    let objectsIds = collidingObjectsCandidates |> SetOf2.map _.Id |> SetOf2.toSet
+                    let objectsIds = collidingObjectsCandidates |> Pair.map _.Id |> Pair.toSet
 
                     let simulatorState =
                         curSimulationState
                         |> changePhysicalObjects
-                            (collidingObjectsCandidates |> SetOf2.toList |> List.map (_.Id))
-                            (resolvedObjects |> SetOf2.toList)
+                            (collidingObjectsCandidates |> Pair.toList |> List.map (_.Id))
+                            (resolvedObjects |> Pair.toList)
 
                     { simulatorState with
                         Collisions = simulatorState.Collisions |> Map.add objectsIds collisionData }
@@ -39,8 +39,8 @@ module internal CollisionResolver =
 
     let private withCollisionResponse dt (curSimulationState: SimulatorState) candidatesIds =
 
-        let collidingObjectsCandidates: SetOf2<SimulatorObject> =
-            candidatesIds |> SetOf2.map (updateObjectById curSimulationState dt)
+        let collidingObjectsCandidates: Pair<SimulatorObject> =
+            candidatesIds |> Pair.map (updateObjectById curSimulationState dt)
 
         tryHandleCollision dt collidingObjectsCandidates curSimulationState
         |> Option.defaultValue curSimulationState
@@ -55,8 +55,8 @@ module internal CollisionResolver =
             { ss with
                 BroadPhaseCollisionDetectorData = data }
 
-        let canIntersect (setOf2: SetOf2<SimulatorObjectIdentifier>) =
-            setOf2.Get
+        let canIntersect (candidate: Pair<SimulatorObjectIdentifier>) =
+            candidate.Get
             |> List.exists (fun id -> curSimulationState.Objects[id].PhysicalObject.IsStatic() |> not)
 
         let collisionsCandidates, broadPhaseCollisionDetectorData =

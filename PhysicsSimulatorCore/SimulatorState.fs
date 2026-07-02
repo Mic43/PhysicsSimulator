@@ -61,7 +61,7 @@ module SimulatorStateBuilder =
           Configuration = StepConfiguration.getDefault
           Collisions = Map.empty
           Joints =
-            [ Joint.createBallSocket (SetOf2.ofList [ objectMap[1]; objectMap[2] ]) (Vector3D.create 0.0 -5.0 1.25) ]
+            [ Joint.createBallSocket (Pair.ofList [ objectMap[1]; objectMap[2] ]) (Vector3D.create 0.0 -5.0 1.25) ]
           BroadPhaseCollisionDetectorData = Dummy }
 
     let withConfiguration configuration simulatorState =
@@ -162,9 +162,9 @@ module SimulatorState =
         simulationState |> changeSimulatorObjects changed
 
     let internal getJointObjects simulatorState joint =
-        (simulatorState.Objects[joint.Identifiers |> SetOf2.fst],
-         simulatorState.Objects[joint.Identifiers |> SetOf2.snd])
-        |> SetOf2.ofPair
+        (simulatorState.Objects[joint.Identifiers |> Pair.fst],
+         simulatorState.Objects[joint.Identifiers |> Pair.snd])
+        |> Pair.ofPair
 
     let update (dt: TimeSpan) simulatorState : SimulatorState =
         { simulatorState with

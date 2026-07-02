@@ -79,21 +79,21 @@ module internal CollisionDetection =
                     orientedBox
                     |> OrientedBox.getEdges
                     |> List.filter (fun edge ->
-                        (edge |> SetOf2.snd) - (edge |> SetOf2.fst)
+                        (edge |> Pair.snd) - (edge |> Pair.fst)
                         |> areParallel epsilon (edgeAxis |> NormalVector.toVector3D))
 
                 edgesCandidates
                 |> List.maxBy (
-                    SetOf2.map (dotProduct (collisionNormal |> NormalVector.toVector3D))
-                    >> SetOf2.max
+                    Pair.map (dotProduct (collisionNormal |> NormalVector.toVector3D))
+                    >> Pair.max
                 )
 
             ///get closest point between two edges
-            let getContactPoint (edge1: Vector3D SetOf2) (edge2: Vector3D SetOf2) =
-                let DA = (edge1 |> SetOf2.snd) - (edge1 |> SetOf2.fst)
-                let DB = (edge2 |> SetOf2.snd) - (edge2 |> SetOf2.fst)
+            let getContactPoint (edge1: Vector3D Pair) (edge2: Vector3D Pair) =
+                let DA = (edge1 |> Pair.snd) - (edge1 |> Pair.fst)
+                let DB = (edge2 |> Pair.snd) - (edge2 |> Pair.fst)
 
-                let r = (edge1 |> SetOf2.fst) - (edge2 |> SetOf2.fst)
+                let r = (edge1 |> Pair.fst) - (edge2 |> Pair.fst)
                 let a = DA |> dotProduct DA
                 let e = DB |> dotProduct DB
                 let f = DB |> dotProduct r
@@ -105,8 +105,8 @@ module internal CollisionDetection =
                 let TA = (b * f - c * e) / denom
                 let TB = (b * TA + f) / e
 
-                let CA = (edge1 |> SetOf2.fst) + DA * TA
-                let CB = (edge2 |> SetOf2.fst) + DB * TB
+                let CA = (edge1 |> Pair.fst) + DA * TA
+                let CB = (edge2 |> Pair.fst) + DB * TB
 
                 CA * 0.5 + CB * 0.5
 
@@ -114,13 +114,13 @@ module internal CollisionDetection =
                 let! config = ask
 
                 let collidingEdges =
-                    (boxes, edgeAxes, [ collisionNormalFromFirstBox; -collisionNormalFromFirstBox ] |> SetOf2.ofList)
-                    |||> SetOf2.zip3
-                    |> SetOf2.map (fun (box, edgeAxis, normal) ->
+                    (boxes, edgeAxes, [ collisionNormalFromFirstBox; -collisionNormalFromFirstBox ] |> Pair.ofList)
+                    |||> Pair.zip3
+                    |> Pair.map (fun (box, edgeAxis, normal) ->
                         edgeAxis |> getSupportingEdge config.Epsilon normal box)
 
                 let cp =
-                    getContactPoint (collidingEdges |> SetOf2.fst) (collidingEdges |> SetOf2.snd)
+                    getContactPoint (collidingEdges |> Pair.fst) (collidingEdges |> Pair.snd)
 
                 let contactPoints =
                     { Normal = collisionNormalFromFirstBox
@@ -133,7 +133,7 @@ module internal CollisionDetection =
 
         let separationAxis =
             [ (boxCollider1, body1); (boxCollider2, body2) ]
-            |> SetOf2.ofList
+            |> Pair.ofList
             |> tryFindSeparatingAxis
 
         match separationAxis with
@@ -161,7 +161,7 @@ module internal CollisionDetection =
                 Penetration = penetration
                 CollisionNormalFromReference = normal } ->
 
-                generateEdgeContactPoints normal penetration ([ refBox; incidentBox ] |> SetOf2.ofList) axes.EdgesAxes
+                generateEdgeContactPoints normal penetration ([ refBox; incidentBox ] |> Pair.ofList) axes.EdgesAxes
 
     let private detectedSphereBoxCollision (sphere, bodySphere) (box, bodyBox) =
         monad {
@@ -205,9 +205,9 @@ module internal CollisionDetection =
         |> Reader.Return
 
     /// Collision Normal vector points from the first to the second object in pair
-    let areColliding (pair: SimulatorObject SetOf2) : Reader<StepConfiguration, CollisionData Option> =      
-        let first = pair |> SetOf2.fst
-        let second = pair |> SetOf2.snd
+    let areColliding (pair: SimulatorObject Pair) : Reader<StepConfiguration, CollisionData Option> =      
+        let first = pair |> Pair.fst
+        let second = pair |> Pair.snd
 
         match (first.PhysicalObject, second.PhysicalObject) with
         | RigidBody body1, RigidBody body2 ->

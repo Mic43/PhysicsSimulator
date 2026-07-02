@@ -8,7 +8,7 @@ open PhysicsSimulator.Entities
 open PhysicsSimulator.Utilities
 open PhysicsSimulator.Utilities.SpatialTree
 
-type CollisionsCandidates = SimulatorObjectIdentifier SetOf2 List
+type CollisionsCandidates = SimulatorObjectIdentifier Pair List
 
 type internal BroadPhaseCollisionDetectorData =
     | Dummy
@@ -36,7 +36,7 @@ module internal BroadPhase =
         |> Set.ofSeq
         |> subSetsOf2Tail
         |> Set.toList
-        |> List.map SetOf2.ofSet
+        |> List.map Pair.ofSet
 
     let private initSpatialTree
         (configuration: SpatialTreeConfiguration)
@@ -65,7 +65,8 @@ module internal BroadPhase =
         |> Seq.filter (fun bucket -> bucket |> Set.count > 1)
         |> Seq.distinct
         |> Seq.collect (subSetsOf2Tail >> Set.toSeq)
-        |> Seq.map SetOf2.ofSet
+        |> Seq.map Pair.ofSet
+        |> Seq.distinctBy Pair.unorderedKey
         |> List.ofSeq
 
     let init

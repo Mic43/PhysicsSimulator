@@ -14,6 +14,8 @@ module private DominoSceneData =
     let dominoThickness = 0.08
     let dominoWidth = 0.35
     let dominoHeight = 1.2
+    let dominoMass = 100.0
+    let impulseStrength = 120.0
     // Row along world Y; dominoes face each other with their wide X×Z sides (±Y faces).
     let dominoSpacing = dominoThickness + 0.4
 
@@ -25,7 +27,7 @@ module private DominoSceneData =
         |> List.map (fun i ->
             { ((dominoWidth, dominoThickness, dominoHeight)
                |||> RigidBodyPrototype.createDefaultBox) with
-                Mass = 100.0 |> Mass.Value
+                Mass = dominoMass |> Mass.Value
                 ElasticityCoeff = 0.05
                 StaticFrictionCoeff = 0.7
                 KineticFrictionCoeff = 0.55
@@ -39,10 +41,28 @@ module private DominoSceneData =
               Position = Vector3D.create 0 0 -0.5 } ]
         @ createDominoRow ()
 
+    let spatialTreePadding = 2.0
+
+    /// AABB grows to ~height when a domino tips over.
+    let tipReach = dominoHeight + dominoWidth
+
+    let impulseSpeedMargin = impulseStrength / dominoMass * 2.0
+
+    let motionMargin =
+        Vector3D.create
+            (tipReach + impulseSpeedMargin)
+            (tipReach + impulseSpeedMargin)
+            (tipReach + impulseSpeedMargin)
+
     let configuration =
         { Configuration.getDefault with
             SimulationSpeedMultiplier = 1.0
-            BroadPhaseCollisionDetectionKind = BroadPhaseCollisionDetectionKind.Dummy
+            BroadPhaseCollisionDetectionKind = 
+                { LeafCapacity = 4
+                  SpaceBoundaries =
+                    SpatialTreeBoundaries.fromPrototypeAABBs prototypes spatialTreePadding motionMargin
+                  MaxDepth = 12 }
+                |> BroadPhaseCollisionDetectionKind.SpatialTree
             StepConfig.GravityDirection =
                 (0.0, 0.0, -1.0) |||> Vector3D.create |> NormalVector.create 0.01 }
 
@@ -54,7 +74,7 @@ type DominoScene() =
     static let groundObjectId = 0 |> SimulatorObjectIdentifier.fromInt
     static let impulsedObjectId = 1 |> SimulatorObjectIdentifier.fromInt
 
-    static let impulseStrength = 120.0
+    static let impulseStrength = DominoSceneData.impulseStrength
     static let impulseDir = Vector3D.create 0.0 1.0 0.0
     static let impulseValue = (impulseDir |> Vector3D.normalized).Get * impulseStrength
     static let impulseOffset = Vector3D.create 0.0 0.0 0.0

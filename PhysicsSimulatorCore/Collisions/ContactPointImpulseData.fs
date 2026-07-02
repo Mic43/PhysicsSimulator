@@ -9,22 +9,22 @@ open PhysicsSimulator.Entities
 type internal ContactPointImpulseData =
     { BaumgarteBias: float
       AccumulatedNormalImpulse: float
-      AccumulatedFrictionImpulse: float SetOf2
+      AccumulatedFrictionImpulse: float Pair
       PositionOffsetFromTarget: Vector3D
       PositionOffsetFromOther: Vector3D
-      MassTangent: float SetOf2
-      TangentDirs: NormalVector SetOf2
+      MassTangent: float Pair
+      TangentDirs: NormalVector Pair
       MassNormal: float }
 
     member this.Offsets =
-        (this.PositionOffsetFromTarget, this.PositionOffsetFromOther) ||> SetOf2.create
+        (this.PositionOffsetFromTarget, this.PositionOffsetFromOther) ||> Pair.create
 
 module internal ContactPointImpulseData =
     let init
         (targetBody: RigidBody)
         (otherBody: RigidBody)
         baumgarteBias
-        (tangentVectors: NormalVector SetOf2)
+        (tangentVectors: NormalVector Pair)
         (contactPoint: ContactPoint)
         =
      
@@ -34,20 +34,20 @@ module internal ContactPointImpulseData =
 
         let totalM =
             (offsetTarget, offsetOther)
-            |> SetOf2.ofPair
-            |> RigidBodyMotion.calculateTranslationConstraintMass ((targetBody, otherBody) |> SetOf2.ofPair)
+            |> Pair.ofPair
+            |> RigidBodyMotion.calculateTranslationConstraintMass ((targetBody, otherBody) |> Pair.ofPair)
 
         let massNormal = normal * (totalM * normal)
 
         let massTangent =
-            tangentVectors |> SetOf2.map (_.Get >> (fun dir -> dir * (totalM * dir)))
+            tangentVectors |> Pair.map (_.Get >> (fun dir -> dir * (totalM * dir)))
 
         { BaumgarteBias = baumgarteBias
           AccumulatedNormalImpulse = 0
           PositionOffsetFromTarget = offsetTarget
           PositionOffsetFromOther = offsetOther
           MassNormal = massNormal
-          AccumulatedFrictionImpulse = (0.0, 0.0) |> SetOf2.ofPair
+          AccumulatedFrictionImpulse = (0.0, 0.0) |> Pair.ofPair
           MassTangent = massTangent
           TangentDirs = tangentVectors }
 

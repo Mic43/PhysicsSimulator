@@ -8,11 +8,11 @@ open PhysicsSimulator.Utilities
 open PhysicsSimulator.Entities
 
 open Vector3D
-open SetOf2
+open Pair
 
 type internal CollisionManifold =
-    { Bodies: RigidBody SetOf2
-      TangentDirs: NormalVector SetOf2
+    { Bodies: RigidBody Pair
+      TangentDirs: NormalVector Pair
       Contacts: List<ContactPoint * ContactPointImpulseData> }
 
 module internal CollisionResponse =
@@ -39,7 +39,7 @@ module internal CollisionResponse =
     /// calculated impulse is to be applied to the first body of the bodies set
     /// providing collision normal is pointing from the first to the second body
     let private calculateNormalImpulse
-        (bodies: RigidBody SetOf2)
+        (bodies: RigidBody Pair)
         (contactPoint: ContactPoint)
         : State<ContactPointImpulseData, Vector3D> =
 
@@ -69,8 +69,8 @@ module internal CollisionResponse =
     let resolveCollision
         dt
         (collisionData: CollisionData)
-        (objects: PhysicalObject SetOf2)
-        : Reader<StepConfiguration, SetOf2<PhysicalObject>> =
+        (objects: PhysicalObject Pair)
+        : Reader<StepConfiguration, Pair<PhysicalObject>> =
 
         let createCollisionManifold collisionData target other config =
             let tangentVectors =
