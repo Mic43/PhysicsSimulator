@@ -112,7 +112,7 @@ module internal BroadPhase =
                     |> Map.keys
 
                 let withRemovedDynamicNodes: SpatialTree<SimulatorObjectIdentifier> =
-                    dynamicIds |> Seq.fold (fun tree id -> id |> remove tree) oldTree.Tree
+                    dynamicIds |> removeAll oldTree.Tree
 
                 let insertDynamic tree id =
                     match SpatialTree.tryInsert tree (objExtentProvider simulationObjects) id with

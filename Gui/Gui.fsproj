@@ -12,6 +12,7 @@
         <Compile Include="Scenes\StackScene.fs" />
         <Compile Include="Scenes\DominoScene.fs" />
         <Compile Include="Scenes\SpiralScene.fs" />
+        <Compile Include="Scenes\DonkeyKongScene.fs" />
         <Compile Include="HelpOverlay.fs" />
         <Compile Include="PhongLighting.fs" />
         <Compile Include="Program.fs" />

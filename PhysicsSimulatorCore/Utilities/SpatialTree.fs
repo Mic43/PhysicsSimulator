@@ -118,43 +118,50 @@ module internal SpatialTree =
 
         tree.Root |> findInternal
 
-    let remove (tree: SpatialTree<'T>) (object: 'T) : 'T SpatialTree =
+
+    let removeAll (tree: SpatialTree<'T>) (objects: 'T seq) : 'T SpatialTree =
+        let objectsSet = objects |> Set.ofSeq
+      
         let rec removeFromNode (node: SpatialTreeNode<'T>) : SpatialTreeNode<'T> =
             match node.Kind with
             | Leaf objs ->
                 { node with
-                    Kind = Leaf(Set.remove object objs) }
+                    Kind = Leaf(Set.difference objs objectsSet ) }
             | NonLeaf children ->
                 { node with
                     Kind = NonLeaf(children |> Array.map removeFromNode) }
-     
-        // let rec removeFromNonLeaf child node =
-        //     match node.Kind with
-        //     | Leaf _ -> invalidArg "node" "node must be non leaf"
-        //     | NonLeaf spatialTreeNodes ->
-        //         let updated = spatialTreeNodes |> Array.except [ child ]
-        //
-        //         if updated |> Array.isEmpty then
-        //             node.Parent
-        //             |> Option.map (fun par -> removeFromNonLeaf par node)
-        //             |> Option.defaultValue root
-        //         else
-        //             { node with Kind = updated |> NonLeaf }
-        //
-        //
-        // let removeLeaf (node: SpatialTreeNode<'T>) : SpatialTreeNode<'T> =
-        //     match node.Kind with
-        //     | Leaf objects ->
-        //         let newObjects = objects |> Set.remove object
-        //
-        //         if newObjects |> Set.isEmpty then
-        //             node.Parent |> Option.map (removeFromNonLeaf node) |> Option.defaultValue root
-        //         else
-        //             { node with Kind = newObjects |> Leaf }
-        //
-        //     | NonLeaf _ -> invalidArg "node" "node must be of Leaf kind"
+
         { tree with
             Root = removeFromNode tree.Root }
+
+    let remove (tree: SpatialTree<'T>) (object: 'T) : 'T SpatialTree =
+        removeAll tree (object |> Seq.singleton)
+    // let rec removeFromNonLeaf child node =
+    //     match node.Kind with
+    //     | Leaf _ -> invalidArg "node" "node must be non leaf"
+    //     | NonLeaf spatialTreeNodes ->
+    //         let updated = spatialTreeNodes |> Array.except [ child ]
+    //
+    //         if updated |> Array.isEmpty then
+    //             node.Parent
+    //             |> Option.map (fun par -> removeFromNonLeaf par node)
+    //             |> Option.defaultValue root
+    //         else
+    //             { node with Kind = updated |> NonLeaf }
+    //
+    //
+    // let removeLeaf (node: SpatialTreeNode<'T>) : SpatialTreeNode<'T> =
+    //     match node.Kind with
+    //     | Leaf objects ->
+    //         let newObjects = objects |> Set.remove object
+    //
+    //         if newObjects |> Set.isEmpty then
+    //             node.Parent |> Option.map (removeFromNonLeaf node) |> Option.defaultValue root
+    //         else
+    //             { node with Kind = newObjects |> Leaf }
+    //
+    //     | NonLeaf _ -> invalidArg "node" "node must be of Leaf kind"
+
 
     let insert (tree: SpatialTree<'T>) (objectExtentProvider: 'T -> ObjectExtent list) (object: 'T) =
         let objectExtent = object |> objectExtentProvider
@@ -203,10 +210,11 @@ module internal SpatialTree =
     let tryInsert tree objectExtentProvider object =
         try
             insert tree objectExtentProvider object |> Some
-        with
-        | :? System.ArgumentException -> None
+        with :? System.ArgumentException ->
+            None
 
-    let getObjectBuckets (tree: SpatialTree<'T>) =
+   
+    let getObjectBuckets (tree: SpatialTree<'T>) =        
         let rec getBucketsInternal node : 'T Set seq =
             match node.Kind with
             | Leaf objects when objects.IsEmpty -> Seq.empty

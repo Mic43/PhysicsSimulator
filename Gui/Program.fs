@@ -19,6 +19,8 @@ let createScene argv : IPhysicsScene =
         SpiralScene() :> IPhysicsScene
     elif argv |> Array.exists ((=) "domino") then
         DominoScene() :> IPhysicsScene
+    elif argv |> Array.exists (fun a -> a = "kong" || a = "donkeykong") then
+        DonkeyKongScene() :> IPhysicsScene
     else
         StackScene() :> IPhysicsScene
 
