@@ -31,6 +31,10 @@ type StepConfiguration =
       GravityDirection: NormalVector
       BaumgarteTerm: float
       AllowedPenetration: float
+      /// Upper bound (m/s) on the Baumgarte position-correction velocity. Prevents a deep
+      /// penetration spike (e.g. a new contact born overlapping at a segment seam) from
+      /// launching the body. Set high to disable.
+      MaxCorrectionVelocity: float
       CollisionSolverIterationCount: int
       EnableFriction: bool
       RigidBodyIntegratorKind: RigidBodyIntegratorKind }
@@ -42,8 +46,9 @@ module StepConfiguration =
     let getDefault =
         { Epsilon = defaultEpsilon
           BaumgarteTerm = 0.2
-          CollisionSolverIterationCount = 10
           AllowedPenetration = 0.001
+          MaxCorrectionVelocity = 1.0
+          CollisionSolverIterationCount = 10
           EnableFriction = true
           RigidBodyIntegratorKind = FirstOrder
           GravitationalAccelerationMagnitude = earthGravityAccelMagnitude

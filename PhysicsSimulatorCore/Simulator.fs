@@ -27,17 +27,17 @@ module Configuration =
           BroadPhaseCollisionDetectionKind = BroadPhaseCollisionDetectionKind.Dummy }
 
 type Simulator(simulatorObjects, ?configuration0) =
-    let configuration = defaultArg configuration0 Configuration.getDefault
+    let mutable configuration = defaultArg configuration0 Configuration.getDefault
 
     let mutable taskState = SimulatorTaskState.Stopped
     let simulatorStateChanged = Event<SimulatorState>()
     let gate = new SemaphoreSlim(1)
-  
+
     let initSimulationState () =
         simulatorObjects
         |> SimulatorStateBuilder.fromPrototypes
         |> SimulatorStateBuilder.withConfiguration configuration.StepConfig
-        |> SimulatorStateBuilder.withBroadPhase configuration.BroadPhaseCollisionDetectionKind        
+        |> SimulatorStateBuilder.withBroadPhase configuration.BroadPhaseCollisionDetectionKind
 
     let simulatorState: SimulatorState ref = initSimulationState () |> ref
 
@@ -86,7 +86,7 @@ type Simulator(simulatorObjects, ?configuration0) =
 
     member this.AllCollisions = simulatorState.Value.Collisions |> Map.values |> List.ofSeq
 
-    member this.Configuration = simulatorState.Value.Configuration
+    member this.Configuration = configuration
 
     member this.AddObject object =
         gate.Wait()
@@ -110,7 +110,7 @@ type Simulator(simulatorObjects, ?configuration0) =
 
         simulatorState.Value |> simulatorStateChanged.Trigger
 
-    member this.Reset simulatorObjects =
+    member this.Reset() =
         gate.Wait()
 
         try
@@ -156,3 +156,11 @@ type Simulator(simulatorObjects, ?configuration0) =
         | Paused -> taskState <- Started
         | Started -> taskState <- Paused
         | Stopped -> invalidOp "simulator must be started or paused"
+
+    member this.SetSimulationSpeedMultiplier multiplier =
+        if multiplier <= 0.0 then
+            invalidArg "multiplier" "must be positive"
+
+        configuration <-
+            { configuration with
+                SimulationSpeedMultiplier = multiplier }

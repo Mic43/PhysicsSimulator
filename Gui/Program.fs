@@ -43,12 +43,12 @@ let toRotation (simulator: Simulator) (orientationMatrix: Matrix3) =
             matrix.[2, 2]
         )
 
-    let fromM33d = Rot3d.FromM33d(m33d, simulator.Configuration.Epsilon)
+    let fromM33d = Rot3d.FromM33d(m33d, simulator.Configuration.StepConfig.Epsilon)
     Trafo3d(fromM33d)
 
 let getObjectTransformation (simulator: Simulator) (simObj: PhysicalObject) =
     let linearComponent = simObj.AsParticle().Variables
-
+    
     let rotationalComponent =
         match simObj with
         | RigidBody rb -> rb.Variables.Orientation |> toRotation simulator
@@ -140,6 +140,22 @@ let main argv =
 
     let simulator = scene.GetSimulator()
     let showCollisions = cval false
+    let simulationSpeed = cval simulator.Configuration.SimulationSpeedMultiplier
+
+    let minSimulationSpeed = 0.1
+    let maxSimulationSpeed = 4.0
+    let simulationSpeedStep = 0.1
+
+    let changeSimulationSpeed delta =
+        let current = simulationSpeed.Value
+
+        let next =
+            (current + delta * simulationSpeedStep)
+            |> max minSimulationSpeed
+            |> min maxSimulationSpeed
+
+        simulator.SetSimulationSpeedMultiplier next
+        simulationSpeed.Value <- next
 
     let frustum =
         win.Sizes
@@ -157,7 +173,7 @@ let main argv =
         |> Sg.viewTrafo (cameraView |> AVal.map CameraView.viewTrafo)
         |> Sg.projTrafo (frustum |> AVal.map Frustum.projTrafo)
 
-    let gui = create win scene.HelpLines
+    let gui = create win scene.HelpLines simulationSpeed
 
     let sg =
         RenderCommand.Ordered [ scene3d; gui ]
@@ -171,9 +187,16 @@ let main argv =
         match key with
         | Keys.C ->
             transact (fun () -> showCollisions.Value <- not showCollisions.Value)
-        | Keys.R -> host.Reset()
+        | Keys.R ->
+            transact (fun () -> simulator.Reset ())
         | Keys.Pause ->
             transact (fun () -> simulator.PauseResume ())
+        | Keys.Add
+        | Keys.OemPlus ->
+            transact (fun () -> changeSimulationSpeed 1.0)
+        | Keys.Subtract
+        | Keys.OemMinus ->
+            transact (fun () -> changeSimulationSpeed -1.0)
         | key -> scene.OnKeyDown key)
 
     simulator.Start()

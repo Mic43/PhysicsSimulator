@@ -24,16 +24,45 @@ module Common =
         }
 
 module internal SpatialTree =
+    let leaf objects : SpatialTreeNode<'T> = { Kind = Leaf objects; Parent = None }
+
+    let nonLeaf (children: SpatialTreeNode<'T> array) : SpatialTreeNode<'T> =
+        { Kind = NonLeaf children; Parent = None }
+
+    let rec kindsEqual (a: SpatialTreeNode<'T>) (b: SpatialTreeNode<'T>) =
+        match a.Kind, b.Kind with
+        | Leaf la, Leaf lb -> la = lb
+        | NonLeaf ca, NonLeaf cb when ca.Length = cb.Length -> Array.forall2 kindsEqual ca cb
+        | _ -> false
+
+    let treesEqual (expected: SpatialTree<'T>) (actual: SpatialTree<'T>) =
+        expected.MaxLeafObjects = actual.MaxLeafObjects
+        && expected.MaxDepth = actual.MaxDepth
+        && expected.SpaceBoundaries = actual.SpaceBoundaries
+        && kindsEqual expected.Root actual.Root
+
     let emptyTree<'T when 'T: comparison> maxSize =
         (Arb.generate<PositiveInt> |> Gen.two, Common.properRangeGen maxSize |> Gen.nonEmptyListOf)
         ||> Gen.map2 (fun (maxLeafObjects, maxDepth) boundaries ->
             (maxLeafObjects.Get, maxDepth.Get, boundaries) |||> SpatialTree.init<'T>)
 
+    let distinctSetOfLength n (itemGen: Gen<'T>) =
+        let rec build remaining acc =
+            gen {
+                if remaining <= 0 then
+                    return acc |> Set.ofList
+                else
+                    let! item = itemGen |> Gen.filter (fun x -> acc |> List.contains x |> not)
+                    return! build (remaining - 1) (item :: acc)
+            }
+
+        build n []
+
     let singleNodeTree<'T when 'T: comparison> maxSize (singleNodeGen: Gen<'T>) =
         gen {
             let! empty = emptyTree<'T> maxSize
-            let! newRoot = singleNodeGen |> Gen.listOfLength empty.MaxLeafObjects |> Gen.map (Set.ofList >> Leaf)
-            return { empty with Root = newRoot }
+            let! objects = distinctSetOfLength empty.MaxLeafObjects singleNodeGen
+            return { empty with Root = leaf objects }
         }
 
     let extentInBoundary (boundary: float * float) =

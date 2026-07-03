@@ -13,13 +13,9 @@ type SceneBase(prototypes: RigidBodyPrototype list, configuration: Configuration
 
     member this.Simulator = simulator
 
-    member this.Reset() =
-        transact (fun () -> simulator.Reset(prototypes))
-
     interface IPhysicsScene with
         member this.GetSimulator() = this.Simulator
         member this.GroundObjectId = this.GroundObjectId
-        member this.Reset() = this.Reset()
         member this.HelpLines = this.HelpLines
         member this.InitialCameraView = this.InitialCameraView
         member this.OnKeyDown key = this.OnKeyDown key

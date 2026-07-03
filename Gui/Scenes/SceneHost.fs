@@ -26,5 +26,3 @@ type SceneHost(scene: IPhysicsScene) =
         transact (fun () ->
             collisions.UpdateTo(simulator.AllCollisions) |> ignore
             objects.UpdateTo simulator.AllPhysicalObjects |> ignore)
-
-    member this.Reset() = scene.Reset()

@@ -15,7 +15,7 @@ let internal singleNodeTreeFromPosMap spaceBoundaries posMap =
     let count = (posMap |> Map.count) - 1
 
     { SpatialTree.init<int> count 10 spaceBoundaries with
-        Root = Leaf(posMap |> Map.keys |> Seq.take count |> Set.ofSeq) }
+        Root = posMap |> Map.keys |> Seq.take count |> Set.ofSeq |> leaf }
 
 module SpatialTree =
 
@@ -36,7 +36,7 @@ module SpatialTree =
             (maxLeafObjects.Get, maxDepth.Get, spaceBoundaries |> NonEmptyList.toList)
             |||> SpatialTree.init
 
-        match actual.Root with
+        match actual.Root.Kind with
         | Leaf l -> l = Set.empty
         | _ -> false
 
@@ -91,15 +91,15 @@ module SpatialTree =
                 |> SpatialTree.insert tree (fun _ ->
                     tree.SpaceBoundaries |> List.map (fun (p, _) -> { Position = p; Size = 0.01 }))
 
-            (match actual.Root with
+            (match actual.Root.Kind with
              | Leaf _ -> false
              | NonLeaf root when root.Length > 0 ->
-                 match root[0] with
+                 match root[0].Kind with
                  | Leaf l when l |> Set.count = tree.MaxLeafObjects + 1 ->
                      root
                      |> Array.skip 1
                      |> Array.forall (fun child ->
-                         match child with
+                         match child.Kind with
                          | Leaf l when l.IsEmpty -> true
                          | Leaf _ -> false
                          | NonLeaf _ -> false)
@@ -125,9 +125,9 @@ module SpatialTree =
                 |> SpatialTree.insert tree (fun _ ->
                     tree.SpaceBoundaries |> List.map (fun (p, _) -> { Position = p; Size = 0.01 }))
 
-            (match actual.Root with
+            (match actual.Root.Kind with
              | Leaf newRoot ->
-                 match tree.Root with
+                 match tree.Root.Kind with
                  | Leaf oldRoot when newRoot = Set.add object oldRoot -> true
                  | _ -> false
              | _ -> false)
@@ -138,7 +138,7 @@ module SpatialTree =
     [<Property>]
     let internal ``inserting object outside of space boundaries causes exception``
         id
-        (node: SpatialTreeNode<int>)
+        (objects: NonEmptyList<int>)
         (maxLeafObjects: int)
         (maxDepth: int)
         (spaceBoundaries: (float * float) NonEmptyList)
@@ -146,7 +146,7 @@ module SpatialTree =
 
         lazy
             (let tree =
-                { Root = node
+                { Root = objects |> NonEmptyList.toList |> Set.ofList |> leaf
                   MaxLeafObjects = maxLeafObjects
                   MaxDepth = maxDepth
                   SpaceBoundaries = spaceBoundaries |> NonEmptyList.toList }
@@ -171,9 +171,12 @@ module SpatialTree =
 
         let expected =
             { tree with
-                Root = [| [ 3; 1 ] |> Set.ofList |> Leaf; [ 3; 2 ] |> Set.ofList |> Leaf |] |> NonLeaf }
+                Root =
+                    nonLeaf
+                        [| leaf (Set.ofList [ 3; 1 ])
+                           leaf (Set.ofList [ 3; 2 ]) |] }
 
-        Assert.Equal(expected, actual)
+        Assert.True(treesEqual expected actual)
 
     [<Fact>]
     let ``inserting object works correctly for 1D simple`` () =
@@ -189,9 +192,12 @@ module SpatialTree =
 
         let expected =
             { tree with
-                Root = [| [ 3; 1 ] |> Set.ofList |> Leaf; [ 2 ] |> Set.ofList |> Leaf |] |> NonLeaf }
+                Root =
+                    nonLeaf
+                        [| leaf (Set.ofList [ 3; 1 ])
+                           leaf (Set.ofList [ 2 ]) |] }
 
-        Assert.Equal(expected, actual)
+        Assert.True(treesEqual expected actual)
 
     [<Fact>]
     let ``inserting object works correctly for 1D simple 2`` () =
@@ -207,9 +213,12 @@ module SpatialTree =
 
         let expected =
             { tree with
-                Root = [| [ 1 ] |> Set.ofList |> Leaf; [ 3; 2 ] |> Set.ofList |> Leaf |] |> NonLeaf }
+                Root =
+                    nonLeaf
+                        [| leaf (Set.ofList [ 1 ])
+                           leaf (Set.ofList [ 3; 2 ]) |] }
 
-        Assert.Equal(expected, actual)
+        Assert.True(treesEqual expected actual)
 
     [<Fact>]
     let ``inserting object works correctly for 1D complex`` () =
@@ -222,18 +231,23 @@ module SpatialTree =
 
         let tree =
             { SpatialTree.init<int> 2 10 [ (0, 20) ] with
-                Root = [| [ 1; 2 ] |> Set.ofList |> Leaf; [ 3 ] |> Set.ofList |> Leaf |] |> NonLeaf }
+                Root =
+                    nonLeaf
+                        [| leaf (Set.ofList [ 1; 2 ])
+                           leaf (Set.ofList [ 3 ]) |] }
 
         let actual = SpatialTree.insert tree (fun id -> posMap[id] |> List.singleton) 4
 
         let expected =
             { tree with
                 Root =
-                    [| [| [ 4; 1 ] |> Set.ofList |> Leaf; [ 2 ] |> Set.ofList |> Leaf |] |> NonLeaf
-                       [ 3 ] |> Set.ofList |> Leaf |]
-                    |> NonLeaf }
+                    nonLeaf
+                        [| nonLeaf
+                               [| leaf (Set.ofList [ 4; 1 ])
+                                  leaf (Set.ofList [ 2 ]) |]
+                           leaf (Set.ofList [ 3 ]) |] }
 
-        Assert.Equal(expected, actual)
+        Assert.True(treesEqual expected actual)
 
 
     [<Fact>]
@@ -253,10 +267,10 @@ module SpatialTree =
         let expected =
             { tree with
                 Root =
-                    [| [ 5; 1 ] |> Set.ofList |> Leaf
-                       [ 2 ] |> Set.ofList |> Leaf
-                       [ 3 ] |> Set.ofList |> Leaf
-                       [ 4 ] |> Set.ofList |> Leaf |]
-                    |> NonLeaf }
+                    nonLeaf
+                        [| leaf (Set.ofList [ 5; 1 ])
+                           leaf (Set.ofList [ 2 ])
+                           leaf (Set.ofList [ 3 ])
+                           leaf (Set.ofList [ 4 ]) |] }
 
-        Assert.Equal(expected, actual)
+        Assert.True(treesEqual expected actual)

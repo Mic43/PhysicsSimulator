@@ -2,16 +2,18 @@ module Gui.HelpOverlay
 
 open System.Numerics
 open Aardvark.Rendering.ImGui
+open FSharp.Data.Adaptive
 open Hexa.NET.ImGui
 
 let private commonHelpLines =
     [| "Sterowanie (wspolne)"
        "Pauza - pauza / wznowienie"
        "R - reset sceny"
+       "+ / - - szybkosc symulacji"
        "C - kolizje (wl./wyl.)"
        "Mysz - kamera" |]
 
-let create (win: Aardvark.Glfw.Window) (sceneLines: string list) =
+let create (win: Aardvark.Glfw.Window) (sceneLines: string list) (simulationSpeed: aval<float>) =
     let gui = win.InitializeImGui()
 
     gui.Render <-
@@ -28,6 +30,8 @@ let create (win: Aardvark.Glfw.Window) (sceneLines: string list) =
             if ImGui.Begin("Sterowanie", flags) then
                 for line in commonHelpLines do
                     ImGui.Text(line)
+
+                ImGui.Text(sprintf "  aktualnie: %.2fx" (AVal.force simulationSpeed))
 
                 if not sceneLines.IsEmpty then
                     ImGui.Separator()

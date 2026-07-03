@@ -92,6 +92,7 @@ type DominoScene() =
         let simulator = this.Simulator
 
         match key with
+        
         | Keys.Space ->
             transact (fun () ->
                 simulator.ApplyImpulse impulsedObjectId impulseValue impulseOffset)

@@ -33,8 +33,12 @@ module internal CollisionResponse =
         }
 
     let private calculateBaumgarteBias config (timeInterval: TimeSpan) penetration =
+        // Bias is a non-negative separation velocity the solver drives the contact toward.
+        // Clamp it so a deep penetration (e.g. a contact born overlapping at a seam) cannot
+        // inject an unbounded velocity and launch the body.
         -config.BaumgarteTerm / timeInterval.TotalSeconds
         * ((penetration + config.AllowedPenetration) |> min 0.0)
+        |> min config.MaxCorrectionVelocity
 
     /// calculated impulse is to be applied to the first body of the bodies set
     /// providing collision normal is pointing from the first to the second body
